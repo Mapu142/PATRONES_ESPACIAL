@@ -1,0 +1,102 @@
+---
+title: "PARCIAL 2"
+author: "María Paula Camargo Rincón"
+date: "2026-06-04"
+output: html_document
+---
+
+```{r }
+setwd("C:/PERSONAL_MAPU/UNIVERSIDADES/NACIONAL/ESTADÍSTICA_ESPACIAL/PARCIAL_2")
+```
+
+
+
+```{r }
+library(readxl)
+library(dplyr)
+library(lubridate) # para función hour, minute y second
+reporte_ene_jun_2024 <- read_excel("reporteIbocaene-jun-2024.xlsx", 
+    sheet = "Sheet1", range = "A5:T4350")
+reporte_ene_jun_2024 <- reporte_ene_jun_2024 %>% 
+  dplyr::mutate(`Fecha & Hora` = ymd_hms(`Fecha & Hora`)
+  ) %>% 
+  dplyr::filter(hour(`Fecha & Hora`) == 12,
+         minute(`Fecha & Hora`) == 0,
+         second(`Fecha & Hora`) == 0)
+reporte_ene_jun_2024 <- reporte_ene_jun_2024 %>% 
+  dplyr::mutate(
+    across(
+      -`Fecha & Hora`,
+      ~ na_if(.x, "Sin data")
+    )
+  )
+reporteIbocajul_dic2024 <- read_excel("reporteIbocajul-dic2024.xlsx", 
+    range = "A5:T3806")
+reporteIbocajul_dic2024 <- reporteIbocajul_dic2024 %>% 
+  dplyr::mutate(`Fecha & Hora` = ymd_hms(`Fecha & Hora`)) %>% 
+  dplyr::filter(hour(`Fecha & Hora`) == 12,
+         minute(`Fecha & Hora`) == 0,
+         second(`Fecha & Hora`) == 0)
+reporteIbocajul_dic2024 <- reporteIbocajul_dic2024 %>% 
+  dplyr::mutate(
+    across(
+      -`Fecha & Hora`,
+      ~ na_if(.x, "Sin data")
+    )
+  )
+reporteIboca <- read_excel("reporteIboca.xlsx", 
+    range = "A5:T4281")
+reporteIboca <- reporteIboca %>% 
+  dplyr::mutate(`Fecha & Hora` = ymd_hms(`Fecha & Hora`)) %>% 
+  dplyr::filter(hour(`Fecha & Hora`) == 12,
+         minute(`Fecha & Hora`) == 0,
+         second(`Fecha & Hora`) == 0)
+reporteIboca <- reporteIboca %>% 
+  dplyr::mutate(
+    across(
+      -`Fecha & Hora`,
+      ~ na_if(.x, "Sin data")
+    )
+  )
+#reporteIbocajul_dic <- read_excel("reporteIbocajul-dic.xlsx", 
+#    range = "A5:T4183")
+#reporteIbocajul_dic <- reporteIbocajul_dic %>% 
+#  dplyr::mutate(`Fecha & Hora` = ymd_hms(`Fecha & Hora`)) %>% 
+#  dplyr::filter(hour(`Fecha & Hora`) == 12,
+#         minute(`Fecha & Hora`) == 0,
+#         second(`Fecha & Hora`) == 0)
+
+```
+
+```{r}
+reporte_completo <- bind_rows(
+  reporte_ene_jun_2024,
+  reporteIbocajul_dic2024,
+  reporteIboca
+)
+tabla_conteos_NAS <- data.frame(
+  estaciones=names(reporte_completo)[-1],
+  conteos=c(
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$`Carvajal - Sevillana`)),
+    sum(is.na(reporte_completo$CDAR)),
+    sum(is.na(reporte_completo$`Ciudad Bolívar`)),
+    sum(is.na(reporte_completo$Colina)),
+    sum(is.na(reporte_completo$Fontibon)),
+    sum(is.na(reporte_completo$Guaymaral)),
+    sum(is.na(reporte_completo$Jazmín)),
+    sum(is.na(reporte_completo$Kennedy)),
+    sum(is.na(reporte_completo$`Las Ferias`)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia)),
+    sum(is.na(reporte_completo$Bolivia))
+  )
+)
+```
+
