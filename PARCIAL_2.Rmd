@@ -10,12 +10,14 @@ output: html_document
 library(readxl)
 library(dplyr)
 library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
+library(tidyverse)
+
 
 ```
 
 
 
-```{r PM10, warning=FALSE}
+```{r PM10-O3, eval=FALSE, warning=FALSE, include=FALSE}
 reporte_ene_jun_2024 <- read_excel("reporteIbocaene-jun-2024.xlsx", 
     sheet = "Sheet1", range = "A5:T4350")
 reporte_ene_jun_2024 <- reporte_ene_jun_2024 %>% 
@@ -89,9 +91,19 @@ reporteIbocajul_dic <- reporteIbocajul_dic %>%
   mutate(
     across(-1, as.numeric)
   )
-```
+PM10 <- bind_rows(
+  reporte_ene_jun_2024,
+  reporteIbocajul_dic2024,
+  reporteIboca,
+  reporteIbocajul_dic
+)
+PM10 <- PM10 %>%
+  tidyr::pivot_longer(
+    cols = -`Fecha & Hora`,      # Mantener la fecha fija
+    names_to = "Estacion",       # Las columnas de estaciones pasan a ser filas
+    values_to = "PM10"           # Los valores van a una nueva columna llamada PM10
+  )
 
-```{r O3, warning=FALSE}
 reporte_ene_jun_2024_o <- read_excel("reporte_ene_jun_o.xlsx", 
     sheet = "Sheet1", range = "A5:T4345")
 reporte_ene_jun_2024_o <- reporte_ene_jun_2024_o %>% 
@@ -165,15 +177,26 @@ reporteIbocajul_dic_o_2025 <- reporteIbocajul_dic_o_2025 %>%
   mutate(
     across(-1, as.numeric)
   )
+O3 <- bind_rows(
+  reporte_ene_jun_2024_o,
+  reporteIbocajul_dic2024_o,
+  reporte_ene_jun_o_2025,
+  reporteIbocajul_dic_o_2025
+)
+O3 <- O3 %>%
+  tidyr::pivot_longer(
+    cols = -`Fecha & Hora`,      # Mantener la fecha fija
+    names_to = "Estacion",       # Las columnas de estaciones pasan a ser filas
+    values_to = "O3"             # Los valores van a una nueva columna llamada O3
+  )
+
 ```
 
 ```{r}
-reporte_completo <- bind_rows(
-  reporte_ene_jun_2024,
-  reporteIbocajul_dic2024,
-  reporteIboca,
-  reporteIbocajul_dic
-)
+# 3. Unir ambos datasets en uno solo final
+#reporte_completo <- full_join(PM10, O3, by = c("Fecha & Hora", "Estacion"))
+#writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
+reporte_completo <- read_excel("reporte_completo.xlsx")
 str(reporte_completo)
 summary(reporte_completo)
 tabla_conteos_NAS <- data.frame(
