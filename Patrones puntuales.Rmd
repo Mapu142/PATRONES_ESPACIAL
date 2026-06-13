@@ -1,9 +1,8 @@
 ---
 title: "Patrones Puntuales"
-author: "María Paula Camargo Rincón 
-Laura Katherine Martinez Casatiblanco"
+author: "María Paula Camargo Rincón \nLaura Katherine Martinez Casatiblanco"
 output:
-  html_document:
+  bookdown::html_document2:
     theme: flatly
     toc: false
     self_contained: true
@@ -14,14 +13,20 @@ editor_options:
     wrap: sentence
 ---
 
-# Alicación Práctica en R: Análisis de Patrones Puntuales de Sismicidad en Colombia
+# Aplicación Práctica en R: Análisis de Patrones Puntuales de Sismicidad en Colombia
 
-Para iniciar un ejercicio de **patrones puntuales** siguiendo la metodología de la Dra. Martha Bohórquez, el primer paso fundamental es preparar el entorno con las librerías especializadas y transformar los datos tabulares (como los de Excel) en objetos espaciales que R pueda procesar.
+La base de datos utilizada recopila información sobre sismos con magnitud igual o superior a 4.5.
+El interés de estudiar estos eventos radica en que pueda generar consecuencias que afectan varios ámbitos de nuestro país.
+
+Para iniciar un ejercicio de **patrones puntuales** siguiendo la metodología de la Dra.
+Martha Bohórquez, el primer paso fundamental es preparar el entorno con las librerías especializadas y transformar los datos tabulares (como los de Excel) en objetos espaciales que R pueda procesar.
 
 A continuación, se presenta el código inicial estructurado para instalar las herramientas necesarias, cargar los datos de los epicentros y crear un objeto de patrón puntual (`ppp`).
 
 ### 1. Instalación y Carga de Librerías
-Para el análisis de patrones puntuales, la librería principal es **`spatstat`**. Adicionalmente, utilizaremos **`sf`** para el manejo moderno de datos espaciales y **`readxl`** para importar desde Excel.
+
+Para el análisis de patrones puntuales, la librería principal es **`spatstat`**.
+Adicionalmente, utilizaremos **`sf`** para el manejo moderno de datos espaciales y **`readxl`** para importar desde Excel.
 
 ```{r message=FALSE, warning=FALSE}
 # Instalación de paquetes si no están presentes
@@ -54,6 +59,7 @@ library(ggrepel)      # Crucial para que los IDs no se tapen entre sí
 ```
 
 ### 2. Carga y Preparación de Datos
+
 Dado que los datos de epicentros suelen venir en coordenadas geográficas (latitud/longitud), es una buena práctica convertirlos a un sistema proyectado (en metros) para que los cálculos de distancias e intensidades sean precisos.
 
 ```{r message=FALSE, warning=FALSE}
@@ -80,14 +86,14 @@ df <- read_csv("sismicidad_historica.csv", skip = 7, show_col_types = FALSE)
 # Renombrar columnas clave para trabajar más fácil
 names(df)[4] <- "Latitud"
 names(df)[5] <- "Longitud" 
-names(df)[7] <- "Magnitud"
+names(df)[7] <- "magnitudd"
 
 # Convertir a numérico de forma segura (maneja caracteres no numéricos como NA)
-df <- df %>% select(Latitud, Longitud, Magnitud) %>%
+df <- df %>% select(Latitud, Longitud, magnitudd) %>%
   mutate(
     Latitud   = as.numeric(Latitud),
     Longitud  = as.numeric(Longitud),
-    Magnitud  = as.numeric(Magnitud)
+    magnitudd  = as.numeric(magnitudd)
   )
 
 # Filtrar filas con coordenadas inválidas (evita errores en st_as_sf)
@@ -179,9 +185,9 @@ if(any(duplicated(sismos_ppp))) {
 sismos_ppp <- spatstat.geom::rescale(sismos_ppp, 1000, "km")
 
 
+```
 
-
-
+```{r Exploratoria, fig.cap="Visualización de sismos en Colombia en el año 1990", message=FALSE, warning=FALSE}
 # ==============================================================================
 #  VISUALIZACIÓN CON GGPlot2 (Mapa profesional)
 ggplot() +
@@ -191,15 +197,15 @@ ggplot() +
           color = "#2c3e50",        # Borde azul oscuro elegante
           linewidth = 0.3) +        
   
-  # Capa 2: Puntos Sísmicos (Mapeamos color y tamaño según la Magnitud)
+  # Capa 2: Puntos Sísmicos (Mapeamos color y tamaño según la magnitudd)
   geom_sf(data = sismos_sf, 
-          aes(color = Magnitud, size = Magnitud), 
+          aes(color = magnitudd, size = magnitudd), 
           alpha = 0.65,             # Transparencia para ver sismos superpuestos
           shape = 19) +             # Círculo sólido
   
   # Escala de colores: Paleta Magma (Amarillo = Alto, Negro/Morado = Bajo)
   scale_color_viridis_c(option = "magma", 
-                        name = "Magnitud") +
+                        name = "magnitudd") +
   
   # Escala de tamaño: Los sismos más fuertes se ven más grandes en el mapa
   scale_size_continuous(range = c(0.15, 6.5), 
@@ -228,14 +234,17 @@ ggplot() +
 
 ```
 
+Podemos ver en la figura \@ref(fig:Exploratoria) una clara concentración sobre la región andina, mostrando que los sismos no se comportan de manera uniforme a través de todo el territorio.
+Esta concentración sugiere la existencia de zonas con mayor intensidad sísmica.
+
 ### 3. Creación del Patrón Puntual (`ppp`)
-Un patrón puntual espacial consiste en un conjunto de ubicaciones llamadas **eventos**. Para usar `spatstat`, debemos extraer las coordenadas y definir una **ventana de observación** (`owin`), que delimita el área donde el fenómeno es posible.
 
-Para trabajar exactamente con la ventana de visualización que presenta el Servicio Geológico Colombiano (SGC) en su plataforma interactiva (la cual incluye sismos en el océano Pacífico, el mar Caribe y zonas fronterizas), la decisión de usar una ventana rectangular (`owin` de tipo caja) 
+Un patrón puntual espacial consiste en un conjunto de ubicaciones llamadas **eventos**.
+Para usar `spatstat`, debemos extraer las coordenadas y definir una **ventana de observación** (`owin`), que delimita el área donde el fenómeno es posible.
 
-```{r}
+Para trabajar exactamente con la ventana de visualización que presenta el Servicio Geológico Colombiano (SGC) en su plataforma interactiva (la cual incluye sismos en el océano Pacífico, el mar Caribe y zonas fronterizas), la decisión de usar una ventana rectangular (`owin` de tipo caja)
 
-
+```{r owin}
 ggplot() +
   # Capa 1: Países vecinos (Fondo gris neutro y bordes sutiles)
   geom_sf(data = paises_vecinos, 
@@ -282,32 +291,24 @@ ggplot() +
     panel.background = element_rect(fill = "#eef2f7", color = NA) # Océano azul claro
   )
 
-
-
-
-
-
-
 summary(sismos_ppp)
 ```
 
-
+En la figura \@ref(fig:owin) se presenta la ventana de observación utilizada para el análisis. Esta fue definida excluyendo áreas extensas sin registros relevantes sísmicos, está delimitación evita que grandes zonas vacías influyan en la estimación de características del proceso puntual, como por ejemplo la intensidad.
 
 ### prueba chi cuadrado
 
-Para evaluar si la distribución espacial de la sismicidad en la región de estudio responde a un proceso homogéneo de Aleatoriedad Espacial Completa (CSR), se aplicó una prueba estadística de bondad de ajuste basada en la distribución Chi-cuadrado ($\chi^2$) utilizando una partición del espacio en una rejilla regular de $5 \times 5$ cuadrantes disjuntos.
+Para evaluar si la distribución espacial de la sismicidad en la región de estudio responde a un proceso homogéneo de Aleatoriedad Espacial Completa (CSR), se aplicó una prueba estadística de bondad de ajuste basada en la distribución Chi-cuadrado ($\chi^2$) utilizando una partición del espacio en una rejilla regular de $3 \times 3$ cuadrantes disjuntos.
 
 #### 1. Formulación de Hipótesis Estadísticas
 
-* Hipótesis Nula ($H_0$): El patrón sísmico es el resultado de un proceso de Poisson homogéneo (CSR). La intensidad de eventos ($\lambda$) es constante a lo largo de toda la ventana de estudio.
-* Hipótesis Alternativa ($H_1$): El patrón sísmico presenta heterogeneidad espacial o interacciones de segundo orden (agregación o inhibición). La intensidad ($\lambda$) varía significativamente en el espacio.
+- Hipótesis Nula ($H_0$): El patrón sísmico es el resultado de un proceso de Poisson homogéneo (CSR). La intensidad de eventos ($\lambda$) es constante a lo largo de toda la ventana de estudio.
+- Hipótesis Alternativa ($H_1$): El patrón sísmico presenta heterogeneidad espacial o interacciones de segundo orden (agregación o inhibición). La intensidad ($\lambda$) varía significativamente en el espacio.
 
 Los resultados de la prueba Chi-cuadrado arrojaron los siguientes estadísticos:
 
-$$\chi^2 = 374.33 \quad \vert{} \quad \text{grados de libertad (df)} = 24 \quad \vert{} \quad \text{p-value} < 2.2 \times 10^{-16}$$ 
-Dado que el p-value es críticamente menor al nivel de significancia ($\alpha = 0.05$ ), existe evidencia estadística para rechazar la hipótesis nula ($H_0$). Se concluye que los sismos en Colombia y su área de influencia no ocurren de manera aleatoria u homogénea en el espacio.
-
-
+$$\chi^2 = 374.33 \quad \vert{} \quad \text{grados de libertad (df)} = 24 \quad \vert{} \quad \text{p-value} < 2.2 \times 10^{-16}$$ Dado que el p-value es críticamente menor al nivel de significancia ($\alpha = 0.05$ ), existe evidencia estadística para rechazar la hipótesis nula ($H_0$).
+Se concluye que los sismos en Colombia y su área de influencia no ocurren de manera aleatoria u homogénea en el espacio.
 
 ```{r fig.height=7, fig.width=10, message=FALSE, warning=FALSE}
 # Esta función extrae la rejilla matemática de spatstat y la convierte a polígonos de ggplot
@@ -369,11 +370,13 @@ crear_capa_cuadrantes <- function(modelo_chi) {
 
 
 # Ejecutar las pruebas en spatstat
+(chi_3x3 <- quadrat.test(sismos_ppp, nx = 3, ny = 3))
 (chi_4x4 <- quadrat.test(sismos_ppp, nx = 4, ny = 4))
 (chi_5x5 <- quadrat.test(sismos_ppp, nx = 5, ny = 5)) 
 (chi_6x6 <- quadrat.test(sismos_ppp, nx = 6, ny = 6)) 
 
 # Convertir a objetos sf para graficar
+sf_3x3 <- crear_capa_cuadrantes(chi_3x3)
 sf_4x4 <- crear_capa_cuadrantes(chi_4x4)
 sf_5x5 <- crear_capa_cuadrantes(chi_5x5)
 sf_6x6 <- crear_capa_cuadrantes(chi_6x6)
@@ -381,6 +384,32 @@ sf_6x6 <- crear_capa_cuadrantes(chi_6x6)
 
 
 # --- MAPA A: REJILLA 3x3 ---
+g_3x3 <- ggplot() +
+  geom_sf(data = paises_vecinos, fill = "#f1f2f6", color = "#bdc3c7", linewidth = 0.3) +
+  geom_sf(data = colombia_map, fill = "#f8f9fa", color = "#1f3a60", linewidth = 0.6) +
+  # Capa de la Rejilla estadística translúcida
+  geom_sf(data = sf_3x3, 
+          fill = "#3498db",          # Azul claro oficial
+          alpha = 0.05,              # Transparencia del 5% 👈
+          color = "#e67e22",         # Borde naranja
+          linewidth = 0.5, 
+          linetype = "dashed") + 
+  # Etiquetas numéricas dentro de los cuadrantes
+  geom_text(data = sf_3x3, aes(x = lon_c, y = lat_c, label = etiqueta), 
+            size = 2.8, fontface = "bold", color = "#2c3e50", bg.color = "white", bg.r = 0.15) +
+  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +            
+  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  labs(title = "Prueba por Cuadrantes (3x3)", subtitle = "Evaluación de Homogeneidad CSR", x = "Longitud", y = "Latitud") +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 11, color = "#2c3e50"),
+    plot.subtitle = element_text(size = 9, italic = TRUE, color = "#555555"),
+    panel.background = element_rect(fill = "#eef2f7", color = NA)
+  )
+
+
+# --- MAPA B: REJILLA 4x4 ---
 g_4x4 <- ggplot() +
   geom_sf(data = paises_vecinos, fill = "#f1f2f6", color = "#bdc3c7", linewidth = 0.3) +
   geom_sf(data = colombia_map, fill = "#f8f9fa", color = "#1f3a60", linewidth = 0.6) +
@@ -405,7 +434,7 @@ g_4x4 <- ggplot() +
     panel.background = element_rect(fill = "#eef2f7", color = NA)
   )
 
-# --- MAPA B: REJILLA 5x5 ---
+# --- MAPA C: REJILLA 5x5 ---
 g_5x5 <- ggplot() +
   geom_sf(data = paises_vecinos, fill = "#f1f2f6", color = "#bdc3c7", linewidth = 0.3) +
   geom_sf(data = colombia_map, fill = "#f8f9fa", color = "#1f3a60", linewidth = 0.6) +
@@ -430,7 +459,7 @@ g_5x5 <- ggplot() +
     panel.background = element_rect(fill = "#eef2f7", color = NA)
   )
 
-# --- MAPA C: REJILLA 6x6 ---
+# --- MAPA D: REJILLA 6x6 ---
 g_6x6 <- ggplot() +
   geom_sf(data = paises_vecinos, fill = "#f1f2f6", color = "#bdc3c7", linewidth = 0.3) +
   geom_sf(data = colombia_map, fill = "#f8f9fa", color = "#1f3a60", linewidth = 0.6) +
@@ -457,7 +486,7 @@ g_6x6 <- ggplot() +
 # g_6x6
 
 
-mosaico_cuadrantes <- (g_4x4 + g_5x5) + 
+mosaico_cuadrantes <- (g_3x3 + g_4x4 ) + 
   plot_annotation(
     title = "Diagnóstico de Primer Orden: Pruebas de Homogeneidad Espacial",
     subtitle = "Comparativa de Distribución de Sismos Observados vs. Esperados bajo Azar (CSR)",
@@ -466,14 +495,16 @@ mosaico_cuadrantes <- (g_4x4 + g_5x5) +
       plot.subtitle = element_text(size = 10, hjust = 0.5, color = "#555555", italic = TRUE)
     )
   )
-mosaico_cuadrantes
 
+```
+```{r mosaico}
+mosaico_cuadrantes
 
 ```
 
+El motivo por el cual seleccionamos una rejilla de $3\times 3$ cuadrantes disjuntos se ilustra en la figura \@ref(fig:mosaico). Aunque con esta partición el valor esperado por celda es $E=0.6$ y no se observan cuadrantes con ausencia absoluta de eventos ($O=0$),una rejilla de $4\times 4$ genera cuadrantes periféricos con frecuencias esperadas aún menores ($E=1.6$) y celdas con ausencia absoluta de eventos. 
 
-Debido a que la cuadrícula de 5x5 presenta cuadrantes periféricos con bajas frecuencias esperadas ($E = 3.4$) y celdas con ausencia absoluta de eventos ($O = 0$), la aproximación asintótica tradicional de la prueba Chi-cuadrado podría perder validez. Para solucionar este sesgo, se ejecutó un análisis de robustez mediante Pruebas Condicionales de Monte Carlo bajo la familia de estadísticas de poder de Cressie-Read.
-
+No obstante, dado que incluso la rejilla $3\times 3$ presenta frecuencias esperadas reducidas, la aproximación asintótica de la prueba Chi-cuadrado puede resultar inadecuada. Para solucionar este sesgo, se ejecutó un análisis de robustez mediante Pruebas Condicionales de Monte Carlo bajo la familia de estadísticas de poder de Cressie-Read.
 
 ```{r chi_robusto, message=FALSE, warning=FALSE}
 # ==============================================================================
@@ -550,11 +581,11 @@ knitr::kable(
   )
 ```
 
-Los resultados confirman que al evaluar el patrón mediante el estadístico óptimo de Cressie-Read la sismicidad mantiene un rechazo absoluto del modelo nulo de aleatoriedad. 
+Los resultados confirman que al evaluar el patrón mediante el estadístico óptimo de Cressie-Read la sismicidad mantiene un rechazo absoluto del modelo nulo de aleatoriedad.
 
-
-Al evaluar los vecinos de primer y segundo orden presentados en la tabla 2. y los mapas consiguientes, se evidencia que los sismos se agrupan en zonas muy específicas, principalmente en la región Andina y la costa del Pacífico. A nivel detallado, la tabla muestra que muchos sismos ocurren casi en el mismo lugar y al mismo tiempo; por ejemplo, los sismos 2 y 5 están separados por tan solo 4.70 km, lo que indica que son réplicas o temblores fuertemente conectados en una misma falla. 
-
+Al evaluar los vecinos de primer y segundo orden presentados en la tabla 2.
+y los mapas consiguientes, se evidencia que los sismos se agrupan en zonas muy específicas, principalmente en la región Andina y la costa del Pacífico.
+A nivel detallado, la tabla muestra que muchos sismos ocurren casi en el mismo lugar y al mismo tiempo; por ejemplo, los sismos 2 y 5 están separados por tan solo 4.70 km, lo que indica que son réplicas o temblores fuertemente conectados en una misma falla.
 
 ```{r mapa_vecinos, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 
@@ -727,9 +758,7 @@ mosaico_final
 
 ```
 
-
 A nivel general, los mapas nos enseñan en tonos amarillos brillantes dónde están estos focos principales de actividad, resaltando que al buscar un segundo temblor cercano, la concentración se vuelve aún más evidente en lugares clave como el Nido Sísmico de Bucaramanga y la frontera con Ecuador.
-
 
 ```{r diagramas_vecinos, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 # ==============================================================================
@@ -919,8 +948,6 @@ knitr::kable(
 
 Ambos enfoques estadísticos coinciden en que la sismicidad administrada por el Servicio Geológico Colombiano posee un patrón de hiper-agregación espacial (los sistemas de fallas andinos y nidos tectónicos) separados por inmensos silencios espaciales (el océano y las llanuras).
 
-
-
 ```{r mapa_densidad, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 # 2. Cálculo de la Densidad Kernel Continua en spatstat
 # El objeto sismos_ppp ya está escalado a kilómetros automáticamente
@@ -970,5 +997,3 @@ ggplot() +
     panel.background = element_rect(fill = "#eef2f7", color = NA) # Océano azul claro
   )
 ```
-
-
