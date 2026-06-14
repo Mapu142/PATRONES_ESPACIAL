@@ -352,36 +352,9 @@ display: none;
 </div>
 
 
-<div class="index-box">
-<ul>
-<li><a href="#seccion-2-1">1. Fundamentos de los Campos Aleatorios
-Espaciales.</a>
-<ul>
-<li><a href="#seccion-2-1-1">1.1 Fundamentos Matemáticos</a></li>
-<li><a href="#seccion-2-1-2">1.2 Taller de Laboratorio</a></li>
-<li><a href="#seccion-2-1-3">1.3 Implementación en R</a></li>
-<li><a href="#seccion-2-1-4">1.4 Ejercicios del libro</a></li>
-</ul></li>
-<li><a href="#seccion-2-2">2. Inferencia y Estimación de Parámetros.</a>
-<ul>
-<li><a href="#seccion-2-2-1">2.1 Fundamentos Matemáticos</a></li>
-<li><a href="#seccion-2-2-2">2.2 Taller de Laboratorio</a></li>
-<li><a href="#seccion-2-2-3">2.3 Implementación en R</a></li>
-<li><a href="#seccion-2-2-4">2.4 Ejercicios del libro</a></li>
-</ul></li>
-<li><a href="#seccion-2-3">3. Predicción Espacial: Kriging y
-Cokriging.</a>
-<ul>
-<li><a href="#seccion-2-3-1">3.1 Fundamentos Matemáticos</a></li>
-<li><a href="#seccion-2-3-2">3.2 Taller de Laboratorio</a></li>
-<li><a href="#seccion-2-3-3">3.3 Implementación en R</a></li>
-<li><a href="#seccion-2-2-4">3.4 Ejercicios del libro</a></li>
-</ul></li>
-</ul>
-</div>
 <div id="seccion-2-1" class="content-card">
-<div id="conceptos-innegociables-glosario-crítico" class="section level2">
-<h2>2.1. Conceptos Innegociables (Glosario Crítico)</h2>
+<div id="conceptos-innegociables-glosario-crítico" class="section level3">
+<h3>2.1. Conceptos Innegociables (Glosario Crítico)</h3>
 <p>Para navegar este tema, existen términos cuya comprensión es
 imperativa:</p>
 <ul>
@@ -399,6 +372,7 @@ dirección) entre dos puntos.</li>
 depende solo de la magnitud de la distancia y no de la dirección.</li>
 </ul>
 <hr />
+</div>
 <div id="la-esencia-del-campo-aleatorio-técnica-feynman" class="section level3">
 <h3>2.2. La Esencia del Campo Aleatorio (Técnica Feynman)</h3>
 <div id="explicación-intuitiva" class="section level4">
@@ -528,7 +502,6 @@ espacial.</li>
 </div>
 <div id="pause" class="section level3">
 <h3>pause</h3>
-</div>
 </div>
 </div>
 <div id="seccion-2-1-1" class="content-card">
@@ -851,16 +824,10 @@ centrado y autocorrelacionado.</p>
 # 1. CARGA DE LIBRERÍAS Y LIMPIEZA DE ENTORNO
 # Se cargan paquetes para manejo de geodata (geoR), kriging (gstat) y 
 # objetos de rasgos simples (sf).
-library(geoR)   # Core para modelado de campos aleatorios</code></pre>
-<pre><code>## --------------------------------------------------------------
-##  Analysis of Geostatistical Data
-##  For an Introduction to geoR go to http://www.leg.ufpr.br/geoR
-##  geoR version 1.9-6 (built on 2025-08-29) is now loaded
-## --------------------------------------------------------------</code></pre>
-<pre class="r"><code>library(gstat)  # Validación multivariada y variogramas
-library(sf)     # Manejo moderno de geometrías espaciales</code></pre>
-<pre><code>## Linking to GEOS 3.13.0, GDAL 3.10.1, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre>
-<pre class="r"><code>library(ggplot2)# Visualización de alta precisión
+library(geoR)   # Core para modelado de campos aleatorios
+library(gstat)  # Validación multivariada y variogramas
+library(sf)     # Manejo moderno de geometrías espaciales
+library(ggplot2)# Visualización de alta precisión
 
 # 2. CARGA Y CURACIÓN DE DATOS (Dataset: aquifer)
 # El proceso geoestadístico requiere un dominio continuo Ds.
@@ -1103,9 +1070,8 @@ estacionario.</li>
 <p><strong>Planteamiento Teórico:</strong> Cuando la media <span class="math inline">\(\mu(s)\)</span> no es constante, el proceso
 presenta <strong>tendencia o deriva</strong>. Se modela mediante
 regresión polinomial sobre las coordenadas.</p>
-</div>
-<div id="implementación-en-r-dataset-sintético-y-modelo" class="section level3">
-<h3>Implementación en R (Dataset Sintético y Modelo)</h3>
+<div id="implementación-en-r-dataset-sintético-y-modelo" class="section level4">
+<h4>Implementación en R (Dataset Sintético y Modelo)</h4>
 <p>Para este ejercicio, generaremos un dataset que emule las 547
 muestras mencionadas.</p>
 <pre class="r"><code># --- 1. Preparación de Datos ---
@@ -1147,6 +1113,7 @@ summary(modelo_elev) # Proporciona coeficientes, R2 y p-values</code></pre>
 ## Residual standard error: 8.5 on 543 degrees of freedom
 ## Multiple R-squared:  0.9842, Adjusted R-squared:  0.9841 
 ## F-statistic: 1.13e+04 on 3 and 543 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
 <div id="interpretación-técnica-basada-en-resultados" class="section level4">
 <h4>Interpretación Técnica (Basada en Resultados):</h4>
 <ol style="list-style-type: decimal">
@@ -1179,21 +1146,958 @@ Generalizados (MCG) a través de <code>likfit</code> en el paquete
 </div>
 </div>
 <div id="seccion-2-2" class="content-card">
+<p>En este capítulo, dejamos de ver los datos como una lista de valores
+y empezamos a verlos como una red de interacciones que dependen de la
+distancia y la dirección.</p>
+<hr />
+<div id="términos-innegociables-para-el-estudiante" class="section level3">
+<h3>2.1. Términos Innegociables para el Estudiante</h3>
+<p>Antes de avanzar, debemos dominar estos conceptos que constituyen el
+“alfabeto” de la geoestadística:</p>
+<ul>
+<li><strong>Rezago (Lag, <span class="math inline">\(h\)</span>):</strong> Vector que separa dos puntos
+en el espacio. No es solo una distancia escalar; tiene magnitud y
+dirección.</li>
+<li><strong>Silla (Sill, <span class="math inline">\(C(0)\)</span>):</strong> La varianza total del
+proceso. Es el valor donde el semivariograma se estabiliza.</li>
+<li><strong>Rango (Range, <span class="math inline">\(a\)</span>):</strong> Distancia a partir de la
+cual la autocorrelación desaparece. Los puntos más alejados que el rango
+son estadísticamente independientes.</li>
+<li><strong>Efecto Pepita (Nugget, <span class="math inline">\(c_0\)</span>):</strong> Discontinuidad en el
+origen que representa error de medición o variabilidad a microescala
+(distancias menores a la mínima muestreada).</li>
+<li><strong>Hipótesis Intrínseca:</strong> Supuesto donde solo se exige
+que los incrementos sean estacionarios, permitiendo varianza infinita en
+el proceso global pero finita en las diferencias.</li>
+</ul>
+<hr />
+</div>
+<div id="la-esencia-de-la-semivarianza-técnica-feynman" class="section level3">
+<h3>2.2. La Esencia de la Semivarianza (Técnica Feynman)</h3>
+<div id="explicación-intuitiva-1" class="section level4">
+<h4>Explicación Intuitiva</h4>
+<p>Imagina que estás estudiando la contaminación en un río. Si tomas dos
+muestras de agua a solo un metro de distancia, esperas que los valores
+sean casi iguales. Si las tomas a un kilómetro, la diferencia será
+mayor. La <strong>semivarianza</strong> es simplemente una regla
+matemática para medir qué tan “diferentes” se vuelven las muestras a
+medida que las alejamos.</p>
+<p>¿Por qué “semi”? Porque en estadística clásica, cuando restas dos
+variables y calculas su varianza, obtienes el doble de la variabilidad
+individual. Al ponerle el “semi” (dividir por 2), logramos que la
+variabilidad de la distancia coincida perfectamente con la varianza
+común de los datos cuando ya no hay relación entre ellos.</p>
+</div>
+<div id="rigor-estadístico-1" class="section level4">
+<h4>Rigor Estadístico</h4>
+<p>Analíticamente, la función de semivarianza se define como la mitad de
+la varianza de los incrementos de la variable regionalizada: <span class="math display">\[\gamma(h) = \frac{1}{2} Var[Z(s + h) -
+Z(s)]\]</span> Si el proceso tiene media constante <span class="math inline">\(\mu\)</span>, esta ecuación se simplifica a la
+esperanza del cuadrado de las diferencias: <span class="math display">\[\gamma(h) = \frac{1}{2} E[(Z(s + h) -
+Z(s))^2]\]</span></p>
+<hr />
+</div>
+</div>
+<div id="lógica-de-estimación-chain-of-thought" class="section level3">
+<h3>2.3. Lógica de Estimación (Chain-of-Thought)</h3>
+<div id="por-qué-necesitamos-un-semivariograma-empírico" class="section level4">
+<h4>¿Por qué necesitamos un “Semivariograma Empírico”?</h4>
+<p><strong>El Problema:</strong> La función <span class="math inline">\(\gamma(h)\)</span> es un parámetro teórico
+poblacional. En la realidad, solo tenemos una “foto” (realización) del
+fenómeno con <span class="math inline">\(n\)</span> puntos observados.
+<strong>La Lógica:</strong> Agrupamos todos los pares de puntos que
+estén separados por una distancia similar (<span class="math inline">\(h\)</span>) y calculamos el promedio de sus
+diferencias al cuadrado. <strong>La Solución:</strong> El
+<strong>Estimador de Matheron</strong> (clásico de momentos): <span class="math display">\[\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{i,j \in
+N(h)} (z(s_i) - z(s_j))^2\]</span> Donde <span class="math inline">\(|N(h)|\)</span> es el número de pares en ese
+rezago.</p>
+</div>
+<div id="por-qué-usar-estimadores-robustos-cressie-hawkins" class="section level4">
+<h4>¿Por qué usar estimadores robustos (Cressie-Hawkins)?</h4>
+<p><strong>El Problema:</strong> El estimador de Matheron eleva las
+diferencias al cuadrado. Un solo dato atípico (outlier) se magnifica
+enormemente, inflando artificialmente la semivarianza y “ensuciando” el
+gráfico. <strong>La Lógica:</strong> Necesitamos una transformación que
+“suavice” los valores extremos antes de promediar. <strong>La
+Solución:</strong> Cressie y Hawkins propusieron usar la raíz cuarta de
+las diferencias en valor absoluto (que se comporta de forma más
+normal/simétrica) y luego elevar el resultado a la cuarta potencia con
+un factor de corrección de sesgo.</p>
+<hr />
+</div>
+</div>
+<div id="implementación-computacional-en-r" class="section level3">
+<h3>2.4. Implementación Computacional en R</h3>
+<p>En la práctica, utilizamos los paquetes <code>geoR</code> y
+<code>gstat</code> para realizar estos cálculos.</p>
+<div id="dualidad-teoría-práctica" class="section level4">
+<h4>Dualidad Teoría-Práctica</h4>
+<pre class="r"><code>library(geoR)
+# 1. Carga de datos (objeto geodata)
+data(aquifer)</code></pre>
+<pre><code>## Warning in data(aquifer): data set &#39;aquifer&#39; not found</code></pre>
+<pre class="r"><code>aquifer_g &lt;- as.geodata(aquifer)
+
+# 2. Estimación Empírica (Matheron vs Modulus/Cressie-Hawkins)
+# variog manipula el parámetro &#39;estimator.type&#39;
+v_clásico &lt;- variog(aquifer_g, estimator.type = &quot;classical&quot;) </code></pre>
+<pre><code>## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code>v_robusto &lt;- variog(aquifer_g, estimator.type = &quot;modulus&quot;) # Cressie-Hawkins</code></pre>
+<pre><code>## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code># 3. Visualización y Reglas de Oro
+# gstat usa &#39;cutoff&#39; para limitar a Dmax/2 o Dmax/3
+plot(v_clásico, main = &quot;Semivariograma Empírico&quot;)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+<hr />
+</div>
+</div>
+<div id="aspectos-prácticos-y-restricciones-geométricas" class="section level3">
+<h3>2.5. Aspectos Prácticos y Restricciones Geométricas</h3>
+<p>Para que el semivariograma empírico sea confiable, el analista debe
+aplicar criterios de rigor:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Binning (Intervalos):</strong> No existen pares de puntos
+exactamente a la misma distancia en datos irregulares. Se crean
+“contenedores” o intervalos. Un ancho muy pequeño genera ruido; uno muy
+grande oculta la estructura (suavizado excesivo).</li>
+<li><strong>Regla de la Distancia Máxima:</strong> Solo se deben
+considerar rezagos hasta la mitad de la distancia máxima del dominio
+(<span class="math inline">\(D_{max}/2\)</span>). Más allá de ese punto,
+el número de pares disminuye drásticamente y el estimador se vuelve
+errático e inestable.</li>
+<li><strong>Representatividad:</strong> Cada punto en el semivariograma
+empírico debería basarse en al menos <strong>30 a 50 pares de
+puntos</strong> para ser estadísticamente significativo.</li>
+<li><strong>Anisotropía:</strong> Si el fenómeno varía de forma distinta
+según la dirección (ej. viento o pendientes), debemos calcular
+semivariogramas direccionales. La <strong>Anisotropía
+Geométrica</strong> ocurre cuando el rango cambia con la dirección
+(elipse), mientras que la <strong>Zonal</strong> ocurre cuando cambia la
+silla.</li>
+</ol>
+<hr />
+</div>
+<div id="modelos-válidos-el-rigor-de-la-consistencia" class="section level3">
+<h3>2.6. Modelos Válidos: El Rigor de la Consistencia</h3>
+<p>No cualquier curva que pase por los puntos empíricos es un
+semivariograma válido.</p>
+<div id="por-qué-restringir-los-modelos" class="section level4">
+<h4>¿Por qué restringir los modelos?</h4>
+<p><strong>El Problema:</strong> El objetivo final es el Kriging
+(predicción). Si usamos una función matemática cualquiera, podríamos
+terminar con una <strong>varianza de predicción negativa</strong>, lo
+cual es un absurdo físico y matemático. <strong>La Lógica (Teorema de
+Bochner):</strong> Para asegurar que la matriz de covarianza sea
+<strong>definida positiva</strong>, el modelo debe cumplir propiedades
+de curvatura específicas. <strong>Modelos Frecuentes:</strong></p>
+<ul>
+<li><strong>Esférico:</strong> Alcanza la silla de forma brusca a una
+distancia finita (rango real).</li>
+<li><strong>Exponencial:</strong> Alcanza la silla de forma asintótica
+(rango práctico = 3 veces el parámetro de escala).</li>
+<li><strong>Gaussiano:</strong> Representa procesos extremadamente
+suaves y continuos (forma parabólica en el origen).</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="términos-innegociables-glosario-crítico" class="section level3">
+<h3>2.7. Términos Innegociables (Glosario Crítico)</h3>
+<p>Para dominar este capítulo, es imperativo manejar con precisión estos
+términos:</p>
+<ul>
+<li><strong>Silla (Sill):</strong> Cota superior del semivariograma que
+representa la varianza total del proceso estocástico.</li>
+<li><strong>Rango (Range):</strong> Distancia física a partir de la cual
+la autocorrelación espacial desaparece.</li>
+<li><strong>Efecto Pepita (Nugget):</strong> Discontinuidad en el origen
+que representa errores de medición o variabilidad a distancias menores
+que la mínima observada.</li>
+<li><strong>Silla Parcial (Partial Sill):</strong> Componente de la
+varianza atribuido exclusivamente a la estructura espacial, excluyendo
+el error (Pepita).</li>
+</ul>
+<hr />
+</div>
+<div id="la-anatomía-del-semivariograma-técnica-feynman" class="section level3">
+<h3>2.8. La Anatomía del Semivariograma (Técnica Feynman)</h3>
+<div id="explicación-intuitiva-2" class="section level4">
+<h4>Explicación Intuitiva</h4>
+<p>Imagina que lanzas dos piedras a un estanque. Si caen muy cerca, las
+ondas que generan se parecen mucho; si caen lejos, no tienen relación.
+El <strong>semivariograma</strong> es un gráfico que actúa como un
+“termómetro de disimilitud”. En el eje horizontal tenemos la distancia
+(<span class="math inline">\(h\)</span>) y en el vertical la “extrañeza”
+(<span class="math inline">\(\gamma\)</span>). Al principio (distancia
+cero), la extrañeza debería ser cero, pero a veces hay un salto inicial
+(Pepita) por errores de medida. A medida que nos alejamos, la extrañeza
+sube hasta que llega a un techo (Silla) donde los puntos ya no saben
+nada el uno del otro; esa distancia límite es el Rango.</p>
+</div>
+<div id="rigor-estadístico-la-relación-analítica-fundamental" class="section level4">
+<h4>Rigor Estadístico: La Relación Analítica Fundamental</h4>
+<p>Bajo el supuesto de <strong>estacionariedad de segundo
+orden</strong>, existe una equivalencia exacta entre la función de
+autocovarianza <span class="math inline">\(C(h)\)</span> y el
+semivariograma <span class="math inline">\(\gamma(h)\)</span>: <span class="math display">\[\gamma(h) = C(0) - C(h)\]</span>
+<strong>Chain-of-Thought (Por qué de la fórmula):</strong></p>
+<ol style="list-style-type: decimal">
+<li>Partimos de la definición de varianza de los incrementos: <span class="math inline">\(Var[Z(s+h) - Z(s)] = E[(Z(s+h) - Z(s))^2]\)</span>
+(asumiendo media constante).</li>
+<li>Al expandir el cuadrado: <span class="math inline">\(Var[Z(s+h)] +
+Var[Z(s)] - 2Cov[Z(s+h), Z(s)]\)</span>.</li>
+<li>Si hay estacionariedad, <span class="math inline">\(Var[Z(s)] =
+C(0)\)</span> para cualquier ubicación.</li>
+<li>Entonces, <span class="math inline">\(2\gamma(h) = C(0) + C(0) -
+2C(h) \implies 2\gamma(h) = 2[C(0) - C(h)]\)</span>.</li>
+<li>Resultado: <span class="math inline">\(\gamma(h) = C(0) -
+C(h)\)</span>. Esta relación permite intercambiar funciones de similitud
+por disimilitud.</li>
+</ol>
+<hr />
+</div>
+</div>
+<div id="modelos-teóricos-acotados-la-familia-de-funciones-válidas" class="section level3">
+<h3>2.9. Modelos Teóricos Acotados: La Familia de Funciones Válidas</h3>
+<p>Para que un modelo de semivariograma sea válido en Kriging, debe ser
+<strong>condicionalmente definido negativo</strong>, garantizando así
+varianzas de predicción positivas.</p>
+<div id="modelo-esférico" class="section level4">
+<h4>1 Modelo Esférico</h4>
+<p>Es el más común. Alcanza la silla de forma brusca a una distancia
+<span class="math inline">\(a\)</span>. <span class="math display">\[\gamma(h) = \begin{cases} c_0 + \sigma^2_p [
+\frac{3}{2} \frac{h}{a} - \frac{1}{2} (\frac{h}{a})^3 ] &amp; \text{si }
+0 \leq h \leq a \\ c_0 + \sigma^2_p &amp; \text{si } h &gt; a
+\end{cases}\]</span> Su transición en el rango no es diferenciable, lo
+que refleja fenómenos con límites de influencia claros.</p>
+</div>
+<div id="modelo-exponencial" class="section level4">
+<h4>2 Modelo Exponencial</h4>
+<p>Alcanza la silla de forma asintótica. Nunca llega a tocarla
+matemáticamente, por lo que se define el <strong>Rango Práctico</strong>
+como la distancia donde se alcanza el 95% de la silla (aproximadamente
+<span class="math inline">\(3a\)</span>). <span class="math display">\[\gamma(h) = \sigma^2 [ 1 - \exp(-h/a)
+]\]</span></p>
+</div>
+<div id="modelo-gaussiano" class="section level4">
+<h4>3 Modelo Gaussiano</h4>
+<p>Describe procesos extremadamente suaves (diferenciables). Tiene forma
+parabólica cerca del origen. <strong>Peligro:</strong> Debido a su
+extrema suavidad para distancias cortas, puede generar matrices de
+covarianza casi singulares (inestabilidad numérica) si los puntos están
+muy cerca. El rango práctico es <span class="math inline">\(\sqrt{3}a\)</span>.</p>
+</div>
+<div id="familia-matérn" class="section level4">
+<h4>4 Familia Matérn</h4>
+<p>Es el modelo más flexible ya que incluye un parámetro de suavizado
+<span class="math inline">\(\kappa\)</span>.</p>
+<ul>
+<li>Si <span class="math inline">\(\kappa = 0.5\)</span>, se convierte
+en el modelo Exponencial.</li>
+<li>Si <span class="math inline">\(\kappa \to \infty\)</span>, se
+convierte en el modelo Gaussiano.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="modelos-no-acotados-y-no-estacionariedad" class="section level3">
+<h3>2.10. Modelos No Acotados y No Estacionariedad</h3>
+<p>Existen casos donde el semivariograma nunca se estabiliza (no hay
+silla). Esto ocurre bajo la <strong>Hipótesis Intrínseca</strong> cuando
+el proceso tiene varianza infinita pero incrementos estables.</p>
+<div id="modelo-lineal-y-potencial" class="section level4">
+<h4>1 Modelo Lineal y Potencial</h4>
+<ul>
+<li><strong>Lineal:</strong> <span class="math inline">\(\gamma(h) = b
+\|h\|\)</span>. Indica una tasa de incremento constante de la
+variabilidad con la distancia.</li>
+<li><strong>Potencial:</strong> <span class="math inline">\(\gamma(h) =
+b \|h\|^\delta\)</span> (con <span class="math inline">\(0 &lt; \delta
+&lt; 2\)</span>).</li>
+</ul>
+</div>
+<div id="interpretación-física-de-la-falta-de-meseta" class="section level4">
+<h4>2 Interpretación Física de la Falta de Meseta</h4>
+<p>Cuando el semivariograma empírico sigue creciendo indefinidamente (a
+menudo con forma parabólica), suele ser un síntoma de <strong>tendencia
+o deriva</strong> (no estacionariedad en media).</p>
+<ul>
+<li><strong>Causa:</strong> Presencia de gradientes globales como el
+aumento de temperatura hacia el ecuador o cambios de elevación.</li>
+<li><strong>Solución:</strong> Se debe modelar primero la media <span class="math inline">\(\mu(s)\)</span> con una superficie de tendencia y
+luego trabajar con los residuales <span class="math inline">\(Z(s)\)</span>.</li>
+</ul>
+</div>
+</div>
 <div id="pause-5" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
 <div id="seccion-2-2-1" class="content-card">
+<p>Este análisis transita desde la estimación empírica basada en
+momentos hasta la validación matemática de modelos teóricos para
+asegurar predicciones espaciales consistentes.</p>
+<hr />
+<div id="estimación-empírica-del-semivariograma" class="section level3">
+<h3>1. Estimación Empírica del Semivariograma</h3>
+<div id="fundamento-estadístico-y-definición-analítica" class="section level4">
+<h4>1.1 Fundamento Estadístico y Definición Analítica</h4>
+<p>La dependencia espacial se cuantifica mediante la variabilidad de los
+<strong>incrementos</strong> de un proceso estocástico. La función de
+semivarianza <span class="math inline">\(\gamma(h)\)</span> se define
+como:</p>
+<p><span class="math display">\[\gamma(h) = \frac{1}{2} \text{Var}[Z(s)
+- Z(s+h)]\]</span></p>
+<p><strong>Chain-of-Thought (Lógica de la Fórmula):</strong></p>
+<ul>
+<li><strong><span class="math inline">\(Z(s) - Z(s+h)\)</span>:</strong>
+Representa el incremento o diferencia de valor entre dos puntos
+separados por un vector de rezago <span class="math inline">\(h\)</span>.</li>
+<li><strong><span class="math inline">\(\text{Var}[\cdot]\)</span>:</strong> Mide la
+dispersión de estas diferencias. Intuitivamente, si hay autocorrelación
+espacial positiva, puntos cercanos tendrán diferencias pequeñas y, por
+ende, una varianza baja.</li>
+<li><strong><span class="math inline">\(1/2\)</span> (El factor
+“Semi”):</strong> En estadística clásica, la varianza de la diferencia
+de dos variables independientes es la suma de sus varianzas (<span class="math inline">\(2\sigma^2\)</span>). Al dividir por 2, la función
+<span class="math inline">\(\gamma(h)\)</span> se escala para que su
+valor máximo (la “Silla”) coincida con la varianza global del proceso
+<span class="math inline">\(\sigma^2\)</span> cuando ya no hay
+correlación.</li>
+<li><strong>Diferencia estructural:</strong> El
+<strong>Variograma</strong> es <span class="math inline">\(2\gamma(h)\)</span>, mientras que el
+<strong>Semivariograma</strong> es <span class="math inline">\(\gamma(h)\)</span>. El
+<strong>Covariograma</strong> <span class="math inline">\(C(h)\)</span>
+mide la similitud, mientras que el semivariograma mide la
+disimilitud.</li>
+</ul>
+</div>
+<div id="el-estimador-clásico-de-momentos-matheron" class="section level4">
+<h4>1.2 El Estimador Clásico de Momentos (Matheron)</h4>
+<p>Para datos observados, se utiliza el estimador de momentos propuesto
+por Matheron (1962):</p>
+<p><span class="math display">\[\hat{\gamma}(h) = \frac{1}{2|N(h)|}
+\sum_{i,j \in N(h)} (z(s_i) - z(s_j))^2\]</span></p>
+<p><strong>Explicación desde la Agregación Espacial:</strong></p>
+<ul>
+<li><strong><span class="math inline">\(N(h)\)</span>:</strong> Es el
+conjunto de todos los pares de ubicaciones <span class="math inline">\((s_i, s_j)\)</span> cuya separación es
+aproximadamente el vector <span class="math inline">\(h\)</span>.</li>
+<li><strong><span class="math inline">\(|N(h)|\)</span>:</strong> Es el
+cardinal (conteo) de pares encontrados. Actúa como el denominador de un
+promedio aritmético.</li>
+<li><strong>Sumatoria (<span class="math inline">\(\sum\)</span>):</strong> Representa la agregación
+de las “desviaciones espaciales” al cuadrado. Cuanto más grande sea la
+suma, mayor es la variabilidad a esa distancia.</li>
+<li><strong>Supuesto Crítico:</strong> Requiere <strong>estacionariedad
+intrínseca</strong> (media de incrementos constante y varianza
+dependiente solo de <span class="math inline">\(h\)</span>).</li>
+<li><strong>Violación:</strong> Si existen valores atípicos
+(<em>outliers</em>), el término al cuadrado los magnifica, sesgando el
+semivariograma hacia arriba y sugiriendo una variabilidad
+inexistente.</li>
+</ul>
+</div>
+<div id="estimadores-robustos-cressie-hawkins" class="section level4">
+<h4>1.3 Estimadores Robustos: Cressie-Hawkins</h4>
+<p>Para mitigar la sensibilidad a valores atípicos, se aplica una
+transformación de escala:</p>
+<p><span class="math display">\[\bar{\gamma}(h) = \frac{\left(
+\frac{1}{|N(h)|} \sum_{i,j \in N(h)} |z(s_i) - z(s_j)|^{1/2}
+\right)^4}{2 \times (0.457 + \frac{0.494}{|N(h)|})}\]</span></p>
+<p><strong>Lógica de la Fórmula:</strong></p>
+<ul>
+<li><strong>Raíz cuarta (<span class="math inline">\(| \cdot
+|^{1/2}\)</span> y luego elevación a la 4):</strong> Esta transformación
+(basada en la distribución <span class="math inline">\(\chi^2\)</span>)
+estabiliza la varianza y reduce el impacto de las colas pesadas de la
+distribución.</li>
+<li><strong>Denominador:</strong> Es un factor de corrección de sesgo
+para que el estimador sea aproximadamente insesgado bajo
+normalidad.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="aspectos-prácticos-parametrización-y-geometría" class="section level3">
+<h3>2. Aspectos Prácticos: Parametrización y Geometría</h3>
+<div id="lag-binning-e-intervalos" class="section level4">
+<h4>2.1 Lag Binning e Intervalos</h4>
+<p>En datos irregulares, es imposible encontrar pares a una distancia
+exacta <span class="math inline">\(h\)</span>. Se definen “bins” o
+intervalos <span class="math inline">\([d_{min}, d_{max}]\)</span>.</p>
+<ul>
+<li><strong>Lag Width (Ancho):</strong> Si es muy pequeño, pocos pares
+caen en el bin, generando un gráfico “ruidoso” (sobreajuste). Si es muy
+grande, se promedian distancias muy distintas, ocultando la estructura
+espacial (suavizado excesivo).</li>
+<li><strong>Regla de Representatividad:</strong> Cada punto del
+semivariograma empírico debe basarse en <strong>30 a 50 pares</strong>
+para ser estadísticamente estable.</li>
+</ul>
+</div>
+<div id="restricción-de-distancia-máxima-d_max2" class="section level4">
+<h4>2.2 Restricción de Distancia Máxima (<span class="math inline">\(D_{max}/2\)</span>)</h4>
+<p>El cálculo debe limitarse a la mitad de la diagonal máxima del
+dominio (<span class="math inline">\(D_{max}/2\)</span>).</p>
+<ul>
+<li><strong>Razón Matemática:</strong> A distancias mayores, el número
+de pares disponibles disminuye drásticamente y los puntos se vuelven
+redundantes, invalidando la inferencia por la alta varianza del
+estimador.</li>
+</ul>
+</div>
+<div id="variografía-anisotrópica" class="section level4">
+<h4>2.3 Variografía Anisotrópica</h4>
+<p>El proceso es <strong>anisotrópico</strong> si la dependencia depende
+de la dirección.</p>
+<ul>
+<li><strong>Anisotropía Geométrica:</strong> El rango varía con el
+ángulo (forma de elipse). Se corrige mediante una <strong>matriz de
+rotación <span class="math inline">\(R\)</span></strong> y una razón de
+anisotropía <span class="math inline">\(\lambda\)</span>.</li>
+<li><strong>Anisotropía Zonal:</strong> La silla (sill) varía con la
+dirección.</li>
+<li><strong>Parámetros direccionales:</strong> Se configuran mediante el
+ángulo de azimut y una <strong>tolerancia angular</strong> (típicamente
+<span class="math inline">\(\pm 22.5^\circ\)</span> o <span class="math inline">\(\pi/8\)</span> radianes) para capturar suficientes
+pares en un “cono” de búsqueda.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="modelos-válidos-y-consistencia-matemática" class="section level3">
+<h3>3. Modelos Válidos y Consistencia Matemática</h3>
+<div id="teorema-de-bochner-y-definición-positiva" class="section level4">
+<h4>3.1 Teorema de Bochner y Definición Positiva</h4>
+<p>No cualquier función creciente puede ser un semivariograma. El modelo
+debe garantizar que la <strong>varianza de predicción sea
+positiva</strong>.</p>
+<ul>
+<li><strong>Condición para <span class="math inline">\(C(h)\)</span>:</strong> Debe ser <strong>definida
+positiva</strong>.</li>
+<li><strong>Condición para <span class="math inline">\(\gamma(h)\)</span>:</strong> Debe ser
+<strong>condicionalmente definida negativa</strong>.</li>
+<li><strong>Consecuencia de Violación:</strong> Si se usa una función no
+válida (ej. una lineal que crece más rápido que <span class="math inline">\(\|h\|^2\)</span>), las matrices de covarianza en
+el sistema de Kriging pueden tener determinantes negativos o nulos,
+resultando en varianzas de error negativas, lo cual es físicamente
+imposible.</li>
+</ul>
+</div>
+<div id="comportamiento-en-el-origen-y-asintótico" class="section level4">
+<h4>3.2 Comportamiento en el Origen y Asintótico</h4>
+<ul>
+<li><strong>Efecto Pepita (<span class="math inline">\(c_0\)</span>):</strong> Discontinuidad en el
+origen (<span class="math inline">\(\gamma(0) &gt; 0\)</span>).
+Representa error de medición o variabilidad a distancias menores que la
+mínima observada.</li>
+<li><strong>Lineal vs. Parabólico:</strong> Un comportamiento parabólico
+en el origen (como el modelo Gaussiano) indica un proceso extremadamente
+suave y diferenciable. Un comportamiento lineal (como el Esférico o
+Exponencial) indica un proceso más errático.</li>
+<li><strong>Alcance (Rango):</strong> Distancia donde se alcanza la
+silla. En modelos asintóticos (Exponencial), se define el <strong>rango
+práctico</strong> como la distancia donde se alcanza el 95% de la
+silla.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="contrastes-de-hipótesis-y-validación-1" class="section level3">
+<h3>4. Contrastes de Hipótesis y Validación</h3>
+<p>En la fase de variografía, el contraste fundamental es la
+<strong>Prueba de Aleatoriedad Espacial (Ruido Blanco)</strong>:</p>
+<ul>
+<li><strong><span class="math inline">\(H_0\)</span>:</strong> No existe
+autocorrelación espacial (<span class="math inline">\(\gamma(h) =
+\sigma^2\)</span> constante, puro efecto pepita).</li>
+<li><strong><span class="math inline">\(H_1\)</span>:</strong> Existe
+estructura espacial dependiente de la distancia.</li>
+</ul>
+<p><strong>Interpretación del p-valor:</strong> En pruebas como las de
+<strong>Monte Carlo</strong>, se simulan múltiples realizaciones del
+proceso bajo la hipótesis de independencia (permutando los valores en
+las ubicaciones). Si el semivariograma observado se sale de los sobres
+de simulación (<em>envelopes</em>), el p-valor será pequeño (<span class="math inline">\(p &lt; 0.05\)</span>), rechazando <span class="math inline">\(H_0\)</span> y confirmando que la ubicación
+geográfica es determinante para el fenómeno.</p>
+<hr />
+</div>
+<div id="elementos-del-semivariograma-bajo-estacionariedad-de-segundo-orden" class="section level3">
+<h3>5. Elementos del Semivariograma Bajo Estacionariedad de Segundo
+Orden</h3>
+<div id="la-relación-analítica-fundamental" class="section level4">
+<h4>5.1 La Relación Analítica Fundamental</h4>
+<p>Bajo el supuesto de <strong>estacionariedad de segundo
+orden</strong>, el proceso posee una media constante <span class="math inline">\(\mu\)</span> y una varianza finita <span class="math inline">\(\sigma^2\)</span>. En este contexto, existe una
+equivalencia exacta entre la función de similitud (Autocovarianza <span class="math inline">\(C(h)\)</span>) y la de disimilitud (Semivariograma
+<span class="math inline">\(\gamma(h)\)</span>).</p>
+<p><strong>Fórmula Clave:</strong> <span class="math display">\[\gamma(h) = C(0) - C(h)\]</span></p>
+<p><strong>Chain-of-Thought (Lógica de la Deducción):</strong></p>
+<ol style="list-style-type: decimal">
+<li><strong>Definición de Partida:</strong> La semivarianza se define
+como la mitad de la esperanza del cuadrado de los incrementos: <span class="math inline">\(\gamma(h) = \frac{1}{2} E[(Z(s+h) -
+Z(s))^2]\)</span>.</li>
+<li><strong>Expansión del Binomio:</strong> Al desarrollar el cuadrado,
+obtenemos <span class="math inline">\(\frac{1}{2} [E(Z(s+h)^2) +
+E(Z(s)^2) - 2E(Z(s+h)Z(s))]\)</span>.</li>
+<li><strong>Aplicación de la Estacionariedad:</strong> Dado que el
+proceso es estacionario, la varianza en cualquier punto es la misma:
+<span class="math inline">\(E(Z(s)^2) = C(0) = \sigma^2\)</span>.
+Asimismo, el producto cruzado es la autocovarianza <span class="math inline">\(C(h)\)</span>.</li>
+<li><strong>Agregación Espacial:</strong> Sustituyendo, la ecuación
+queda <span class="math inline">\(\frac{1}{2} [C(0) + C(0) - 2C(h)] =
+\frac{1}{2} [2C(0) - 2C(h)]\)</span>.</li>
+<li><strong>Resultado:</strong> <span class="math inline">\(\gamma(h) =
+C(0) - C(h)\)</span>. Esta relación es la piedra angular que permite
+modelar la pérdida de correlación a medida que aumenta la
+distancia.</li>
+</ol>
+</div>
+<div id="anatomía-del-gráfico-del-semivariograma" class="section level4">
+<h4>5.2 Anatomía del Gráfico del Semivariograma</h4>
+<p>El semivariograma no es una simple curva; es un mapa de la estructura
+física del fenómeno:</p>
+<ul>
+<li><strong>Efecto Pepita (Nugget Effect, <span class="math inline">\(c_0\)</span>):</strong> Representa la
+discontinuidad en el origen. Se descompone en <strong>Error de Medición
+(EM)</strong> (instrumentos mal calibrados) y <strong>Efecto de
+Microescala (MS)</strong> (variaciones espaciales a distancias más
+cortas que la menor separación muestral).</li>
+<li><strong>Silla Parcial (Partial Sill, <span class="math inline">\(c\)</span>):</strong> Es la varianza explicada
+puramente por la estructura espacial.</li>
+<li><strong>Meseta o Silla Total (Sill, <span class="math inline">\(c_0
++ c\)</span>):</strong> Es el valor máximo de la semivarianza,
+equivalente a la varianza poblacional de la serie espacial (<span class="math inline">\(C(0)\)</span>).</li>
+<li><strong>Alcance o Rango (<span class="math inline">\(a\)</span>):</strong> La distancia física a partir
+de la cual la dependencia espacial desaparece. Puntos separados por una
+distancia mayor al alcance son estadísticamente independientes.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="modelos-de-semivariograma-acotados-teóricos" class="section level3">
+<h3>6. Modelos de Semivariograma Acotados (Teóricos)</h3>
+<p>Para que un modelo sea válido, debe garantizar que las varianzas de
+predicción sean positivas. Esto requiere que <span class="math inline">\(\gamma(h)\)</span> sea <strong>condicionalmente
+definida negativa</strong>.</p>
+<div id="modelo-esférico-1" class="section level4">
+<h4>6.1 Modelo Esférico</h4>
+<p>Es un modelo de soporte compacto, lo que significa que alcanza la
+silla perfectamente a una distancia finita. <span class="math display">\[\gamma(h; \theta) = \begin{cases} c_0 + c_1
+\left[ \frac{3}{2} \frac{\|h\|}{a} - \frac{1}{2} \left( \frac{\|h\|}{a}
+\right)^3 \right] &amp; \text{si } 0 &lt; \|h\| \leq a \\ c_0 + c_1
+&amp; \text{si } \|h\| &gt; a \end{cases}\]</span>
+<strong>Lógica:</strong> Representa fenómenos con un límite de
+influencia muy claro.</p>
+</div>
+<div id="modelo-exponencial-1" class="section level4">
+<h4>6.2 Modelo Exponencial</h4>
+<p>Alcanza la silla de manera asintótica. La correlación nunca es cero
+matemáticamente, pero decae con la distancia. <span class="math display">\[\gamma(h; \theta) = c_0 + c_1 [1 -
+\exp(-\|h\|/a)]\]</span> <strong>Alcance Práctico:</strong> Se define
+como <span class="math inline">\(3a\)</span>, distancia donde se alcanza
+el 95% de la silla.</p>
+</div>
+<div id="modelo-gaussiano-1" class="section level4">
+<h4>6.3 Modelo Gaussiano</h4>
+<p>Describe procesos extremadamente suaves y continuos. Su forma es
+parabólica cerca del origen. <span class="math display">\[\gamma(h;
+\theta) = c_0 + c_1 [1 - \exp(-\|h\|^2/a^2)]\]</span> <strong>Supuesto
+Crítico:</strong> Su alta suavidad puede causar <strong>singularidad
+matricial</strong> (inestabilidad numérica) si los puntos están muy
+cerca. El alcance práctico es <span class="math inline">\(\sqrt{3}a\)</span>.</p>
+</div>
+<div id="familia-matérn-1" class="section level4">
+<h4>6.4 Familia Matérn</h4>
+<p>Es el modelo más flexible por su parámetro de suavidad <span class="math inline">\(\kappa\)</span>.</p>
+<ul>
+<li>Si <span class="math inline">\(\kappa = 0.5\)</span>, equivale al
+Exponencial.</li>
+<li>Si <span class="math inline">\(\kappa \to \infty\)</span>, converge
+al Gaussiano.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="modelos-no-acotados-procesos-no-estacionarios" class="section level3">
+<h3>7. Modelos No Acotados (Procesos No Estacionarios)</h3>
+<p>Se utilizan cuando el semivariograma sigue creciendo sin alcanzar una
+meseta, lo cual es indicio de una varianza infinita o de la
+<strong>presencia de tendencias determinísticas</strong>. Cumplen con la
+<strong>Hipótesis Intrínseca</strong>.</p>
+<ul>
+<li><strong>Modelo Lineal:</strong> <span class="math inline">\(\gamma(h) = p \cdot \|h\|\)</span>. Indica una
+tasa de incremento constante de la variabilidad espacial.</li>
+<li><strong>Modelo Potencial:</strong> <span class="math inline">\(\gamma(h) = c_0 + b \cdot \|h\|^\alpha\)</span>.
+Válido solo para <span class="math inline">\(0 &lt; \alpha &lt;
+2\)</span>.</li>
+<li><strong>Interpretación Física:</strong> La falta de meseta suele
+reflejar gradientes globales (ej. presión atmosférica o temperatura
+latitudinal) que deben ser removidos mediante una superficie de
+tendencia antes de modelar la dependencia espacial de los
+residuales.</li>
+</ul>
+<hr />
+</div>
+<div id="supuestos-críticos-y-pruebas-de-hipótesis" class="section level3">
+<h3>8. Supuestos Críticos y Pruebas de Hipótesis</h3>
+<div id="supuestos-críticos" class="section level4">
+<h4>Supuestos Críticos</h4>
+<ol style="list-style-type: decimal">
+<li><strong>Estacionariedad Intrínseca:</strong> Se asume que los
+incrementos tienen media cero y una varianza que solo depende de <span class="math inline">\(h\)</span>. Si se viola, el semivariograma
+empírico estará sesgado por la tendencia.</li>
+<li><strong>Definición Definida Positiva:</strong> El modelo teórico
+debe cumplir el <strong>Teorema de Bochner</strong> (su transformada de
+Fourier debe ser una medida de densidad espectral positiva). Si se
+viola, el sistema de ecuaciones del Kriging puede arrojar varianzas
+negativas.</li>
+</ol>
+</div>
+<div id="contraste-de-hipótesis-la-prueba-de-estructura-espacial" class="section level4">
+<h4>Contraste de Hipótesis: La Prueba de Estructura Espacial</h4>
+<p>En la práctica, se realiza una prueba para determinar si existe
+autocorrelación o si los datos son simplemente ruido blanco.</p>
+<ul>
+<li><strong><span class="math inline">\(H_0\)</span> (Hipótesis
+Nula):</strong> El proceso es un <strong>Efecto Pepita Puro</strong>.
+<span class="math inline">\(\gamma(h) = \sigma^2\)</span> para todo
+<span class="math inline">\(h &gt; 0\)</span>. No hay dependencia
+espacial.</li>
+<li><strong><span class="math inline">\(H_1\)</span> (Hipótesis
+Alterna):</strong> Existe una estructura espacial definida (<span class="math inline">\(\gamma(h)\)</span> crece con la distancia).</li>
+</ul>
+<p><strong>Interpretación del p-valor:</strong> En pruebas basadas en
+<strong>Monte Carlo</strong> o permutaciones:</p>
+<ul>
+<li>Si el <strong>p-valor &lt; 0.05</strong>: Se rechaza <span class="math inline">\(H_0\)</span>. Concluimos que la ubicación de las
+muestras aporta información y es necesario usar modelos espaciales para
+la predicción.</li>
+<li>Si no se rechaza <span class="math inline">\(H_0\)</span>, la mejor
+predicción en cualquier punto no observado es simplemente el promedio
+global de los datos, ya que no hay “memoria espacial” que
+aprovechar.</li>
+</ul>
+</div>
+</div>
 <div id="pause-6" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
 <div id="seccion-2-2-2" class="content-card">
+<p>En la práctica geoestadística, rara vez los puntos están en una
+grilla perfecta, por lo que este ejercicio te enseñará a lidiar con la
+irregularidad espacial, el agrupamiento por intervalos
+(<em>binning</em>) y el uso de los estimadores de momentos.</p>
+<hr />
+<div id="el-problema-1" class="section level3">
+<h3>1. El Problema</h3>
+<p>Se ha realizado un muestreo de la porosidad del suelo (<span class="math inline">\(Z\)</span>) en una zona de estudio. Los datos se
+recolectaron de forma irregular debido a obstáculos en el terreno. El
+objetivo es estimar el <strong>semivariograma empírico de
+Matheron</strong> para dos intervalos de distancia (bins) y verificar si
+el comportamiento observado sugiere un modelo acotado bajo el supuesto
+de estacionariedad.</p>
+</div>
+<div id="dataset-de-juguete-muestras-de-porosidad" class="section level3">
+<h3>2. Dataset de Juguete (Muestras de Porosidad)</h3>
+<p>Contamos con 4 puntos observados en un plano euclidiano:</p>
+<ul>
+<li><strong>Punto 1 (<span class="math inline">\(s_1\)</span>):</strong>
+Coordenadas (0, 0) | Valor <span class="math inline">\(z(s_1) =
+10\)</span></li>
+<li><strong>Punto 2 (<span class="math inline">\(s_2\)</span>):</strong>
+Coordenadas (1, 0) | Valor <span class="math inline">\(z(s_2) =
+12\)</span></li>
+<li><strong>Punto 3 (<span class="math inline">\(s_3\)</span>):</strong>
+Coordenadas (0, 1) | Valor <span class="math inline">\(z(s_3) =
+11\)</span></li>
+<li><strong>Punto 4 (<span class="math inline">\(s_4\)</span>):</strong>
+Coordenadas (2, 2) | Valor <span class="math inline">\(z(s_4) =
+15\)</span></li>
+</ul>
+<p><strong>Parámetros de diseño del semivariograma:</strong></p>
+<ul>
+<li><strong>Ancho del intervalo (Lag width):</strong> <span class="math inline">\(\Delta h = 1.5\)</span> unidades.</li>
+<li><strong>Número de intervalos:</strong> <span class="math inline">\(K
+= 2\)</span>.</li>
+<li><strong>Distancia máxima de corte:</strong> <span class="math inline">\(D_{max} / 2\)</span>.</li>
+</ul>
+<hr />
+</div>
+<div id="procedimiento-detallado-chain-of-thought-1" class="section level3">
+<h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
+<div id="paso-a-identificación-de-todos-los-pares-posibles-y-sus-distancias" class="section level4">
+<h4>Paso A: Identificación de todos los pares posibles y sus
+distancias</h4>
+<p><strong>Lógica:</strong> En estadística espacial, la unidad de
+análisis no es el punto individual, sino el <strong>par de
+puntos</strong>. Debemos calcular la distancia euclidiana entre todas
+las combinaciones posibles <span class="math inline">\(n(n-1)/2\)</span>.</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(d(s_1, s_2) = \sqrt{(1-0)^2 + (0-0)^2} =
+1.0\)</span></li>
+<li><span class="math inline">\(d(s_1, s_3) = \sqrt{(0-0)^2 + (1-0)^2} =
+1.0\)</span></li>
+<li><span class="math inline">\(d(s_2, s_3) = \sqrt{(0-1)^2 + (1-0)^2} =
+\sqrt{2} \approx 1.41\)</span></li>
+<li><span class="math inline">\(d(s_2, s_4) = \sqrt{(2-1)^2 + (2-0)^2} =
+\sqrt{1+4} \approx 2.24\)</span></li>
+<li><span class="math inline">\(d(s_3, s_4) = \sqrt{(2-0)^2 + (2-1)^2} =
+\sqrt{4+1} \approx 2.24\)</span></li>
+<li><span class="math inline">\(d(s_1, s_4) = \sqrt{(2-0)^2 + (2-0)^2} =
+\sqrt{4+4} \approx 2.83\)</span></li>
+</ol>
+</div>
+<div id="paso-b-agrupamiento-por-rezago-lag-binning" class="section level4">
+<h4>Paso B: Agrupamiento por Rezago (Lag Binning)</h4>
+<p><strong>Lógica:</strong> Como las distancias son únicas (muestreo
+irregular), no podemos calcular un promedio por cada distancia exacta.
+Definimos “contenedores” o intervalos de tolerancia.</p>
+<ul>
+<li><strong>Bin 1 (<span class="math inline">\(h_1\)</span>):</strong>
+Distancias en el rango <span class="math inline">\((0, 1.5]\)</span>.
+<ul>
+<li>Incluye pares: (1,2), (1,3) y (2,3).</li>
+<li>Número de pares <span class="math inline">\(|N(h_1)| =
+3\)</span>.</li>
+</ul></li>
+<li><strong>Bin 2 (<span class="math inline">\(h_2\)</span>):</strong>
+Distancias en el rango <span class="math inline">\((1.5, 3.0]\)</span>.
+<ul>
+<li>Incluye pares: (2,4), (3,4) y (1,4).</li>
+<li>Número de pares <span class="math inline">\(|N(h_2)| =
+3\)</span>.</li>
+</ul></li>
+</ul>
+</div>
+<div id="paso-c-aplicación-del-estimador-clásico-de-matheron" class="section level4">
+<h4>Paso C: Aplicación del Estimador Clásico de Matheron</h4>
+<p><strong>Lógica:</strong> Aplicamos la fórmula <span class="math inline">\(\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{N(h)}
+(z(s_i) - z(s_j))^2\)</span>. El factor “semi” (<span class="math inline">\(1/2\)</span>) es crítico para que la varianza de
+los incrementos se escale a la varianza global del proceso.</p>
+<p><strong>Cálculo para Bin 1:</strong></p>
+<ol style="list-style-type: decimal">
+<li>Diferencias al cuadrado: <span class="math inline">\((12-10)^2=4\)</span>; <span class="math inline">\((11-10)^2=1\)</span>; <span class="math inline">\((11-12)^2=1\)</span>.</li>
+<li>Suma de diferencias = <span class="math inline">\(4 + 1 + 1 =
+6\)</span>.</li>
+<li><span class="math inline">\(\hat{\gamma}(h_1) = \frac{6}{2 \times 3}
+= \mathbf{1.0}\)</span></li>
+</ol>
+<p><strong>Cálculo para Bin 2:</strong></p>
+<ol style="list-style-type: decimal">
+<li>Diferencias al cuadrado: <span class="math inline">\((15-12)^2=9\)</span>; <span class="math inline">\((15-11)^2=16\)</span>; <span class="math inline">\((15-10)^2=25\)</span>.</li>
+<li>Suma de diferencias = <span class="math inline">\(9 + 16 + 25 =
+50\)</span>.</li>
+<li><span class="math inline">\(\hat{\gamma}(h_2) = \frac{50}{2 \times
+3} = \mathbf{8.33}\)</span></li>
+</ol>
+<hr />
+</div>
+</div>
+<div id="resultado-interpretado-1" class="section level3">
+<h3>4. Resultado Interpretado</h3>
+<p>Los valores del semivariograma empírico son <span class="math inline">\(\hat{\gamma}(1.14) = 1.0\)</span> y <span class="math inline">\(\hat{\gamma}(2.44) = 8.33\)</span> (usando la
+distancia promedio dentro de cada bin). <strong>Interpretación
+Teórica:</strong> Se observa un comportamiento <strong>creciente con la
+distancia</strong>, lo cual es natural según la Primera Ley de la
+Geografía: los puntos más alejados tienen mayor variabilidad entre sus
+valores. Sin embargo, dado que solo tenemos 3 pares por bin, este
+estimador es altamente inestable. En un rigor académico estricto, se
+requieren entre <strong>30 y 50 pares</strong> por punto para que la
+estimación sea confiable. Si intentáramos ajustar un modelo esférico,
+notaríamos que aún no se alcanza la “silla” (sill), lo que indica que el
+rango del fenómeno es probablemente mayor a 3 unidades.</p>
+<hr />
+</div>
+<div id="guía-de-autoevaluación-errores-comunes-1" class="section level3">
+<h3>5. Guía de Autoevaluación (Errores Comunes)</h3>
+<ol style="list-style-type: decimal">
+<li><strong>Omisión del factor “Semi”:</strong> Olvidar dividir la suma
+entre 2. Esto resultaría en el cálculo del <strong>variograma</strong>
+(<span class="math inline">\(2\gamma\)</span>) en lugar del
+semivariograma, duplicando artificialmente la variabilidad
+espacial.</li>
+<li><strong>Error en el conteo de pares (<span class="math inline">\(|N(h)|\)</span>):</strong> Contar puntos en lugar
+de parejas. Recuerda que la cardinalidad se refiere a cuántas conexiones
+caen dentro de la ventana de distancia.</li>
+<li><strong>Mezcla de Unidades:</strong> Calcular distancias sin usar la
+raíz cuadrada (usar solo la diferencia de coordenadas). La distancia
+debe ser siempre euclidiana a menos que se especifique lo
+contrario.</li>
+<li><strong>Sesgo por Outliers:</strong> No notar que en el Bin 2, el
+par (1,4) aporta 25 unidades a la suma (el 50% del total). El estimador
+de Matheron es extremadamente sensible a estos valores. Si el resultado
+parece inverosímil, se debería haber usado el estimador robusto de
+<strong>Cressie-Hawkins</strong>.</li>
+<li><strong>Violación de la Distancia Máxima:</strong> Intentar calcular
+bins para distancias muy grandes. Si hubiéramos intentado un Bin 3 en
+este dataset, el número de pares sería insuficiente, generando un
+comportamiento errático que “contamina” el ajuste del modelo
+teórico.</li>
+</ol>
+</div>
 <div id="pause-7" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
 <div id="seccion-2-2-3" class="content-card">
+<p>Como Arquitecto de Software Estadístico, presento el protocolo de
+implementación en R para el <strong>Capítulo Dos</strong>, integrando
+las librerías <code>geoR</code>, <code>gstat</code> y <code>sp</code>.
+Este bloque de código está diseñado para transformar datos crudos en
+estructuras de variogramas empíricos y teóricos, cumpliendo con los
+estándares de rigor matemático (Teorema de Bochner) y las mejores
+prácticas de las fuentes de la Prof. Bohórquez.</p>
+<p>En geoestadística, el análisis de la varianza de los incrementos es
+el núcleo de la predicción; por ello, este código desglosa la transición
+de la variable regionalizada <span class="math inline">\(Z(s)\)</span>
+hacia el modelado de su semivarianza <span class="math inline">\(\gamma(h)\)</span>.</p>
+<pre class="r"><code># ==============================================================================
+# PROTOCOLO GEOESTADÍSTICO: ESTIMACIÓN Y MODELADO DE LA DEPENDENCIA ESPACIAL
+# Autores: Arquitectura de Software Estadístico basada en RPubs M. Bohórquez
+# ==============================================================================
+
+# 1. CARGA DE LIBRERÍAS Y CONFIGURACIÓN DEL ENTORNO
+# geoR: Motor principal para variografía y máxima verosimilitud.
+# gstat: Para validación cruzada y flexibilidad en binning.
+library(geoR)
+library(gstat)
+library(sp)
+
+# 2. CARGA Y CURACIÓN DE DATOS (Dataset clásico: aquifer)
+# Importante: El encabezado y el formato de decimales deben verificarse.
+data(aquifer) # Dataset de las fuentes</code></pre>
+<pre><code>## Warning in data(aquifer): data set &#39;aquifer&#39; not found</code></pre>
+<pre class="r"><code>df_aquifer &lt;- as.data.frame(aquifer)
+
+# MEJORES PRÁCTICAS DE LIMPIEZA:
+# 1. Eliminación de registros con NA (La semivarianza requiere pares completos).
+# 2. Verificación de duplicados: El efecto pepita (nugget) se distorsiona con réplicas exactas.
+df_aquifer &lt;- na.omit(df_aquifer)
+df_aquifer &lt;- df_aquifer[!duplicated(df_aquifer[,1:2]), ]
+
+# CONVERSIÓN A &#39;GEODATA&#39; (Estructura optimizada de geoR)
+# coords: ubicaciones s; data: variable regionalizada Z(s).
+aquifer_g &lt;- as.geodata(df_aquifer, coords.col = 1:2, data.col = 3)
+
+# ------------------------------------------------------------------------------
+# 2.1 ESTIMACIÓN EMPÍRICA (Chain-of-Thought)
+# ------------------------------------------------------------------------------
+
+# Opción A: Estimador Clásico de Momentos (Matheron)
+# Manipula el parámetro &#39;estimator.type&#39;. Trasfondo: Promedio de diferencias al cuadrado.
+# Fórmula: gamma(h) = (1/2|N(h)|) * sum(z(si) - z(sj))^2.
+v_clasico &lt;- variog(aquifer_g, estimator.type = &quot;classical&quot;)</code></pre>
+<pre><code>## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code># Opción B: Estimador Robusto (Cressie-Hawkins / Modulus)
+# Mitiga el impacto de outliers mediante transformación de raíz cuarta.
+# Trasfondo: Estabiliza la varianza antes de elevar a la cuarta potencia.
+v_robusto &lt;- variog(aquifer_g, estimator.type = &quot;modulus&quot;)</code></pre>
+<pre><code>## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code># Visualización Comparativa
+plot(v_clasico, main = &quot;Matheron (Negro) vs Cressie-Hawkins (Rojo)&quot;)
+lines(v_robusto, col = &quot;red&quot;, type = &quot;o&quot;)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+<pre class="r"><code># ------------------------------------------------------------------------------
+# 2.2 ASPECTOS PRÁCTICOS: LAG BINNING Y GEOMETRÍA
+# ------------------------------------------------------------------------------
+
+# Parametrización de Intervalos (Lag Binning)
+# max.dist: Restricción crítica a la mitad de la diagonal máxima (Dmax/2).
+# uvec: Define los saltos o &#39;bins&#39;. Muy pequeño genera ruido; muy grande suaviza demasiado.
+v_ajustado &lt;- variog(aquifer_g, max.dist = 100, uvec = seq(0, 100, l=15))</code></pre>
+<pre><code>## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code># Análisis de Anisotropía: variog4
+# Calcula semivariogramas en 4 direcciones (0, 45, 90, 135 grados).
+# Si las curvas difieren drásticamente, el proceso es anisotrópico.
+v_direccional &lt;- variog4(aquifer_g, max.dist = 100)</code></pre>
+<pre><code>## variog: computing variogram for direction = 0 degrees (0 radians)
+##         tolerance angle = 22.5 degrees (0.393 radians)
+## variog: computing variogram for direction = 45 degrees (0.785 radians)
+##         tolerance angle = 22.5 degrees (0.393 radians)
+## variog: computing variogram for direction = 90 degrees (1.571 radians)
+##         tolerance angle = 22.5 degrees (0.393 radians)
+## variog: computing variogram for direction = 135 degrees (2.356 radians)
+##         tolerance angle = 22.5 degrees (0.393 radians)
+## variog: computing omnidirectional variogram</code></pre>
+<pre class="r"><code>plot(v_direccional)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+<pre class="r"><code># ------------------------------------------------------------------------------
+# 2.3 MODELOS VÁLIDOS (CONSISTENCIA MATEMÁTICA)
+# ------------------------------------------------------------------------------
+
+# Los modelos deben ser condicionalmente definidos negativos para gamma(h).
+# Esto garantiza que la varianza de predicción sea positiva (Teorema de Bochner).
+
+# Ajuste por Mínimos Cuadrados Ponderados (WLS) vía variofit
+# Se proporcionan valores iniciales &#39;a sentimiento&#39; para Silla y Rango.
+# ini.cov.pars = c(Silla parcial, Rango)
+modelo_exp &lt;- variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model = &quot;exponential&quot;)</code></pre>
+<pre><code>## variofit: covariance model used is exponential 
+## variofit: weights used: npairs 
+## variofit: minimisation function used: optim</code></pre>
+<pre><code>## Warning in variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model =
+## &quot;exponential&quot;): unreasonable initial value for sigmasq + nugget (too low)</code></pre>
+<pre class="r"><code>modelo_sph &lt;- variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model = &quot;spherical&quot;)</code></pre>
+<pre><code>## variofit: covariance model used is spherical 
+## variofit: weights used: npairs 
+## variofit: minimisation function used: optim</code></pre>
+<pre><code>## Warning in variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model =
+## &quot;spherical&quot;): unreasonable initial value for sigmasq + nugget (too low)</code></pre>
+<pre class="r"><code># ------------------------------------------------------------------------------
+# 4. EVALUACIÓN Y GRÁFICOS FINALES
+# ------------------------------------------------------------------------------
+
+# Gráfico de ajuste final: Superposición de modelos teóricos sobre el empírico
+plot(v_clasico, main = &quot;Ajuste de Modelos Teóricos&quot;)
+lines(modelo_exp, col = &quot;blue&quot;, lwd = 2) # Modelo Exponencial (asintótico)
+lines(modelo_sph, col = &quot;green&quot;, lwd = 2) # Modelo Esférico (rango real)
+legend(&quot;bottomright&quot;, legend=c(&quot;Exp&quot;, &quot;Sph&quot;), col=c(&quot;blue&quot;, &quot;green&quot;), lty=1)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+<div id="explicación-teórica-y-de-trasfondo-de-los-cálculos" class="section level4">
+<h4>Explicación Teórica y de Trasfondo de los Cálculos</h4>
+<ol style="list-style-type: decimal">
+<li><strong>Lógica del Estimador de Matheron
+(<code>classical</code>)</strong>: Se basa en la <strong>agregación
+espacial</strong> de diferencias directas. Su cálculo de trasfondo es
+una implementación de momentos donde se asume que cada par en el bin
+<span class="math inline">\(N(h)\)</span> es una réplica estadística del
+mismo nivel de variabilidad. Es muy sensible a datos atípicos porque el
+cuadrado magnifica las desviaciones.</li>
+<li><strong>Lógica de Cressie-Hawkins (<code>modulus</code>)</strong>:
+Utiliza una aproximación para distribuciones de colas pesadas. El
+cálculo interno aplica la raíz cuarta a las diferencias <span class="math inline">\(|z(s_i) - z(s_j)|^{1/2}\)</span>, calcula el
+promedio y luego aplica un factor de corrección de sesgo en el
+denominador (<span class="math inline">\(0.457 + 0.494/|N(h)|\)</span>)
+para devolverlo a la escala de la varianza original.</li>
+<li><strong>Interpretación de Gráficos</strong>:
+<ul>
+<li><strong>Variograma Empírico</strong>: Si los puntos no se
+estabilizan (siguen creciendo), puede indicar <strong>no
+estacionariedad</strong> o tendencia no removida.</li>
+<li><strong>Direccional (<code>variog4</code>)</strong>: Si el rango
+(distancia a la silla) es mayor en la dirección <span class="math inline">\(0^\circ\)</span> que en <span class="math inline">\(90^\circ\)</span>, existe <strong>anisotropía
+geométrica</strong>.</li>
+<li><strong>Ajuste Teórico</strong>: El modelo <strong>Esférico</strong>
+es ideal para fenómenos con un límite de influencia claro, mientras que
+el <strong>Exponencial</strong> modela procesos donde la correlación
+decae gradualmente pero nunca desaparece del todo (rango práctico al 95%
+de la silla).</li>
+</ul></li>
+<li><strong>Supuesto de Hipótesis Intrínseca</strong>: El código asume
+que, aunque la media global sea desconocida, la esperanza de los
+incrementos es cero (<span class="math inline">\(E[Z(s) - Z(s+h)] =
+0\)</span>), lo cual permite usar las diferencias directas para la
+estimación sin necesidad de conocer la media absoluta.</li>
+<li><strong>Validación de Consistencia</strong>: Al usar funciones
+predefinidas como <code>cov.model = &quot;spherical&quot;</code>, el software
+garantiza que el modelo cumple con la propiedad de ser <strong>definido
+positivo</strong>, evitando varianzas de predicción negativas en el paso
+posterior de Kriging.</li>
+</ol>
+</div>
 <div id="pause-8" class="section level3">
 <h3>pause</h3>
 </div>

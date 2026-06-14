@@ -80,6 +80,8 @@ La media no siempre es una constante global. Podemos enfrentar tres escenarios:
     $$\hat{\mu} = \frac{\mathbf{1}' \Sigma^{-1} \mathbf{y}}{\mathbf{1}' \Sigma^{-1} \mathbf{1}}$$.
 *   **Media No Constante (Tendencia):** Se utilizan modelos de regresión polinómicos donde la media depende de las coordenadas $(x, y)$. Los residuales de estos modelos se tratan entonces como el proceso centrado $Z(s)$ para el análisis de dependencia espacial.
 
+
+
 ### pause
  
 :::
@@ -276,7 +278,7 @@ Este bloque de código integra las librerías `geoR`, `gstat` y `sf`, siguiendo 
 
 El objetivo técnico es descomponer el modelo geoestadístico base: $Y(s) = \mu(s) + Z(s)$, donde $\mu(s)$ es la tendencia determinística y $Z(s)$ es el proceso estocástico centrado y autocorrelacionado.
 
-```{r setup}
+```{r ej Modulo2 - Protocolo Geoestadístico, echo=TRUE, message=FALSE, warning=FALSE}
 # ==============================================================================
 # PROTOCOLO GEOESTADÍSTICO: CAMPOS ALEATORIOS Y MODELADO DE LA MEDIA
 # Arquitectura: geoR + sf (Estandarización según RPubs Bohórquez)
@@ -441,7 +443,7 @@ Existen jerarquías de equilibrio estadístico.
 **Planteamiento Teórico:**
 Cuando la media $\mu(s)$ no es constante, el proceso presenta **tendencia o deriva**. Se modela mediante regresión polinomial sobre las coordenadas.
 
-### Implementación en R (Dataset Sintético y Modelo)
+#### Implementación en R (Dataset Sintético y Modelo)
 Para este ejercicio, generaremos un dataset que emule las 547 muestras mencionadas.
 
 ```{r sol ejercicio3 cap1}
@@ -482,13 +484,352 @@ summary(modelo_elev) # Proporciona coeficientes, R2 y p-values
 
 ::: {#seccion-2-2 .content-card}
 
+En este capítulo, dejamos de ver los datos como una lista de valores y empezamos a verlos como una red de interacciones que dependen de la distancia y la dirección.
+
+---
+
+### 2.1. Términos Innegociables para el Estudiante
+
+Antes de avanzar, debemos dominar estos conceptos que constituyen el "alfabeto" de la geoestadística:
+
+*   **Rezago (Lag, $h$):** Vector que separa dos puntos en el espacio. No es solo una distancia escalar; tiene magnitud y dirección.
+*   **Silla (Sill, $C(0)$):** La varianza total del proceso. Es el valor donde el semivariograma se estabiliza.
+*   **Rango (Range, $a$):** Distancia a partir de la cual la autocorrelación desaparece. Los puntos más alejados que el rango son estadísticamente independientes.
+*   **Efecto Pepita (Nugget, $c_0$):** Discontinuidad en el origen que representa error de medición o variabilidad a microescala (distancias menores a la mínima muestreada).
+*   **Hipótesis Intrínseca:** Supuesto donde solo se exige que los incrementos sean estacionarios, permitiendo varianza infinita en el proceso global pero finita en las diferencias.
+
+---
+
+### 2.2. La Esencia de la Semivarianza (Técnica Feynman)
+
+#### Explicación Intuitiva
+Imagina que estás estudiando la contaminación en un río. Si tomas dos muestras de agua a solo un metro de distancia, esperas que los valores sean casi iguales. Si las tomas a un kilómetro, la diferencia será mayor. La **semivarianza** es simplemente una regla matemática para medir qué tan "diferentes" se vuelven las muestras a medida que las alejamos. 
+
+¿Por qué "semi"? Porque en estadística clásica, cuando restas dos variables y calculas su varianza, obtienes el doble de la variabilidad individual. Al ponerle el "semi" (dividir por 2), logramos que la variabilidad de la distancia coincida perfectamente con la varianza común de los datos cuando ya no hay relación entre ellos.
+
+#### Rigor Estadístico
+Analíticamente, la función de semivarianza se define como la mitad de la varianza de los incrementos de la variable regionalizada:
+$$\gamma(h) = \frac{1}{2} Var[Z(s + h) - Z(s)]$$
+Si el proceso tiene media constante $\mu$, esta ecuación se simplifica a la esperanza del cuadrado de las diferencias:
+$$\gamma(h) = \frac{1}{2} E[(Z(s + h) - Z(s))^2]$$
+
+---
+
+### 2.3. Lógica de Estimación (Chain-of-Thought)
+
+#### ¿Por qué necesitamos un "Semivariograma Empírico"?
+**El Problema:** La función $\gamma(h)$ es un parámetro teórico poblacional. En la realidad, solo tenemos una "foto" (realización) del fenómeno con $n$ puntos observados.
+**La Lógica:** Agrupamos todos los pares de puntos que estén separados por una distancia similar ($h$) y calculamos el promedio de sus diferencias al cuadrado.
+**La Solución:** El **Estimador de Matheron** (clásico de momentos):
+$$\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{i,j \in N(h)} (z(s_i) - z(s_j))^2$$
+Donde $|N(h)|$ es el número de pares en ese rezago.
+
+#### ¿Por qué usar estimadores robustos (Cressie-Hawkins)?
+**El Problema:** El estimador de Matheron eleva las diferencias al cuadrado. Un solo dato atípico (outlier) se magnifica enormemente, inflando artificialmente la semivarianza y "ensuciando" el gráfico.
+**La Lógica:** Necesitamos una transformación que "suavice" los valores extremos antes de promediar.
+**La Solución:** Cressie y Hawkins propusieron usar la raíz cuarta de las diferencias en valor absoluto (que se comporta de forma más normal/simétrica) y luego elevar el resultado a la cuarta potencia con un factor de corrección de sesgo.
+
+---
+
+### 2.4. Implementación Computacional en R
+
+En la práctica, utilizamos los paquetes `geoR` y `gstat` para realizar estos cálculos.
+
+#### Dualidad Teoría-Práctica
+```{r ej modulo2 - semivariograma, echo=TRUE}
+library(geoR)
+# 1. Carga de datos (objeto geodata)
+data(aquifer)
+aquifer_g <- as.geodata(aquifer)
+
+# 2. Estimación Empírica (Matheron vs Modulus/Cressie-Hawkins)
+# variog manipula el parámetro 'estimator.type'
+v_clásico <- variog(aquifer_g, estimator.type = "classical") 
+v_robusto <- variog(aquifer_g, estimator.type = "modulus") # Cressie-Hawkins
+
+# 3. Visualización y Reglas de Oro
+# gstat usa 'cutoff' para limitar a Dmax/2 o Dmax/3
+plot(v_clásico, main = "Semivariograma Empírico")
+```
+
+---
+
+### 2.5. Aspectos Prácticos y Restricciones Geométricas
+
+Para que el semivariograma empírico sea confiable, el analista debe aplicar criterios de rigor:
+
+1.  **Binning (Intervalos):** No existen pares de puntos exactamente a la misma distancia en datos irregulares. Se crean "contenedores" o intervalos. Un ancho muy pequeño genera ruido; uno muy grande oculta la estructura (suavizado excesivo).
+2.  **Regla de la Distancia Máxima:** Solo se deben considerar rezagos hasta la mitad de la distancia máxima del dominio ($D_{max}/2$). Más allá de ese punto, el número de pares disminuye drásticamente y el estimador se vuelve errático e inestable.
+3.  **Representatividad:** Cada punto en el semivariograma empírico debería basarse en al menos **30 a 50 pares de puntos** para ser estadísticamente significativo.
+4.  **Anisotropía:** Si el fenómeno varía de forma distinta según la dirección (ej. viento o pendientes), debemos calcular semivariogramas direccionales. La **Anisotropía Geométrica** ocurre cuando el rango cambia con la dirección (elipse), mientras que la **Zonal** ocurre cuando cambia la silla.
+
+---
+
+### 2.6. Modelos Válidos: El Rigor de la Consistencia
+
+No cualquier curva que pase por los puntos empíricos es un semivariograma válido. 
+
+#### ¿Por qué restringir los modelos?
+**El Problema:** El objetivo final es el Kriging (predicción). Si usamos una función matemática cualquiera, podríamos terminar con una **varianza de predicción negativa**, lo cual es un absurdo físico y matemático.
+**La Lógica (Teorema de Bochner):** Para asegurar que la matriz de covarianza sea **definida positiva**, el modelo debe cumplir propiedades de curvatura específicas.
+**Modelos Frecuentes:**
+
+*   **Esférico:** Alcanza la silla de forma brusca a una distancia finita (rango real).
+*   **Exponencial:** Alcanza la silla de forma asintótica (rango práctico = 3 veces el parámetro de escala).
+*   **Gaussiano:** Representa procesos extremadamente suaves y continuos (forma parabólica en el origen).
+
+---
+
+### 2.7. Términos Innegociables (Glosario Crítico)
+
+Para dominar este capítulo, es imperativo manejar con precisión estos términos:
+
+*   **Silla (Sill):** Cota superior del semivariograma que representa la varianza total del proceso estocástico.
+*   **Rango (Range):** Distancia física a partir de la cual la autocorrelación espacial desaparece.
+*   **Efecto Pepita (Nugget):** Discontinuidad en el origen que representa errores de medición o variabilidad a distancias menores que la mínima observada.
+*   **Silla Parcial (Partial Sill):** Componente de la varianza atribuido exclusivamente a la estructura espacial, excluyendo el error (Pepita).
+
+---
+
+### 2.8. La Anatomía del Semivariograma (Técnica Feynman)
+
+#### Explicación Intuitiva
+Imagina que lanzas dos piedras a un estanque. Si caen muy cerca, las ondas que generan se parecen mucho; si caen lejos, no tienen relación. El **semivariograma** es un gráfico que actúa como un "termómetro de disimilitud". En el eje horizontal tenemos la distancia ($h$) y en el vertical la "extrañeza" ($\gamma$). Al principio (distancia cero), la extrañeza debería ser cero, pero a veces hay un salto inicial (Pepita) por errores de medida. A medida que nos alejamos, la extrañeza sube hasta que llega a un techo (Silla) donde los puntos ya no saben nada el uno del otro; esa distancia límite es el Rango.
+
+#### Rigor Estadístico: La Relación Analítica Fundamental
+Bajo el supuesto de **estacionariedad de segundo orden**, existe una equivalencia exacta entre la función de autocovarianza $C(h)$ y el semivariograma $\gamma(h)$:
+$$\gamma(h) = C(0) - C(h)$$
+**Chain-of-Thought (Por qué de la fórmula):**
+
+1.  Partimos de la definición de varianza de los incrementos: $Var[Z(s+h) - Z(s)] = E[(Z(s+h) - Z(s))^2]$ (asumiendo media constante).
+2.  Al expandir el cuadrado: $Var[Z(s+h)] + Var[Z(s)] - 2Cov[Z(s+h), Z(s)]$.
+3.  Si hay estacionariedad, $Var[Z(s)] = C(0)$ para cualquier ubicación.
+4.  Entonces, $2\gamma(h) = C(0) + C(0) - 2C(h) \implies 2\gamma(h) = 2[C(0) - C(h)]$.
+5.  Resultado: $\gamma(h) = C(0) - C(h)$. Esta relación permite intercambiar funciones de similitud por disimilitud.
+
+---
+
+### 2.9. Modelos Teóricos Acotados: La Familia de Funciones Válidas
+
+Para que un modelo de semivariograma sea válido en Kriging, debe ser **condicionalmente definido negativo**, garantizando así varianzas de predicción positivas.
+
+#### 1 Modelo Esférico
+Es el más común. Alcanza la silla de forma brusca a una distancia $a$.
+$$\gamma(h) = \begin{cases} c_0 + \sigma^2_p [ \frac{3}{2} \frac{h}{a} - \frac{1}{2} (\frac{h}{a})^3 ] & \text{si } 0 \leq h \leq a \\ c_0 + \sigma^2_p & \text{si } h > a \end{cases}$$
+Su transición en el rango no es diferenciable, lo que refleja fenómenos con límites de influencia claros.
+
+#### 2 Modelo Exponencial
+Alcanza la silla de forma asintótica. Nunca llega a tocarla matemáticamente, por lo que se define el **Rango Práctico** como la distancia donde se alcanza el 95% de la silla (aproximadamente $3a$).
+$$\gamma(h) = \sigma^2 [ 1 - \exp(-h/a) ]$$
+
+#### 3 Modelo Gaussiano
+Describe procesos extremadamente suaves (diferenciables). Tiene forma parabólica cerca del origen.
+**Peligro:** Debido a su extrema suavidad para distancias cortas, puede generar matrices de covarianza casi singulares (inestabilidad numérica) si los puntos están muy cerca. El rango práctico es $\sqrt{3}a$.
+
+#### 4 Familia Matérn
+Es el modelo más flexible ya que incluye un parámetro de suavizado $\kappa$.
+
+*   Si $\kappa = 0.5$, se convierte en el modelo Exponencial.
+*   Si $\kappa \to \infty$, se convierte en el modelo Gaussiano.
+
+---
+
+### 2.10. Modelos No Acotados y No Estacionariedad
+
+Existen casos donde el semivariograma nunca se estabiliza (no hay silla). Esto ocurre bajo la **Hipótesis Intrínseca** cuando el proceso tiene varianza infinita pero incrementos estables.
+
+#### 1 Modelo Lineal y Potencial
+
+*   **Lineal:** $\gamma(h) = b \|h\|$. Indica una tasa de incremento constante de la variabilidad con la distancia.
+*   **Potencial:** $\gamma(h) = b \|h\|^\delta$ (con $0 < \delta < 2$).
+
+#### 2 Interpretación Física de la Falta de Meseta
+Cuando el semivariograma empírico sigue creciendo indefinidamente (a menudo con forma parabólica), suele ser un síntoma de **tendencia o deriva** (no estacionariedad en media).
+
+*   **Causa:** Presencia de gradientes globales como el aumento de temperatura hacia el ecuador o cambios de elevación.
+*   **Solución:** Se debe modelar primero la media $\mu(s)$ con una superficie de tendencia y luego trabajar con los residuales $Z(s)$.
 
 ### pause
- 
+
 :::
 
 
 ::: {#seccion-2-2-1 .content-card}
+ Este análisis transita desde la estimación empírica basada en momentos hasta la validación matemática de modelos teóricos para asegurar predicciones espaciales consistentes.
+
+---
+
+### 1. Estimación Empírica del Semivariograma
+
+#### 1.1 Fundamento Estadístico y Definición Analítica
+La dependencia espacial se cuantifica mediante la variabilidad de los **incrementos** de un proceso estocástico. La función de semivarianza $\gamma(h)$ se define como:
+
+$$\gamma(h) = \frac{1}{2} \text{Var}[Z(s) - Z(s+h)]$$
+
+**Chain-of-Thought (Lógica de la Fórmula):**
+
+*   **$Z(s) - Z(s+h)$:** Representa el incremento o diferencia de valor entre dos puntos separados por un vector de rezago $h$.
+*   **$\text{Var}[\cdot]$:** Mide la dispersión de estas diferencias. Intuitivamente, si hay autocorrelación espacial positiva, puntos cercanos tendrán diferencias pequeñas y, por ende, una varianza baja.
+*   **$1/2$ (El factor "Semi"):** En estadística clásica, la varianza de la diferencia de dos variables independientes es la suma de sus varianzas ($2\sigma^2$). Al dividir por 2, la función $\gamma(h)$ se escala para que su valor máximo (la "Silla") coincida con la varianza global del proceso $\sigma^2$ cuando ya no hay correlación.
+*   **Diferencia estructural:** El **Variograma** es $2\gamma(h)$, mientras que el **Semivariograma** es $\gamma(h)$. El **Covariograma** $C(h)$ mide la similitud, mientras que el semivariograma mide la disimilitud.
+
+#### 1.2 El Estimador Clásico de Momentos (Matheron)
+Para datos observados, se utiliza el estimador de momentos propuesto por Matheron (1962):
+
+$$\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{i,j \in N(h)} (z(s_i) - z(s_j))^2$$
+
+**Explicación desde la Agregación Espacial:**
+
+*   **$N(h)$:** Es el conjunto de todos los pares de ubicaciones $(s_i, s_j)$ cuya separación es aproximadamente el vector $h$.
+*   **$|N(h)|$:** Es el cardinal (conteo) de pares encontrados. Actúa como el denominador de un promedio aritmético.
+*   **Sumatoria ($\sum$):** Representa la agregación de las "desviaciones espaciales" al cuadrado. Cuanto más grande sea la suma, mayor es la variabilidad a esa distancia.
+*   **Supuesto Crítico:** Requiere **estacionariedad intrínseca** (media de incrementos constante y varianza dependiente solo de $h$).
+*   **Violación:** Si existen valores atípicos (*outliers*), el término al cuadrado los magnifica, sesgando el semivariograma hacia arriba y sugiriendo una variabilidad inexistente.
+
+#### 1.3 Estimadores Robustos: Cressie-Hawkins
+Para mitigar la sensibilidad a valores atípicos, se aplica una transformación de escala:
+
+$$\bar{\gamma}(h) = \frac{\left( \frac{1}{|N(h)|} \sum_{i,j \in N(h)} |z(s_i) - z(s_j)|^{1/2} \right)^4}{2 \times (0.457 + \frac{0.494}{|N(h)|})}$$
+
+**Lógica de la Fórmula:**
+
+*   **Raíz cuarta ($| \cdot |^{1/2}$ y luego elevación a la 4):** Esta transformación (basada en la distribución $\chi^2$) estabiliza la varianza y reduce el impacto de las colas pesadas de la distribución.
+*   **Denominador:** Es un factor de corrección de sesgo para que el estimador sea aproximadamente insesgado bajo normalidad.
+
+---
+
+### 2. Aspectos Prácticos: Parametrización y Geometría
+
+#### 2.1 Lag Binning e Intervalos
+En datos irregulares, es imposible encontrar pares a una distancia exacta $h$. Se definen "bins" o intervalos $[d_{min}, d_{max}]$. 
+
+*   **Lag Width (Ancho):** Si es muy pequeño, pocos pares caen en el bin, generando un gráfico "ruidoso" (sobreajuste). Si es muy grande, se promedian distancias muy distintas, ocultando la estructura espacial (suavizado excesivo).
+*   **Regla de Representatividad:** Cada punto del semivariograma empírico debe basarse en **30 a 50 pares** para ser estadísticamente estable.
+
+#### 2.2 Restricción de Distancia Máxima ($D_{max}/2$)
+El cálculo debe limitarse a la mitad de la diagonal máxima del dominio ($D_{max}/2$). 
+
+*   **Razón Matemática:** A distancias mayores, el número de pares disponibles disminuye drásticamente y los puntos se vuelven redundantes, invalidando la inferencia por la alta varianza del estimador.
+
+#### 2.3 Variografía Anisotrópica
+El proceso es **anisotrópico** si la dependencia depende de la dirección.
+
+*   **Anisotropía Geométrica:** El rango varía con el ángulo (forma de elipse). Se corrige mediante una **matriz de rotación $R$** y una razón de anisotropía $\lambda$.
+*   **Anisotropía Zonal:** La silla (sill) varía con la dirección.
+*   **Parámetros direccionales:** Se configuran mediante el ángulo de azimut y una **tolerancia angular** (típicamente $\pm 22.5^\circ$ o $\pi/8$ radianes) para capturar suficientes pares en un "cono" de búsqueda.
+
+---
+
+### 3. Modelos Válidos y Consistencia Matemática
+
+#### 3.1 Teorema de Bochner y Definición Positiva
+No cualquier función creciente puede ser un semivariograma. El modelo debe garantizar que la **varianza de predicción sea positiva**. 
+
+*   **Condición para $C(h)$:** Debe ser **definida positiva**.
+*   **Condición para $\gamma(h)$:** Debe ser **condicionalmente definida negativa**.
+*   **Consecuencia de Violación:** Si se usa una función no válida (ej. una lineal que crece más rápido que $\|h\|^2$), las matrices de covarianza en el sistema de Kriging pueden tener determinantes negativos o nulos, resultando en varianzas de error negativas, lo cual es físicamente imposible.
+
+#### 3.2 Comportamiento en el Origen y Asintótico
+
+*   **Efecto Pepita ($c_0$):** Discontinuidad en el origen ($\gamma(0) > 0$). Representa error de medición o variabilidad a distancias menores que la mínima observada.
+*   **Lineal vs. Parabólico:** Un comportamiento parabólico en el origen (como el modelo Gaussiano) indica un proceso extremadamente suave y diferenciable. Un comportamiento lineal (como el Esférico o Exponencial) indica un proceso más errático.
+*   **Alcance (Rango):** Distancia donde se alcanza la silla. En modelos asintóticos (Exponencial), se define el **rango práctico** como la distancia donde se alcanza el 95% de la silla.
+
+---
+
+### 4. Contrastes de Hipótesis y Validación
+
+En la fase de variografía, el contraste fundamental es la **Prueba de Aleatoriedad Espacial (Ruido Blanco)**:
+
+*   **$H_0$:** No existe autocorrelación espacial ($\gamma(h) = \sigma^2$ constante, puro efecto pepita).
+*   **$H_1$:** Existe estructura espacial dependiente de la distancia.
+
+**Interpretación del p-valor:**
+En pruebas como las de **Monte Carlo**, se simulan múltiples realizaciones del proceso bajo la hipótesis de independencia (permutando los valores en las ubicaciones). Si el semivariograma observado se sale de los sobres de simulación (*envelopes*), el p-valor será pequeño ($p < 0.05$), rechazando $H_0$ y confirmando que la ubicación geográfica es determinante para el fenómeno.
+
+---
+
+### 5. Elementos del Semivariograma Bajo Estacionariedad de Segundo Orden
+
+#### 5.1 La Relación Analítica Fundamental
+Bajo el supuesto de **estacionariedad de segundo orden**, el proceso posee una media constante $\mu$ y una varianza finita $\sigma^2$. En este contexto, existe una equivalencia exacta entre la función de similitud (Autocovarianza $C(h)$) y la de disimilitud (Semivariograma $\gamma(h)$).
+
+**Fórmula Clave:**
+$$\gamma(h) = C(0) - C(h)$$
+
+**Chain-of-Thought (Lógica de la Deducción):**
+
+1.  **Definición de Partida:** La semivarianza se define como la mitad de la esperanza del cuadrado de los incrementos: $\gamma(h) = \frac{1}{2} E[(Z(s+h) - Z(s))^2]$.
+2.  **Expansión del Binomio:** Al desarrollar el cuadrado, obtenemos $\frac{1}{2} [E(Z(s+h)^2) + E(Z(s)^2) - 2E(Z(s+h)Z(s))]$.
+3.  **Aplicación de la Estacionariedad:** Dado que el proceso es estacionario, la varianza en cualquier punto es la misma: $E(Z(s)^2) = C(0) = \sigma^2$. Asimismo, el producto cruzado es la autocovarianza $C(h)$.
+4.  **Agregación Espacial:** Sustituyendo, la ecuación queda $\frac{1}{2} [C(0) + C(0) - 2C(h)] = \frac{1}{2} [2C(0) - 2C(h)]$.
+5.  **Resultado:** $\gamma(h) = C(0) - C(h)$. Esta relación es la piedra angular que permite modelar la pérdida de correlación a medida que aumenta la distancia.
+
+#### 5.2 Anatomía del Gráfico del Semivariograma
+El semivariograma no es una simple curva; es un mapa de la estructura física del fenómeno:
+
+*   **Efecto Pepita (Nugget Effect, $c_0$):** Representa la discontinuidad en el origen. Se descompone en **Error de Medición (EM)** (instrumentos mal calibrados) y **Efecto de Microescala (MS)** (variaciones espaciales a distancias más cortas que la menor separación muestral).
+*   **Silla Parcial (Partial Sill, $c$):** Es la varianza explicada puramente por la estructura espacial.
+*   **Meseta o Silla Total (Sill, $c_0 + c$):** Es el valor máximo de la semivarianza, equivalente a la varianza poblacional de la serie espacial ($C(0)$).
+*   **Alcance o Rango ($a$):** La distancia física a partir de la cual la dependencia espacial desaparece. Puntos separados por una distancia mayor al alcance son estadísticamente independientes.
+
+---
+
+### 6. Modelos de Semivariograma Acotados (Teóricos)
+
+Para que un modelo sea válido, debe garantizar que las varianzas de predicción sean positivas. Esto requiere que $\gamma(h)$ sea **condicionalmente definida negativa**.
+
+#### 6.1 Modelo Esférico
+Es un modelo de soporte compacto, lo que significa que alcanza la silla perfectamente a una distancia finita.
+$$\gamma(h; \theta) = \begin{cases} c_0 + c_1 \left[ \frac{3}{2} \frac{\|h\|}{a} - \frac{1}{2} \left( \frac{\|h\|}{a} \right)^3 \right] & \text{si } 0 < \|h\| \leq a \\ c_0 + c_1 & \text{si } \|h\| > a \end{cases}$$
+**Lógica:** Representa fenómenos con un límite de influencia muy claro.
+
+#### 6.2 Modelo Exponencial
+Alcanza la silla de manera asintótica. La correlación nunca es cero matemáticamente, pero decae con la distancia.
+$$\gamma(h; \theta) = c_0 + c_1 [1 - \exp(-\|h\|/a)]$$
+**Alcance Práctico:** Se define como $3a$, distancia donde se alcanza el 95% de la silla.
+
+#### 6.3 Modelo Gaussiano
+Describe procesos extremadamente suaves y continuos. Su forma es parabólica cerca del origen.
+$$\gamma(h; \theta) = c_0 + c_1 [1 - \exp(-\|h\|^2/a^2)]$$
+**Supuesto Crítico:** Su alta suavidad puede causar **singularidad matricial** (inestabilidad numérica) si los puntos están muy cerca. El alcance práctico es $\sqrt{3}a$.
+
+#### 6.4 Familia Matérn
+Es el modelo más flexible por su parámetro de suavidad $\kappa$.
+
+*   Si $\kappa = 0.5$, equivale al Exponencial.
+*   Si $\kappa \to \infty$, converge al Gaussiano.
+
+---
+
+### 7. Modelos No Acotados (Procesos No Estacionarios)
+
+Se utilizan cuando el semivariograma sigue creciendo sin alcanzar una meseta, lo cual es indicio de una varianza infinita o de la **presencia de tendencias determinísticas**. Cumplen con la **Hipótesis Intrínseca**.
+
+*   **Modelo Lineal:** $\gamma(h) = p \cdot \|h\|$. Indica una tasa de incremento constante de la variabilidad espacial.
+*   **Modelo Potencial:** $\gamma(h) = c_0 + b \cdot \|h\|^\alpha$. Válido solo para $0 < \alpha < 2$.
+*   **Interpretación Física:** La falta de meseta suele reflejar gradientes globales (ej. presión atmosférica o temperatura latitudinal) que deben ser removidos mediante una superficie de tendencia antes de modelar la dependencia espacial de los residuales.
+
+---
+
+### 8. Supuestos Críticos y Pruebas de Hipótesis
+
+#### Supuestos Críticos
+
+1.  **Estacionariedad Intrínseca:** Se asume que los incrementos tienen media cero y una varianza que solo depende de $h$. Si se viola, el semivariograma empírico estará sesgado por la tendencia.
+2.  **Definición Definida Positiva:** El modelo teórico debe cumplir el **Teorema de Bochner** (su transformada de Fourier debe ser una medida de densidad espectral positiva). Si se viola, el sistema de ecuaciones del Kriging puede arrojar varianzas negativas.
+
+#### Contraste de Hipótesis: La Prueba de Estructura Espacial
+En la práctica, se realiza una prueba para determinar si existe autocorrelación o si los datos son simplemente ruido blanco.
+
+*   **$H_0$ (Hipótesis Nula):** El proceso es un **Efecto Pepita Puro**. $\gamma(h) = \sigma^2$ para todo $h > 0$. No hay dependencia espacial.
+*   **$H_1$ (Hipótesis Alterna):** Existe una estructura espacial definida ($\gamma(h)$ crece con la distancia).
+
+**Interpretación del p-valor:**
+En pruebas basadas en **Monte Carlo** o permutaciones:
+
+*   Si el **p-valor < 0.05**: Se rechaza $H_0$. Concluimos que la ubicación de las muestras aporta información y es necesario usar modelos espaciales para la predicción.
+*   Si no se rechaza $H_0$, la mejor predicción en cualquier punto no observado es simplemente el promedio global de los datos, ya que no hay "memoria espacial" que aprovechar.
 
 ### pause
  
@@ -496,12 +837,187 @@ summary(modelo_elev) # Proporciona coeficientes, R2 y p-values
 
 ::: {#seccion-2-2-2 .content-card}
 
+En la práctica geoestadística, rara vez los puntos están en una grilla perfecta, por lo que este ejercicio te enseñará a lidiar con la irregularidad espacial, el agrupamiento por intervalos (*binning*) y el uso de los estimadores de momentos.
+
+---
+
+### 1. El Problema
+Se ha realizado un muestreo de la porosidad del suelo ($Z$) en una zona de estudio. Los datos se recolectaron de forma irregular debido a obstáculos en el terreno. El objetivo es estimar el **semivariograma empírico de Matheron** para dos intervalos de distancia (bins) y verificar si el comportamiento observado sugiere un modelo acotado bajo el supuesto de estacionariedad.
+
+### 2. Dataset de Juguete (Muestras de Porosidad)
+Contamos con 4 puntos observados en un plano euclidiano:
+
+*   **Punto 1 ($s_1$):** Coordenadas (0, 0) | Valor $z(s_1) = 10$
+*   **Punto 2 ($s_2$):** Coordenadas (1, 0) | Valor $z(s_2) = 12$
+*   **Punto 3 ($s_3$):** Coordenadas (0, 1) | Valor $z(s_3) = 11$
+*   **Punto 4 ($s_4$):** Coordenadas (2, 2) | Valor $z(s_4) = 15$
+
+**Parámetros de diseño del semivariograma:**
+
+*   **Ancho del intervalo (Lag width):** $\Delta h = 1.5$ unidades.
+*   **Número de intervalos:** $K = 2$.
+*   **Distancia máxima de corte:** $D_{max} / 2$.
+
+---
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso A: Identificación de todos los pares posibles y sus distancias
+**Lógica:** En estadística espacial, la unidad de análisis no es el punto individual, sino el **par de puntos**. Debemos calcular la distancia euclidiana entre todas las combinaciones posibles $n(n-1)/2$.
+
+1.  $d(s_1, s_2) = \sqrt{(1-0)^2 + (0-0)^2} = 1.0$
+2.  $d(s_1, s_3) = \sqrt{(0-0)^2 + (1-0)^2} = 1.0$
+3.  $d(s_2, s_3) = \sqrt{(0-1)^2 + (1-0)^2} = \sqrt{2} \approx 1.41$
+4.  $d(s_2, s_4) = \sqrt{(2-1)^2 + (2-0)^2} = \sqrt{1+4} \approx 2.24$
+5.  $d(s_3, s_4) = \sqrt{(2-0)^2 + (2-1)^2} = \sqrt{4+1} \approx 2.24$
+6.  $d(s_1, s_4) = \sqrt{(2-0)^2 + (2-0)^2} = \sqrt{4+4} \approx 2.83$
+
+#### Paso B: Agrupamiento por Rezago (Lag Binning)
+**Lógica:** Como las distancias son únicas (muestreo irregular), no podemos calcular un promedio por cada distancia exacta. Definimos "contenedores" o intervalos de tolerancia.
+
+*   **Bin 1 ($h_1$):** Distancias en el rango $(0, 1.5]$. 
+    *   Incluye pares: (1,2), (1,3) y (2,3).
+    *   Número de pares $|N(h_1)| = 3$.
+*   **Bin 2 ($h_2$):** Distancias en el rango $(1.5, 3.0]$.
+    *   Incluye pares: (2,4), (3,4) y (1,4).
+    *   Número de pares $|N(h_2)| = 3$.
+
+#### Paso C: Aplicación del Estimador Clásico de Matheron
+**Lógica:** Aplicamos la fórmula $\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{N(h)} (z(s_i) - z(s_j))^2$. El factor "semi" ($1/2$) es crítico para que la varianza de los incrementos se escale a la varianza global del proceso.
+
+**Cálculo para Bin 1:**
+
+1.  Diferencias al cuadrado: $(12-10)^2=4$; $(11-10)^2=1$; $(11-12)^2=1$.
+2.  Suma de diferencias = $4 + 1 + 1 = 6$.
+3.  $\hat{\gamma}(h_1) = \frac{6}{2 \times 3} = \mathbf{1.0}$
+
+**Cálculo para Bin 2:**
+
+1.  Diferencias al cuadrado: $(15-12)^2=9$; $(15-11)^2=16$; $(15-10)^2=25$.
+2.  Suma de diferencias = $9 + 16 + 25 = 50$.
+3.  $\hat{\gamma}(h_2) = \frac{50}{2 \times 3} = \mathbf{8.33}$
+
+---
+
+### 4. Resultado Interpretado
+Los valores del semivariograma empírico son $\hat{\gamma}(1.14) = 1.0$ y $\hat{\gamma}(2.44) = 8.33$ (usando la distancia promedio dentro de cada bin).
+**Interpretación Teórica:** Se observa un comportamiento **creciente con la distancia**, lo cual es natural según la Primera Ley de la Geografía: los puntos más alejados tienen mayor variabilidad entre sus valores. 
+Sin embargo, dado que solo tenemos 3 pares por bin, este estimador es altamente inestable. En un rigor académico estricto, se requieren entre **30 y 50 pares** por punto para que la estimación sea confiable. Si intentáramos ajustar un modelo esférico, notaríamos que aún no se alcanza la "silla" (sill), lo que indica que el rango del fenómeno es probablemente mayor a 3 unidades.
+
+---
+
+### 5. Guía de Autoevaluación (Errores Comunes)
+
+1.  **Omisión del factor "Semi":** Olvidar dividir la suma entre 2. Esto resultaría en el cálculo del **variograma** ($2\gamma$) en lugar del semivariograma, duplicando artificialmente la variabilidad espacial.
+2.  **Error en el conteo de pares ($|N(h)|$):** Contar puntos en lugar de parejas. Recuerda que la cardinalidad se refiere a cuántas conexiones caen dentro de la ventana de distancia.
+3.  **Mezcla de Unidades:** Calcular distancias sin usar la raíz cuadrada (usar solo la diferencia de coordenadas). La distancia debe ser siempre euclidiana a menos que se especifique lo contrario.
+4.  **Sesgo por Outliers:** No notar que en el Bin 2, el par (1,4) aporta 25 unidades a la suma (el 50% del total). El estimador de Matheron es extremadamente sensible a estos valores. Si el resultado parece inverosímil, se debería haber usado el estimador robusto de **Cressie-Hawkins**.
+5.  **Violación de la Distancia Máxima:** Intentar calcular bins para distancias muy grandes. Si hubiéramos intentado un Bin 3 en este dataset, el número de pares sería insuficiente, generando un comportamiento errático que "contamina" el ajuste del modelo teórico.
+
 ### pause
  
 :::
 
 ::: {#seccion-2-2-3 .content-card}
+Como Arquitecto de Software Estadístico, presento el protocolo de implementación en R para el **Capítulo Dos**, integrando las librerías `geoR`, `gstat` y `sp`. Este bloque de código está diseñado para transformar datos crudos en estructuras de variogramas empíricos y teóricos, cumpliendo con los estándares de rigor matemático (Teorema de Bochner) y las mejores prácticas de las fuentes de la Prof. Bohórquez.
 
+En geoestadística, el análisis de la varianza de los incrementos es el núcleo de la predicción; por ello, este código desglosa la transición de la variable regionalizada $Z(s)$ hacia el modelado de su semivarianza $\gamma(h)$.
+
+```{r ej modulo2 - semivariograma2, echo=TRUE}
+# ==============================================================================
+# PROTOCOLO GEOESTADÍSTICO: ESTIMACIÓN Y MODELADO DE LA DEPENDENCIA ESPACIAL
+# Autores: Arquitectura de Software Estadístico basada en RPubs M. Bohórquez
+# ==============================================================================
+
+# 1. CARGA DE LIBRERÍAS Y CONFIGURACIÓN DEL ENTORNO
+# geoR: Motor principal para variografía y máxima verosimilitud.
+# gstat: Para validación cruzada y flexibilidad en binning.
+library(geoR)
+library(gstat)
+library(sp)
+
+# 2. CARGA Y CURACIÓN DE DATOS (Dataset clásico: aquifer)
+# Importante: El encabezado y el formato de decimales deben verificarse.
+data(aquifer) # Dataset de las fuentes
+df_aquifer <- as.data.frame(aquifer)
+
+# MEJORES PRÁCTICAS DE LIMPIEZA:
+# 1. Eliminación de registros con NA (La semivarianza requiere pares completos).
+# 2. Verificación de duplicados: El efecto pepita (nugget) se distorsiona con réplicas exactas.
+df_aquifer <- na.omit(df_aquifer)
+df_aquifer <- df_aquifer[!duplicated(df_aquifer[,1:2]), ]
+
+# CONVERSIÓN A 'GEODATA' (Estructura optimizada de geoR)
+# coords: ubicaciones s; data: variable regionalizada Z(s).
+aquifer_g <- as.geodata(df_aquifer, coords.col = 1:2, data.col = 3)
+
+# ------------------------------------------------------------------------------
+# 2.1 ESTIMACIÓN EMPÍRICA (Chain-of-Thought)
+# ------------------------------------------------------------------------------
+
+# Opción A: Estimador Clásico de Momentos (Matheron)
+# Manipula el parámetro 'estimator.type'. Trasfondo: Promedio de diferencias al cuadrado.
+# Fórmula: gamma(h) = (1/2|N(h)|) * sum(z(si) - z(sj))^2.
+v_clasico <- variog(aquifer_g, estimator.type = "classical")
+
+# Opción B: Estimador Robusto (Cressie-Hawkins / Modulus)
+# Mitiga el impacto de outliers mediante transformación de raíz cuarta.
+# Trasfondo: Estabiliza la varianza antes de elevar a la cuarta potencia.
+v_robusto <- variog(aquifer_g, estimator.type = "modulus")
+
+# Visualización Comparativa
+plot(v_clasico, main = "Matheron (Negro) vs Cressie-Hawkins (Rojo)")
+lines(v_robusto, col = "red", type = "o")
+
+# ------------------------------------------------------------------------------
+# 2.2 ASPECTOS PRÁCTICOS: LAG BINNING Y GEOMETRÍA
+# ------------------------------------------------------------------------------
+
+# Parametrización de Intervalos (Lag Binning)
+# max.dist: Restricción crítica a la mitad de la diagonal máxima (Dmax/2).
+# uvec: Define los saltos o 'bins'. Muy pequeño genera ruido; muy grande suaviza demasiado.
+v_ajustado <- variog(aquifer_g, max.dist = 100, uvec = seq(0, 100, l=15))
+
+# Análisis de Anisotropía: variog4
+# Calcula semivariogramas en 4 direcciones (0, 45, 90, 135 grados).
+# Si las curvas difieren drásticamente, el proceso es anisotrópico.
+v_direccional <- variog4(aquifer_g, max.dist = 100)
+plot(v_direccional)
+
+# ------------------------------------------------------------------------------
+# 2.3 MODELOS VÁLIDOS (CONSISTENCIA MATEMÁTICA)
+# ------------------------------------------------------------------------------
+
+# Los modelos deben ser condicionalmente definidos negativos para gamma(h).
+# Esto garantiza que la varianza de predicción sea positiva (Teorema de Bochner).
+
+# Ajuste por Mínimos Cuadrados Ponderados (WLS) vía variofit
+# Se proporcionan valores iniciales 'a sentimiento' para Silla y Rango.
+# ini.cov.pars = c(Silla parcial, Rango)
+modelo_exp <- variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model = "exponential")
+modelo_sph <- variofit(v_clasico, ini.cov.pars = c(20000, 50), cov.model = "spherical")
+
+# ------------------------------------------------------------------------------
+# 4. EVALUACIÓN Y GRÁFICOS FINALES
+# ------------------------------------------------------------------------------
+
+# Gráfico de ajuste final: Superposición de modelos teóricos sobre el empírico
+plot(v_clasico, main = "Ajuste de Modelos Teóricos")
+lines(modelo_exp, col = "blue", lwd = 2) # Modelo Exponencial (asintótico)
+lines(modelo_sph, col = "green", lwd = 2) # Modelo Esférico (rango real)
+legend("bottomright", legend=c("Exp", "Sph"), col=c("blue", "green"), lty=1)
+```
+
+#### Explicación Teórica y de Trasfondo de los Cálculos
+
+1.  **Lógica del Estimador de Matheron (`classical`)**: Se basa en la **agregación espacial** de diferencias directas. Su cálculo de trasfondo es una implementación de momentos donde se asume que cada par en el bin $N(h)$ es una réplica estadística del mismo nivel de variabilidad. Es muy sensible a datos atípicos porque el cuadrado magnifica las desviaciones.
+2.  **Lógica de Cressie-Hawkins (`modulus`)**: Utiliza una aproximación para distribuciones de colas pesadas. El cálculo interno aplica la raíz cuarta a las diferencias $|z(s_i) - z(s_j)|^{1/2}$, calcula el promedio y luego aplica un factor de corrección de sesgo en el denominador ($0.457 + 0.494/|N(h)|$) para devolverlo a la escala de la varianza original.
+3.  **Interpretación de Gráficos**:
+    *   **Variograma Empírico**: Si los puntos no se estabilizan (siguen creciendo), puede indicar **no estacionariedad** o tendencia no removida.
+    *   **Direccional (`variog4`)**: Si el rango (distancia a la silla) es mayor en la dirección $0^\circ$ que en $90^\circ$, existe **anisotropía geométrica**.
+    *   **Ajuste Teórico**: El modelo **Esférico** es ideal para fenómenos con un límite de influencia claro, mientras que el **Exponencial** modela procesos donde la correlación decae gradualmente pero nunca desaparece del todo (rango práctico al 95% de la silla).
+4.  **Supuesto de Hipótesis Intrínseca**: El código asume que, aunque la media global sea desconocida, la esperanza de los incrementos es cero ($E[Z(s) - Z(s+h)] = 0$), lo cual permite usar las diferencias directas para la estimación sin necesidad de conocer la media absoluta.
+5.  **Validación de Consistencia**: Al usar funciones predefinidas como `cov.model = "spherical"`, el software garantiza que el modelo cumple con la propiedad de ser **definido positivo**, evitando varianzas de predicción negativas en el paso posterior de Kriging.
 
 ### pause
  

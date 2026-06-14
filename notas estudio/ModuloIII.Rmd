@@ -3070,6 +3070,119 @@ cat("Estimación Software:", lambda_estimada_software, "\n")
 
 **Conclusión del Experto:** Las soluciones manuales coinciden con las aproximaciones numéricas del software en el caso homogéneo porque existen soluciones en forma cerrada. Sin embargo, para procesos no homogéneos ($\lambda(s)$), el software recurrirá a métodos de suavizamiento por Kernel o máxima pseudoverosimilitud.
 
+
+Estimado estudiante, como Tutor Senior, abordaremos la resolución de los últimos tres ejercicios técnicos planteados en la referencia **NotasDePatronesPuntuales.pdf** (Ejercicios 4, 5 y 6). Estos problemas cierran el ciclo del análisis de patrones puntuales: desde la estimación básica de la intensidad, pasando por la partición geométrica del espacio, hasta la comprensión de las medidas de interacción de segundo orden.
+
+---
+
+### Ejercicio 4: Estimación de la Intensidad ($\lambda$) vía Máxima Verosimilitud (ML)
+
+**Planteamiento Teórico:**
+En un Proceso Homogéneo de Poisson (HPP), el supuesto fundamental es que el número de eventos $N(B)$ en una región $B$ sigue una distribución de Poisson con media $\mu = \lambda |B|$, donde $|B|$ es el área de la ventana. La intensidad $\lambda$ representa el número esperado de eventos por unidad de área y se asume constante en todo el dominio $D_s$.
+
+#### Chain-of-Thought (Deducción Matemática)
+
+1.  **Definir la Verosimilitud:** Para un patrón con $n$ puntos observados en un área $|B|$, la función de verosimilitud $L(\lambda)$ es la probabilidad de observar exactamente $n$ eventos:
+    $$L(\lambda) = P(N(B) = n) = \frac{e^{-\lambda |B|} (\lambda |B|)^n}{n!}$$
+2.  **Transformación Logarítmica:** Aplicamos el logaritmo natural para facilitar la derivación (log-verosimilitud):
+    $$\ln L(\lambda) = -\lambda |B| + n \ln(\lambda) + n \ln(|B|) - \ln(n!)$$
+3.  **Optimización:** Derivamos respecto a $\lambda$ e igualamos a cero para encontrar el máximo:
+    $$\frac{d}{d\lambda} \ln L(\lambda) = -|B| + \frac{n}{\lambda} = 0$$
+4.  **Solución del Estimador:** Despejamos $\lambda$:
+    $$\hat{\lambda}_{ML} = \frac{n}{|B|}$$
+
+#### Implementación en R
+En R, la función `intensity()` del paquete `spatstat` aplica directamente esta solución analítica.
+
+```{r sol ej 4 pp}
+library(spatstat)
+# Generamos un dataset sintético (HPP)
+set.seed(456)
+ventana <- owin(c(0, 10), c(0, 10)) # Área |B| = 100
+patron_hpp <- rpoispp(lambda = 0.5, win = ventana) # n esperado = 50
+
+# Estimación por Software
+lambda_software <- intensity(patron_hpp)
+
+# Estimación Manual (n/Area)
+n_puntos <- npoints(patron_hpp)
+area_b <- spatstat.geom::area(ventana)
+lambda_manual <- n_puntos / area_b
+
+cat("Intensidad (n/Area):", lambda_manual, "\n")
+cat("Intensidad (Software):", lambda_software, "\n")
+# Interpretación: Ambos valores coinciden exactamente porque el estimador ML 
+# tiene una forma cerrada perfecta para el caso homogéneo.
+```
+
+---
+
+### Ejercicio 5: Teselaciones de Dirichlet/Voronoi para la Intensidad
+
+**Planteamiento Teórico:**
+Cuando el interés no es solo un promedio global sino entender la variabilidad local, recurrimos a las **Teselaciones de Dirichlet (o polígonos de Voronoi)**. Esta técnica divide el espacio en celdas, donde cada celda pertenece al evento más cercano. Es una herramienta no paramétrica potente para visualizar "áreas de influencia".
+
+#### Cálculo Manual (Dataset de Juguete)
+Imagina 3 puntos en una ventana de 10 $u^2$. Tras el cálculo geométrico, obtenemos las áreas de sus celdas de Voronoi:
+
+- Punto $s_1$: Área de celda $V_1 = 2$
+- Punto $s_2$: Área de celda $V_2 = 5$
+- Punto $s_3$: Área de celda $V_3 = 3$
+
+**Lógica de la Intensidad Local:**
+La intensidad local en el punto $i$ se estima como el recíproco del área de su celda:
+$$\hat{\lambda}(s_i) = \frac{1}{|V_i|}$$
+
+- $\hat{\lambda}(s_1) = 1/2 = 0.5$ eventos/$u^2$ (Zona de alta densidad).
+- $\hat{\lambda}(s_2) = 1/5 = 0.2$ eventos/$u^2$ (Zona de baja densidad).
+
+#### Implementación en R
+
+```{r sol ej 5 pp}
+# Calculamos la teselación de Dirichlet para nuestro patrón
+teselacion <- dirichlet(patron_hpp)
+
+# Graficamos para visualizar la intensidad local
+plot(teselacion, main = "Celdas de Voronoi")
+plot(patron_hpp, add = TRUE, pch = 16, col = "red")
+
+# Extraemos las áreas de las celdas para calcular intensidades locales
+areas_celdas <- tile.areas(teselacion)
+intensidades_locales <- 1 / areas_celdas
+head(intensidades_locales)
+```
+
+---
+
+### Ejercicio 6: Propiedades de Segundo Orden e Intensidad $\lambda_2$
+
+**Planteamiento Teórico:**
+Mientras que la intensidad $\lambda$ es el primer momento (media), la **intensidad de segundo orden $\lambda_2(s_i, s_j)$** mide la probabilidad de que ocurran dos eventos simultáneamente en las ubicaciones $s_i$ y $s_j$. 
+En un proceso de Poisson, debido a la independencia entre eventos, se cumple que:
+$$\lambda_2(s_i, s_j) = \lambda(s_i) \lambda(s_j)$$
+Si es homogéneo: $\lambda_2 = \lambda^2$.
+
+#### El "Por Qué" de la Función K de Ripley
+Para verificar si se cumple esta independencia, usamos la Función $K(h)$, definida como el número esperado de eventos adicionales a una distancia $h$ de un evento típico, dividido por la intensidad:
+$$K(h) = \lambda^{-1} E[N_0(h)]$$
+Para un proceso aleatorio (HPP), la esperanza es el área del círculo: $K_{teórico}(h) = \pi h^2$.
+
+#### Implementación en R y Validación
+
+```{r sol ej 6 pp}
+# Estimación de la función K
+K_empirica <- Kest(patron_hpp)
+
+# Bajo la hipótesis nula de Poisson (CSR), K(r) debe ser aproximadamente pi*r^2
+plot(K_empirica, . - pi*r^2 ~ r, main = "Validación de Segundo Orden (L de Besag)")
+
+# Interpretación: Si la curva negra está dentro de los sobres de simulación (envelopes),
+# la relación lambda2 = lambda^2 se mantiene y el proceso es de Poisson.
+```
+
+**Interpretación Técnica:**
+La validación del Ejercicio 6 mediante la función K nos permite concluir que la estructura de segundo orden del proceso coincide con la independencia teórica del modelo de Poisson. Si la curva empírica superara la teórica, indicaría que $\lambda_2 > \lambda^2$, sugiriendo un patrón **agregado** (atracción entre puntos).
+
 ### Pausa
 
 :::
