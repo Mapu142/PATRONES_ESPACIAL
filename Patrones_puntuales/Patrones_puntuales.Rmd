@@ -5,6 +5,7 @@ output:
   bookdown::html_document2:
     theme: flatly
     toc: false
+    number_sections: true
     self_contained: true
     code_folding: hide
     mathjax: default
@@ -244,7 +245,7 @@ Para usar `spatstat`, debemos extraer las coordenadas y definir una **ventana de
 
 Para trabajar exactamente con la ventana de visualización que presenta el Servicio Geológico Colombiano (SGC) en su plataforma interactiva (la cual incluye sismos en el océano Pacífico, el mar Caribe y zonas fronterizas), la decisión de usar una ventana rectangular (`owin` de tipo caja)
 
-```{r owin}
+```{r owin, fig.cap="Patrón puntual sísmico e influencia regional"}
 ggplot() +
   # Capa 1: Países vecinos (Fondo gris neutro y bordes sutiles)
   geom_sf(data = paises_vecinos, 
@@ -294,7 +295,8 @@ ggplot() +
 summary(sismos_ppp)
 ```
 
-En la figura \@ref(fig:owin) se presenta la ventana de observación utilizada para el análisis. Esta fue definida excluyendo áreas extensas sin registros relevantes sísmicos, está delimitación evita que grandes zonas vacías influyan en la estimación de características del proceso puntual, como por ejemplo la intensidad.
+En la figura \@ref(fig:owin) se presenta la ventana de observación utilizada para el análisis.
+Esta fue definida excluyendo áreas extensas sin registros relevantes sísmicos, está delimitación evita que grandes zonas vacías influyan en la estimación de características del proceso puntual, como por ejemplo la intensidad.
 
 ### prueba chi cuadrado
 
@@ -307,7 +309,7 @@ Para evaluar si la distribución espacial de la sismicidad en la región de estu
 
 Los resultados de la prueba Chi-cuadrado arrojaron los siguientes estadísticos:
 
-$$\chi^2 = 374.33 \quad \vert{} \quad \text{grados de libertad (df)} = 24 \quad \vert{} \quad \text{p-value} < 2.2 \times 10^{-16}$$ Dado que el p-value es críticamente menor al nivel de significancia ($\alpha = 0.05$ ), existe evidencia estadística para rechazar la hipótesis nula ($H_0$).
+$$\chi^2 = 26.047 \quad \vert{} \quad \text{grados de libertad (df)} = 8 \quad \vert{} \quad \text{p-value} < 2.06 \times 10^{-3}$$ Dado que el p-value es críticamente menor al nivel de significancia ($\alpha = 0.05$ ), existe evidencia estadística para rechazar la hipótesis nula ($H_0$).
 Se concluye que los sismos en Colombia y su área de influencia no ocurren de manera aleatoria u homogénea en el espacio.
 
 ```{r fig.height=7, fig.width=10, message=FALSE, warning=FALSE}
@@ -497,25 +499,28 @@ mosaico_cuadrantes <- (g_3x3 + g_4x4 ) +
   )
 
 ```
-```{r mosaico}
+
+```{r mosaico, fig.cap="Pruebas de Homogeneidad Espacial"}
 mosaico_cuadrantes
 
 ```
 
-El motivo por el cual seleccionamos una rejilla de $3\times 3$ cuadrantes disjuntos se ilustra en la figura \@ref(fig:mosaico). Aunque con esta partición el valor esperado por celda es $E=0.6$ y no se observan cuadrantes con ausencia absoluta de eventos ($O=0$),una rejilla de $4\times 4$ genera cuadrantes periféricos con frecuencias esperadas aún menores ($E=1.6$) y celdas con ausencia absoluta de eventos. 
+El motivo por el cual seleccionamos una rejilla de $3\times 3$ cuadrantes disjuntos se ilustra en la figura \@ref(fig:mosaico).
+Aunque con esta partición el valor esperado por celda es $E=0.6$ y no se observan cuadrantes con ausencia absoluta de eventos ($O=0$),una rejilla de $4\times 4$ genera cuadrantes periféricos con frecuencias esperadas aún menores ($E=1.6$) y celdas con ausencia absoluta de eventos.
 
-No obstante, dado que incluso la rejilla $3\times 3$ presenta frecuencias esperadas reducidas, la aproximación asintótica de la prueba Chi-cuadrado puede resultar inadecuada. Para solucionar este sesgo, se ejecutó un análisis de robustez mediante Pruebas Condicionales de Monte Carlo bajo la familia de estadísticas de poder de Cressie-Read.
+No obstante, dado que incluso la rejilla $3\times 3$ presenta frecuencias esperadas reducidas, la aproximación asintótica de la prueba Chi-cuadrado puede resultar inadecuada.
+Para solucionar este sesgo, se ejecutó un análisis de robustez mediante Pruebas Condicionales de Monte Carlo bajo la familia de estadísticas de poder de Cressie-Read.
 
-```{r chi_robusto, message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 # ==============================================================================
 # 1. CONSOLIDACIÓN DE LOS RESULTADOS EN UN DATAFRAME
 # ==============================================================================
-(prueba_chi_2 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-2, nx = 4, ny = 4))
-(prueba_chi_1_error <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-1, nx = 4, ny = 4))
-(prueba_chi_05 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-1/2, nx = 4, ny = 4))
-(prueba_chi_1_3 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=1/3, nx = 4, ny = 4))
-(prueba_chi_2_3 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=2/3, nx = 4, ny = 4))
-(prueba_chi_1 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=1, nx = 4, ny = 4))
+(prueba_chi_2 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-2, nx = 3, ny = 3))
+(prueba_chi_1_error <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-1, nx = 3, ny = 3))
+(prueba_chi_05 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=-1/2, nx = 3, ny = 3))
+(prueba_chi_1_3 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=1/3, nx = 3, ny = 3))
+(prueba_chi_2_3 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=2/3, nx = 3, ny = 3))
+(prueba_chi_1 <- quadrat.test(sismos_ppp,method="MonteCarlo",CR=1, nx = 3, ny = 3))
 
 # Extraemos de forma dinámica los valores de tus variables u objetos ya calculados
 tabla_resultados <- data.frame(
@@ -558,32 +563,48 @@ tabla_resultados <- data.frame(
 tabla_resultados <- tabla_resultados %>%
   mutate(P_Valor = ifelse(P_Valor < 0.005, "< 0.001", as.character(round(P_Valor, 3))))
 
-# ==============================================================================
-# 2. RENDERIZADO DE LA TABLA ACADÉMICA CON KABLEEXTRA
-# ==============================================================================
-knitr::kable(
+```
+
+
+
+```{r chi}
+kableExtra::kbl(
   tabla_resultados,
-  caption = "Tabla 1. Pruebas de Robustez de Monte Carlo bajo la Familia de Cressie-Read (Rejilla 5x5)",
-  col.names = c("Estadístico de Prueba", "Parámetro de Poder", "Valor del Test", "p-value (Simulado)", "Diagnóstico Espacial"),
+  caption = "Pruebas de Robustez de Monte Carlo bajo la Familia de Cressie-Read (Rejilla 3x3)",
+  col.names = c(
+    "Estadístico de Prueba",
+    "Parámetro de Poder",
+    "Valor del Test",
+    "p-value (Simulado)",
+    "Diagnóstico Espacial"
+  ),
   align = c("l", "c", "c", "c", "l")
 ) %>%
-  kableExtra::kable_classic(
-    full_width = FALSE, 
-    html_font = "Segoe UI",
+  kableExtra::kable_styling(
+    full_width = FALSE,
     position = "center"
   ) %>%
-  kableExtra::row_spec(0, bold = TRUE, background  = "#2c3e50", color = "white") %>% 
-  kableExtra::row_spec(c(3, 5), bold = TRUE, background = "#e8f4fd") %>%      
-  kableExtra::row_spec(2, color = "#7f8c8d", italic = TRUE) %>%               
-  kableExtra::footnote(
-    general = " ",
-    general_title = "Simulaciones condicionales de Monte Carlo basadas en un número fijo de eventos. Nivel de significancia alfa = 0.05. El estadístico con parámetro CR = -1.0 diverge debido a la presencia de cuadrantes periféricos vacíos (Frecuencia Observada = 0)."
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) %>%
+  kableExtra::row_spec(
+    c(3, 5),
+    bold = TRUE,
+    background = "#e8f4fd"
+  ) %>%
+  kableExtra::row_spec(
+    2,
+    color = "#7f8c8d",
+    italic = TRUE
   )
 ```
 
-Los resultados confirman que al evaluar el patrón mediante el estadístico óptimo de Cressie-Read la sismicidad mantiene un rechazo absoluto del modelo nulo de aleatoriedad.
+Los resultados observados en la Tabla \@ref(tab:chi) confirman que al evaluar el patrón mediante el estadístico óptimo de Cressie-Read la sismicidad mantiene un rechazo absoluto del modelo nulo de aleatoriedad.
 
-Al evaluar los vecinos de primer y segundo orden presentados en la tabla 2.
+Al evaluar los vecinos de primer y segundo orden presentados en la tabla \@ref(tab:vecinos)
 y los mapas consiguientes, se evidencia que los sismos se agrupan en zonas muy específicas, principalmente en la región Andina y la costa del Pacífico.
 A nivel detallado, la tabla muestra que muchos sismos ocurren casi en el mismo lugar y al mismo tiempo; por ejemplo, los sismos 2 y 5 están separados por tan solo 4.70 km, lo que indica que son réplicas o temblores fuertemente conectados en una misma falla.
 
@@ -612,17 +633,18 @@ resultados_nn <- data.frame(
   Vecino2_ID  = NN_2[1:10],
   Distancia2  = round(nndista2[1:10], 2)
 )
+```
 
+```{r vecinos}
 # 3. Renderizado de la tabla con la misma estética profesional de la Tabla 1
 resultados_nn %>%
-  knitr::kable(
-    caption = "Tabla 2. Matriz de Proximidad Sísmica Individual: Distancias Euclidianas al Primer y Segundo Vecino Más Cercano (Primeros 10 Eventos)",
+  kableExtra::kbl(
+    caption = "Matriz de Proximidad Sísmica Individual: Distancias Euclidianas al Primer y Segundo Vecino Más Cercano (Primeros 10 Eventos)",
     col.names = c("ID Sismo", "Coordenada X (Km)", "Coordenada Y (Km)", "ID 1° Vecino", "Distancia 1° (Km)", "ID 2° Vecino", "Distancia 2° (Km)"),
     align = c("c", "c", "c", "c", "c", "c", "c")
   ) %>%
-  kableExtra::kable_classic(
-    full_width = FALSE, 
-    html_font = "Segoe UI",
+  kableExtra::kable_styling(
+    full_width = FALSE,
     position = "center"
   ) %>%
   # Encabezado elegante azul oscuro idéntico a tu tabla de Chi Robusto
@@ -634,7 +656,9 @@ resultados_nn %>%
     general_title = "Las coordenadas cartesianas corresponden a la proyección oficial Origen Nacional de Colombia (CRS 9377) reescalada a kilómetros. El uso de la semilla aleatoria 'set.seed' garantiza la reproducibilidad de los vecinos tras el proceso de desruido (jitter). Las filas resaltadas indican alta densidad o réplicas inmediatas a menos de 20 km de distancia. "
   )
 
+```
 
+```{r}
 
 # Verificar que nnwhich() y nndist() son coherentes
 # La distancia entre el punto i y su vecino NN_1[i] debe ser igual a nndista[i]
@@ -753,12 +777,13 @@ mosaico_final <- mosaico_vecindad +
     )
   )
 
-mosaico_final
-
-
 ```
 
-A nivel general, los mapas nos enseñan en tonos amarillos brillantes dónde están estos focos principales de actividad, resaltando que al buscar un segundo temblor cercano, la concentración se vuelve aún más evidente en lugares clave como el Nido Sísmico de Bucaramanga y la frontera con Ecuador.
+```{r mosdistancias, fig.cap="Comparativo de proximidad tectónica regional"}
+mosaico_final
+```
+
+A nivel general, los mapas en la figura \@ref(fig:mosdistancias) nos enseñan en tonos amarillos brillantes dónde están estos focos principales de actividad, resaltando que al buscar un segundo temblor cercano, la concentración se vuelve aún más evidente en lugares clave como el Nido Sísmico de Bucaramanga y la frontera con Ecuador.
 
 ```{r diagramas_vecinos, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 # ==============================================================================
@@ -860,11 +885,13 @@ mosaico_avanzado <- (g_stienen + g_dirichlet) +
     )
   )
 
-mosaico_avanzado
-
 ```
 
-A continuación se presentan los tests globales de distancia para la evaluación de primer orden Mientras que las pruebas anteriores (como los cuadrantes 5x5) analizaban el espacio dividiéndolo en sectores rígidos, los índices de Clark-Evans y Hopkins-Skellam evalúan las interacciones métricas puras entre los eventos.
+```{r mosavanzado, fig.cap="Modelado espacial mediante Diagramas de Stienen y Polígonos de Voronoi"}
+mosaico_avanzado
+```
+
+A continuación se presentan los tests globales de distancia para la evaluación de primer orden Mientras que las pruebas anteriores (como los cuadrantes $3\times3$) analizaban el espacio dividiéndolo en sectores rígidos, los índices de Clark-Evans y Hopkins-Skellam evalúan las interacciones métricas puras entre los eventos.
 
 ```{r vecinos_pruebas, message=FALSE, warning=FALSE}
 
@@ -920,16 +947,19 @@ tabla_indices_globales <- data.frame(
   )
 )
 
+```
+
+```{r testsglodistancia}
+
 # 2. Renderizado con la estética unificada de tu reporte
-knitr::kable(
+kableExtra::kbl(
   tabla_indices_globales,
-  caption = "Tabla 3. Diagnóstico Global de Asociación Espacial: Índices de Distancia de Clark-Evans y Hopkins-Skellam",
+  caption = "Diagnóstico Global de Asociación Espacial: Índices de Distancia de Clark-Evans y Hopkins-Skellam",
   col.names = c("Prueba / Estimador", "Métrica", "Valor", "p-value", "Hipótesis Alternativa", "Diagnóstico Espacial"),
   align = c("l", "c", "c", "c", "l", "l")
 ) %>%
-  kableExtra::kable_classic(
-    full_width = FALSE, 
-    html_font = "Segoe UI",
+  kableExtra::kable_styling(
+    full_width = FALSE,
     position = "center"
   ) %>%
   # Encabezado azul oscuro unificado con tu tema Flatly
@@ -961,6 +991,10 @@ sf_densidad       <- st_as_sf(raster_densidad)
 st_geometry(sf_densidad) <- st_geometry(sf_densidad) * 1000
 st_crs(sf_densidad)      <- 9377
 sf_densidad_grados       <- st_transform(sf_densidad, crs = 4326)
+
+```
+
+```{r intensidad, fig.cap="Estimación de la intensidad de sismos en Colombia"}
 
 # 4. Generación del gráfico de alta calidad cartográfica con ggplot2
 ggplot() +
