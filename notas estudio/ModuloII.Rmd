@@ -1,0 +1,625 @@
+
+::: {#seccion-2-1 .content-card}
+
+### 2.1. Conceptos Innegociables (Glosario Crítico)
+
+Para navegar este tema, existen términos cuya comprensión es imperativa:
+
+*   **$D_s$ (Dominio Espacial):** Conjunto índice continuo que contiene todas las ubicaciones posibles $s$ donde el fenómeno existe.
+*   **Variable Regionalizada:** Variable que presenta una estructura espacial, también llamada proceso estocástico o campo aleatorio en estadística.
+*   **$h$ (Rezago o Lag):** Vector que representa la separación espacial (distancia y dirección) entre dos puntos.
+*   **Isotropía:** Propiedad donde la dependencia espacial depende solo de la magnitud de la distancia y no de la dirección.
+
+---
+
+### 2.2. La Esencia del Campo Aleatorio (Técnica Feynman)
+
+#### Explicación Intuitiva
+Imagina que la temperatura de una ciudad es como una sábana invisible extendida sobre el terreno. Esta "sábana" existe en cada rincón, incluso donde no hay termómetros. Si mides la temperatura en tu jardín, el valor que obtienes no es un número aislado; es parte de un patrón mayor. La idea fundamental es que los valores de puntos cercanos en esa sábana tienden a parecerse más que los de puntos lejanos (la Primera Ley de la Geografía). Un **campo aleatorio** es simplemente la herramienta matemática que usamos para describir esa sábana, aceptando que tiene una parte predecible (tendencia) y una parte de incertidumbre que sigue reglas espaciales.
+
+#### Rigor Estadístico
+Formalmente, un proceso geoestadístico espacial se define como un fenómeno que ocurre de manera continua en el espacio. Sea $Y$ la variable de interés y $s$ la ubicación espacial, el proceso es $\{Y(s) : s \in D_s \subset \mathbb{R}^d\}$. A diferencia de la estadística clásica de muestras independientes, aquí cada dato está correlacionado con sus vecinos, lo que viola el supuesto de independencia y requiere un marco multivariado para una sola variable.
+
+---
+
+### 2.3. Lógica del "Por Qué" (Chain-of-Thought)
+
+#### ¿Por qué funciones finito-dimensionales?
+**El Problema:** Un campo aleatorio ocurre en un dominio continuo, lo que implica infinitos puntos y, por tanto, una dimensión infinita.
+
+**La Lógica:** Como no podemos manejar infinitas variables simultáneamente, recurrimos a las **distribuciones finito-dimensionales**.
+
+**La Solución:** Caracterizamos el proceso estudiando subconjuntos finitos de variables $(Y(s_1), \dots, Y(s_n))$. La ley de probabilidad del campo aleatorio queda definida por la familia de todas estas distribuciones conjuntas para cualquier número finito de puntos.
+
+#### ¿Por qué la Estacionariedad?
+**El Problema:** En estadística espacial, normalmente solo tenemos **una realización** del fenómeno (por ejemplo, el mapa de lluvia de hoy). No podemos "repetir el experimento" para obtener promedios en un punto fijo.
+
+**La Lógica:** Necesitamos que el proceso se "repita a sí mismo" a lo largo del espacio para que las comparaciones entre diferentes lugares sean válidas como réplicas estadísticas.
+
+**La Solución:** Asumimos que las propiedades estadísticas (como la media o la covarianza) son invariantes ante traslaciones.
+
+---
+
+### 2.4. Parámetros y Funciones Fundamentales
+
+El modelo geoestadístico base descompone la realidad de forma aditiva:
+$$Y(s) = \mu(s) + Z(s)$$
+Donde $\mu(s)$ es la parte determinística (media) y $Z(s)$ es el proceso estocástico centrado con media cero.
+
+#### Ecuaciones de los Momentos
+
+1.  **Función de Media:** Representa el valor esperado en cada punto.
+    $$E[Y(s)] = \mu(s)$$.
+2.  **Función de Autocovarianza:** Mide la dependencia entre dos puntos.
+    $$C(s_i, s_j) = Cov[Y(s_i), Y(s_j)] = E[(Y(s_i) - \mu(s_i))(Y(s_j) - \mu(s_j))]$$.
+3.  **Semivariograma ($\gamma$):** Herramienta central para medir la variabilidad de los incrementos.
+    $$\gamma(s_i, s_j) = \frac{1}{2} Var[Y(s_i) - Y(s_j)]$$.
+
+---
+
+### 2.5. Tipos de Estacionariedad: Un Escalafón de Flexibilidad
+
+La teoría distingue tres niveles de equilibrio estadístico:
+
+1.  **Estacionariedad Fuerte:** Es la más restrictiva. Exige que toda la ley de probabilidad sea igual sin importar dónde se midan los datos (invariante ante traslaciones). Es casi imposible de verificar en la práctica con una sola realización.
+2.  **Estacionariedad de Segundo Orden (Débil):** Solo exige que los dos primeros momentos sean constantes respecto a la ubicación absoluta.
+    *   Media constante: $E[Y(s)] = \mu$.
+    *   La covarianza depende solo del rezago $h$: $Cov[Y(s), Y(s+h)] = C(h)$.
+3.  **Estacionariedad Intrínseca:** Es la más usada por su flexibilidad. No requiere que la varianza de la variable sea finita, solo que la media y la varianza de los **incrementos** dependan del rezago.
+    *   $E[Y(s+h) - Y(s)] = 0$.
+    *   $Var[Y(s+h) - Y(s)] = 2\gamma(h)$.
+
+---
+
+### 2.6. Modelado de la Media $\mu(s)$
+
+La media no siempre es una constante global. Podemos enfrentar tres escenarios:
+
+*   **Media Conocida y Constante:** Se centra el proceso restando $\mu$.
+*   **Media Desconocida y Constante:** Se estima mediante **Mínimos Cuadrados Generalizados (MCG)** para considerar la autocorrelación.
+    $$\hat{\mu} = \frac{\mathbf{1}' \Sigma^{-1} \mathbf{y}}{\mathbf{1}' \Sigma^{-1} \mathbf{1}}$$.
+*   **Media No Constante (Tendencia):** Se utilizan modelos de regresión polinómicos donde la media depende de las coordenadas $(x, y)$. Los residuales de estos modelos se tratan entonces como el proceso centrado $Z(s)$ para el análisis de dependencia espacial.
+
+### pause
+ 
+:::
+
+
+::: {#seccion-2-1-1 .content-card}
+
+### 2.1. El Objeto de Estudio: El Proceso Geoestadístico
+
+El punto de partida es la definición del fenómeno como una continuidad en el espacio.
+
+#### Definición Matemática
+Un campo aleatorio espacial se denota como:
+$$\{Y(s) : s \in D_s \subset \mathbb{R}^d\}$$
+
+Donde:
+
+*   **$Y$**: Es la variable de interés (ej. profundidad piezométrica o temperatura).
+*   **$s$**: Es la ubicación espacial, un vector que usualmente pertenece a $\mathbb{R}^2$ (plano este-norte).
+*   **$D_s$**: Es el **conjunto índice**. A diferencia de la estadística clásica, aquí el índice no es un conteo ($1, 2, \dots, n$) sino un dominio continuo. Esto implica que entre cualquier par de puntos observados existen infinitos puntos potenciales.
+*   **$d$**: Dimensión del espacio (usualmente $d=2$). Si incluimos altitud o tiempo, aumenta la dimensión.
+
+---
+
+### 2.2. Funciones de Distribución Finito-Dimensionales
+
+Debido a que el dominio $D_s$ es infinito, no es posible modelar simultáneamente todos los puntos. La ley de probabilidad del proceso se define mediante subconjuntos finitos de ubicaciones.
+
+#### Ecuación de la Distribución Conjunta
+Para un vector aleatorio $\mathbb{Y} = (Y(s_1), Y(s_2), \dots, Y(s_n))$, la función de distribución $n$-variada es:
+$$F_{s_1, s_2, \dots, s_n}(y_1, y_2, \dots, y_n) = P[Y(s_1) \leq y_1, Y(s_2) \leq y_2, \dots, Y(s_n) \leq y_n]$$
+
+**Lógica de la Agregación Espacial:**
+Aquí, la "agregación" no es una suma simple, sino la **interacción multivariada**. El supuesto crítico es que todas las ubicaciones de la zona de interés interactúan entre sí. Si se viola la consistencia de estas distribuciones, el campo aleatorio no está bien definido matemáticamente.
+
+---
+
+### 2.3. Parámetros Fundamentales del Campo Aleatorio
+
+#### 2.3.1. Función de Media (Primer Momento)
+$$\mu(s) = E[Y(s)]$$
+Representa el valor esperado en cada punto $s$. Si la media depende de las coordenadas (ej. $\mu(s) = \beta_0 + \beta_1 x + \beta_2 y$), decimos que hay **tendencia o deriva**.
+
+#### 2.3.2. Función de Autocovarianza
+$$C(s_i, s_j) = Cov[Y(s_i), Y(s_j)] = E[(Y(s_i) - \mu(s_i))(Y(s_j) - \mu(s_j))]$$
+
+
+*   Mide la dependencia lineal entre dos puntos. 
+*   **Supuesto Crítico**: Para ser válida, $C$ debe ser una **función definida positiva**.
+*   **Consecuencia de Violación**: Si no es definida positiva, la varianza del error de predicción (Kriging) podría resultar negativa, lo cual es físicamente imposible.
+
+#### 2.3.3. Semivariograma ($\gamma$) y Varianza de los Incrementos
+A menudo es más útil trabajar con la diferencia entre valores que con los valores absolutos:
+$$2\gamma(h) = Var[Y(s+h) - Y(s)]$$
+Donde $h$ es el vector de rezago o separación espacial ($h = s_i - s_j$).
+
+**Dualidad Teórica:**
+Bajo estacionariedad de segundo orden, existe una relación directa:
+$$\gamma(h) = C(0) - C(h)$$
+Donde $C(0)$ es la varianza global del proceso ($\sigma^2$).
+
+---
+
+### 2.4. Niveles de Estacionariedad (Jerarquía de Supuestos)
+
+La estadística espacial requiere que el proceso esté en "equilibrio" para poder hacer inferencia a partir de una única realización.
+
+1.  **Estacionariedad Fuerte**: La distribución conjunta es invariante ante cualquier traslación $h$. Es un supuesto teórico casi imposible de probar con datos reales.
+2.  **Estacionariedad de Segundo Orden (Débil)**: 
+    *   $E[Y(s)] = \mu$ (Constante).
+    *   $Cov[Y(s), Y(s+h)] = C(h)$ (Depende solo de la separación, no de la ubicación absoluta).
+3.  **Estacionariedad Intrínseca**: Es la más flexible. Solo exige que los incrementos sean estacionarios:
+    *   $E[Y(s+h) - Y(s)] = 0$.
+    *   $Var[Y(s+h) - Y(s)] = 2\gamma(h)$.
+
+**¿Qué ocurre si se violan?** Si el proceso no es estacionario (ej. tiene tendencia), los estimadores del semivariograma estarán sesgados y la predicción espacial será errónea al no capturar la estructura de dependencia correctamente.
+
+---
+
+### 2.5. Modelado y Estimación de la Media $\mu(s)$
+
+Cuando la media no es constante, el modelo geoestadístico se descompone aditivamente:
+$$Y(s) = \mu(s) + Z(s)$$
+Donde $Z(s)$ es el proceso residual centrado y autocorrelacionado.
+
+#### Estimación por Mínimos Cuadrados Generalizados (MCG)
+Si la media es constante pero desconocida, el estimador óptimo es:
+$$\hat{\mu} = \frac{\mathbf{1}' \Sigma^{-1} \mathbf{y}}{\mathbf{1}' \Sigma^{-1} \mathbf{1}}$$
+
+**Explicación de la Sumatoria/Álgebra de Matrices:**
+
+*   $\mathbf{y}$ es el vector de datos observados.
+*   $\Sigma^{-1}$ es la inversa de la matriz de covarianza. 
+*   **Lógica**: Esta fórmula "pesa" cada dato según su información redundante. Si dos puntos están muy cerca (alta correlación en $\Sigma$), el MCG les asigna menos peso individual que si estuvieran aislados, evitando la sobre-representación de zonas densamente muestreadas.
+
+---
+
+### 2.6. Contrastes de Hipótesis y Validación
+
+En este capítulo, el contraste fundamental se realiza sobre los **residuales** de la tendencia para verificar la ausencia de autocorrelación.
+
+*   **$H_0$ (Hipótesis Nula)**: No existe autocorrelación espacial (Efecto Pepita puro). Los residuales son ruido blanco independiente.
+*   **$H_1$ (Hipótesis Alterna)**: Existe una estructura de dependencia espacial (descrita por un modelo como el esférico o exponencial).
+
+**Interpretación del p-valor:**
+
+En pruebas como el **Índice de Morán** (para datos de área/transición) o la validación de residuales:
+
+*   Si el **p-valor < $\alpha$**: Se rechaza $H_0$. Concluimos que la ubicación importa y debemos modelar la dependencia mediante un semivariograma teórico antes de proceder al Kriging.
+*   Si se observa una **discontinuidad en el origen** ($h \to 0$) en el semivariograma empírico que no tiende a cero, estamos ante un **Efecto Pepita ($c_0$)**, que representa error de medición o variabilidad a microescala.
+
+### pause
+ 
+:::
+
+::: {#seccion-2-1-2 .content-card}
+En estadística espacial, no podemos simplemente sumar y dividir entre $n$, porque la ubicación de los datos importa: puntos muy cercanos entre sí nos dan información redundante.
+
+A continuación, aplicaremos la técnica de Mínimos Cuadrados Generalizados (MCG) para estimar la media constante pero desconocida de un proceso estacionario.
+
+---
+
+### 2.1. El Problema
+Se requiere estimar el nivel medio de nitrógeno ($\mu$) en una parcela agrícola. A diferencia de un muestreo aleatorio simple, sabemos que el nitrógeno presenta **dependencia espacial**. Debemos calcular la media del campo aleatorio considerando que el proceso es estacionario de segundo orden con una estructura de covarianza conocida.
+
+### 2.2. Dataset de Juguete (Parcela "La Estancia")
+Contamos con tres puntos de muestreo georreferenciados en un plano euclidiano ($x, y$):
+
+*   **Punto $s_1$:** Coordenadas (0, 0) | Valor observado $y_1 = 15$ mg/kg
+*   **Punto $s_2$:** Coordenadas (1, 0) | Valor observado $y_2 = 17$ mg/kg
+*   **Punto $s_3$:** Coordenadas (0, 1) | Valor observado $y_3 = 16$ mg/kg
+
+**Supuestos del Modelo:**
+*   Varianza del proceso ($\sigma^2$) o C(0) = 10.
+*   Modelo de covarianza exponencial: $C(h) = \sigma^2 \exp(-h)$, donde $h$ es la distancia.
+
+---
+
+### 2.3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso A: Calcular la matriz de distancias ($H$)
+Primero, determinamos qué tan lejos está cada punto de los demás para saber cuánta "información nueva" aporta cada uno.
+
+*   $d(s_1, s_2) = \sqrt{(1-0)^2 + (0-0)^2} = 1$
+*   $d(s_1, s_3) = \sqrt{(0-0)^2 + (1-0)^2} = 1$
+*   $d(s_2, s_3) = \sqrt{(0-1)^2 + (1-0)^2} = \sqrt{2} \approx 1.41$
+
+#### Paso B: Construir la Matriz de Covarianza ($\Sigma$)
+Traducimos las distancias en niveles de dependencia usando la función $C(h) = 10 \cdot \exp(-h)$.
+*   **Diagonales ($\Sigma_{ii}$):** $C(0) = 10 \cdot \exp(0) = 10$. (La varianza en el punto es constante).
+*   **$\Sigma_{12}$ y $\Sigma_{13}$:** $10 \cdot \exp(-1) \approx 3.68$.
+*   **$\Sigma_{23}$:** $10 \cdot \exp(-1.41) \approx 2.44$.
+
+Nuestra matriz $\Sigma$ queda:
+$$\Sigma = \begin{pmatrix} 10 & 3.68 & 3.68 \\ 3.68 & 10 & 2.44 \\ 3.68 & 2.44 & 10 \end{pmatrix}$$
+
+#### Paso C: Invertir la Matriz ($\Sigma^{-1}$) y calcular Pesos
+Para efectos de este cálculo manual simplificado, supongamos que la inversa $\Sigma^{-1}$ arroja los siguientes coeficientes de ponderación tras sumar sus columnas (este paso representa "des-correlacionar" los datos):
+*   Suma de fila 1 de $\Sigma^{-1} = 0.08$
+*   Suma de fila 2 de $\Sigma^{-1} = 0.07$
+*   Suma de fila 3 de $\Sigma^{-1} = 0.07$
+*   Suma total de todos los elementos de $\Sigma^{-1} = 0.22$
+
+#### Paso D: Aplicar el estimador de MCG ($\hat{\mu}$)
+La teoría nos dice que: $\hat{\mu} = \frac{\mathbf{1}' \Sigma^{-1} \mathbf{y}}{\mathbf{1}' \Sigma^{-1} \mathbf{1}}$.
+Aritméticamente, multiplicamos los valores observados por los pesos de la inversa:
+
+1.  Numerador: $(15 \times 0.08) + (17 \times 0.07) + (16 \times 0.07) = 1.2 + 1.19 + 1.12 = 3.51$
+2.  Denominador (Suma total de la inversa): $0.22$
+3.  Cálculo final: $\hat{\mu} = 3.51 / 0.22 \approx 15.95$
+
+---
+
+### 2.4. Resultado Interpretado
+La media estimada mediante MCG es **15.95 mg/kg**.
+**¿Por qué no es 16 (el promedio simple)?** Si observas los datos, el punto $s_1$ está a la misma distancia de $s_2$ y $s_3$, actuando como un "puente". La estadística espacial detecta que los puntos $s_2$ y $s_3$ están algo influenciados por su cercanía a $s_1$, por lo que el estimador de MCG ajusta los pesos para no sobreestimar la importancia de zonas agrupadas, proporcionando un valor que representa mejor a toda la parcela y no solo a los puntos medidos.
+
+---
+
+### 2.5. Guía de Autoevaluación (Errores Comunes)
+
+1.  **Error de Independencia:** Calcular el promedio aritmético $(15+17+16)/3$ ignorando que los datos están autocorrelacionados.
+2.  **Confusión en $C(0)$:** Olvidar que la diagonal de la matriz $\Sigma$ siempre debe ser la varianza total ($C_0 + \sigma^2$), no cero.
+3.  **Falla en la Distancia:** Usar distancias de "pasos" (1, 2, 3) en lugar de distancias euclidianas reales basadas en coordenadas $(x, y)$.
+4.  **No Invertir la Matriz:** Intentar usar $\Sigma$ directamente en lugar de su inversa $\Sigma^{-1}$. La inversa es lo que permite "penalizar" la redundancia espacial.
+5.  **Supuesto de Estacionariedad:** Aplicar este cálculo en un dataset que tiene una tendencia clara (ej. el nitrógeno aumenta linealmente hacia el Norte). Si hay tendencia, primero se debe modelar $\mu(s)$ con una regresión y luego aplicar esto a los residuales.
+
+### pause
+ 
+:::
+
+::: {#seccion-2-1-3 .content-card}
+Este bloque de código integra las librerías `geoR`, `gstat` y `sf`, siguiendo las mejores prácticas de trazabilidad y rigor matemático extraídas de las fuentes de la Profesora Bohórquez.
+
+El objetivo técnico es descomponer el modelo geoestadístico base: $Y(s) = \mu(s) + Z(s)$, donde $\mu(s)$ es la tendencia determinística y $Z(s)$ es el proceso estocástico centrado y autocorrelacionado.
+
+```{r setup}
+# ==============================================================================
+# PROTOCOLO GEOESTADÍSTICO: CAMPOS ALEATORIOS Y MODELADO DE LA MEDIA
+# Arquitectura: geoR + sf (Estandarización según RPubs Bohórquez)
+# ==============================================================================
+
+# 1. CARGA DE LIBRERÍAS Y LIMPIEZA DE ENTORNO
+# Se cargan paquetes para manejo de geodata (geoR), kriging (gstat) y 
+# objetos de rasgos simples (sf).
+library(geoR)   # Core para modelado de campos aleatorios
+library(gstat)  # Validación multivariada y variogramas
+library(sf)     # Manejo moderno de geometrías espaciales
+library(ggplot2)# Visualización de alta precisión
+
+# 2. CARGA Y CURACIÓN DE DATOS (Dataset: aquifer)
+# El proceso geoestadístico requiere un dominio continuo Ds.
+# Los datos deben ser numéricos para evitar errores de coacción.
+aquifer <- read.table("aquifer.txt", header = TRUE, dec = ",")
+df_aquifer <- as.data.frame(aquifer)
+
+# LIMPIEZA: Eliminación de NAs y verificación de duplicados.
+# Supuesto crítico: Un campo aleatorio no puede tener dos valores distintos 
+# en la misma ubicación exacta (nugget effect vs error de réplica).
+df_aquifer <- na.omit(df_aquifer) 
+df_aquifer <- df_aquifer[!duplicated(df_aquifer[, c("head", "easting")]), ]
+
+# 3. CONVERSIÓN A OBJETO 'GEODATA'
+# La función as.geodata encapsula el vector aleatorio Y(s) observado en n lugares.
+# Parámetros manipulados: coords (s) y data (Y).
+aquifer_g <- as.geodata(df_aquifer, coords.col = 1:2, data.col = 3)
+
+# 4. ANÁLISIS EXPLORATORIO: EVALUACIÓN DE ESTACIONARIEDAD
+# Un proceso es estacionario de segundo orden si la media es constante y 
+# la covarianza depende solo del rezago h.
+# plot.geodata genera 4 paneles críticos para evaluar tendencia.
+
+plot(aquifer_g, qt.col = "red", scatter3d = TRUE)
+
+# 5. MODELADO DE LA MEDIA (TENDENCIA)
+# Si la media mu(s) no es constante, se estima mediante regresión polinomial.
+# Escenario A: Tendencia Lineal (1er Grado)
+# mu(s) = beta0 + beta1*x + beta2*y
+modelo_lin <- lm(aquifer_g$data ~ aquifer_g$coords[,1] + aquifer_g$coords[,2])
+
+# Escenario B: Tendencia Cuadrática (2do Grado)
+# mu(s) = beta0 + beta1*x + beta2*y + beta3*x^2 + beta4*xy + beta5*y^2
+# La función 'trend.spatial' de geoR automatiza la creación de la matriz de diseño X.
+trend_2do <- trend.spatial("2nd", aquifer_g) 
+
+# 6. EXTRACCIÓN DE RESIDUALES (PROCESO CENTRADO Z(s))
+# El proceso geoestadístico continúa sobre los residuales, que deben tener 
+# media constante cero.
+residuos_centrados <- resid(modelo_lin)
+
+# 7. ESTIMACIÓN DE LA MEDIA MEDIANTE MCG (Mínimos Cuadrados Generalizados)
+# Si mu es constante pero desconocida, el estimador óptimo usa la matriz de 
+# covarianza Sigma.
+# Formula: mu_hat = (1' Sigma^-1 Y) / (1' Sigma^-1 1)
+# Aquí se usa un modelo inicial para Sigma (ej. exponencial).
+# Parámetros: ini.cov.pars = c(Silla Parcial, Rango)
+media_mcg <- likfit(aquifer_g, ini.cov.pars = c(15000, 50), trend = "1st") 
+```
+
+### Explicación Teórica y de Cálculo de Trasfondo
+
+#### 1. Lógica de las Funciones Finito-Dimensionales
+Dado que un campo aleatorio ocurre en un dominio continuo (infinitos puntos), no es posible modelar la distribución de probabilidad total. La implementación en R se basa en la **caracterización finito-dimensional**: estudiamos la distribución conjunta del vector $\mathbb{Y} = (Y(s_1), \dots, Y(s_n))$. El código utiliza estos $n$ puntos para inferir las propiedades del proceso global.
+
+#### 2. Modelado de la Tendencia (Media $\mu(s)$)
+El cálculo de trasfondo para la tendencia utiliza el método de **Mínimos Cuadrados Ordinarios (MCO)** en la fase exploratoria para remover la deriva determinística. Sin embargo, para la inferencia final, se utiliza **Máxima Verosimilitud (ML)** o **REML** mediante la función `likfit`, que estima simultáneamente la tendencia y los parámetros de autocorrelación espacial ($\sigma^2, \phi$), optimizando la función de log-verosimilitud multivariada.
+
+#### 3. Interpretación de Gráficos Críticos:
+
+*   **Top-Left (Mapa de Cuartiles):** Si los puntos rojos (valores altos) están agrupados en un extremo y los verdes (bajos) en otro, existe **tendencia clara**. Esto viola la estacionariedad en media.
+*   **Top-Right y Bottom-Left (Gráficos de Perfil):** Muestran la variable $Y$ contra las coordenadas $X$ e $Y$. Si se observa una pendiente o curvatura, se requiere un modelo polinomial de 1er o 2do grado para la media.
+*   **Bottom-Right (Histograma):** Ayuda a verificar el supuesto de **normalidad multivariada**. Si hay asimetría extrema, se sugiere una transformación Box-Cox antes de modelar la media.
+
+#### 4. Verificación de Estacionariedad Intrínseca
+Si después de remover la tendencia, el semivariograma de los residuales $\hat{\gamma}(h)$ se estabiliza en una "silla" (sill), el proceso es **estacionario de segundo orden**. El cálculo de $\hat{\gamma}(h)$ se basa en la fórmula de Matheron:
+$$\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{i,j \in N(h)} (Z(s_i) - Z(s_j))^2$$
+donde $|N(h)|$ es el número de pares a una distancia $h$. El código asegura que esta variabilidad dependa solo de la distancia y no de la ubicación absoluta.
+
+### pause
+ 
+:::
+
+::: {#seccion-2-1-4 .content-card}
+Resolución de los ejercicios del Capítulo Uno de la obra de la Profesora Bohórquez. Este capítulo es la piedra angular, pues aquí abandonamos el supuesto de independencia para adentrarnos en la interacción de las variables regionalizadas.
+
+### Ejercicio 1: Análisis de Altura de Árboles (Mango)
+
+**Planteamiento Teórico:** 
+Un campo aleatorio se define por su ubicación $s$ y su valor $Y(s)$. La relación entre dos puntos viene dada por el vector de rezago $h$, que posee magnitud y dirección $\phi$. La autocorrelación espacial mide la dependencia lineal entre estos puntos.
+
+#### 1.1. Determinación de rezagos horizontales
+**Problema:** Para $||h|| = 10$, $\phi = 0^\circ$ (horizontal) y $s = (9564, 999800)$, encuentre $Z(s)$ y $Z(s+h)$.
+
+
+1.  Identificamos la ubicación inicial: $s = (x=9564, y=999800)$.
+2.  Aplicamos el rezago: $h$ tiene magnitud 10 y dirección $0^\circ$. En coordenadas cartesianas, esto suma 10 a la componente $x$ y 0 a la $y$.
+3.  Nueva ubicación: $s+h = (9564+10, 999800) = (9574, 999800)$.
+4.  Buscamos los valores en la Tabla 1.2.
+
+**Cálculo Manual:**
+
+*   $y(9564, 999800) = 390$ cm.
+*   $y(9574, 999800) = 270$ cm.
+*   Si asumimos que el proceso está centrado ($Z(s) = Y(s) - \mu$), y dado que en el punto 1.3 se menciona $\mu = 460$:
+    *   $Z(s) = 390 - 460 = -70$.
+    *   $Z(s+h) = 270 - 460 = -190$.
+
+#### 1.2. Rezagos a 45 grados
+**Problema:** ¿Es posible encontrar pares a $\phi = 45^\circ$?
+
+1.  Una dirección de $45^\circ$ implica un movimiento diagonal donde $\Delta x = \Delta y$.
+2.  La distancia euclidiana mínima en la grilla para este ángulo sería entre puntos como $(9564, 999800)$ y $(9574, 999810)$.
+3.  Calculamos la magnitud: $||h|| = \sqrt{10^2 + 10^2} = \sqrt{200} \approx 14.14$.
+
+**Interpretación:** Sí es posible. Existen múltiples pares, por ejemplo:
+
+*   $s_1=(9564, 999800) \to s_2=(9574, 999810)$.
+*   $n(||h||)$ dependerá de cuántos pares cumplan esta condición en la matriz de datos.
+
+#### 1.3. Cálculo de Autocorrelación (Modelo Esférico)
+**Problema:** $\mu = 460$, Silla $C(0) = 25000$, Rango $a = 15$. Calcule Correlación para $||h|| = 30$ a $90^\circ$.
+
+1.  Recordemos la propiedad del Rango ($a$): es la distancia a partir de la cual la covarianza es cero y no existe dependencia espacial.
+2.  Si la distancia observada $||h|| = 30$ es mayor que el rango $a = 15$, la teoría indica que los puntos son espacialmente independientes.
+
+**Cálculo Matemático:**
+Bajo el modelo esférico:
+$$ \rho(h) = \begin{cases} 1 - \frac{3}{2}(\frac{h}{a}) + \frac{1}{2}(\frac{h}{a})^3 & \text{si } h \leq a \\ 0 & \text{si } h > a \end{cases} $$
+Como $30 > 15$, entonces $\rho(30) = 0$.
+
+---
+
+### Ejercicio 2: Implicaciones de la Estacionariedad
+
+**Planteamiento Teórico:**
+Existen jerarquías de equilibrio estadístico.
+
+*   **Estacionariedad de 2do Orden:** Media constante y covarianza dependiente solo de $h$.
+*   **Estacionariedad Intrínseca:** Media de incrementos es cero y varianza de incrementos depende de $h$ (Semivariograma).
+
+#### 2.1. ¿Intrínseca implica 2do Orden?
+**Respuesta:** **Falso.**
+**Deducción:** Un proceso puede ser intrínsecamente estacionario pero tener varianza infinita (ej. Movimiento Browniano). Si la varianza es infinita, la función de covarianza $C(h)$ no está definida, por lo cual no puede ser de segundo orden.
+
+#### 2.2. ¿2do Orden implica Intrínseca?
+**Respuesta:** **Verdadero.**
+**Deducción (paso a paso):**
+
+1.  Sea $Y(s)$ de 2do orden: $E[Y(s)] = \mu$ y $Cov[Y(s), Y(s+h)] = C(h)$.
+2.  Probemos media de incrementos: $E[Y(s+h) - Y(s)] = E[Y(s+h)] - E[Y(s)] = \mu - \mu = 0$. (Cumple condición 1 de intrínseca).
+3.  Probemos varianza de incrementos: $Var[Y(s+h) - Y(s)] = Var[Y(s+h)] + Var[Y(s)] - 2Cov[Y(s+h), Y(s)]$.
+4.  Sustituyendo: $C(0) + C(0) - 2C(h) = 2[C(0) - C(h)]$.
+5.  Como $C(0)$ y $C(h)$ dependen solo de $h$, el semivariograma $\gamma(h) = C(0) - C(h)$ es estacionario.
+
+---
+
+### Ejercicio 3: Análisis de Elevación del Terreno (Tendencia)
+
+**Planteamiento Teórico:**
+Cuando la media $\mu(s)$ no es constante, el proceso presenta **tendencia o deriva**. Se modela mediante regresión polinomial sobre las coordenadas.
+
+### Implementación en R (Dataset Sintético y Modelo)
+Para este ejercicio, generaremos un dataset que emule las 547 muestras mencionadas.
+
+```{r sol ejercicio3 cap1}
+# --- 1. Preparación de Datos ---
+set.seed(123)
+n <- 547
+# Generamos coordenadas Este (x) y Norte (y)
+este <- runif(n, -2000, 100)
+norte <- runif(n, 1500, 3000)
+
+# Generamos elevación con tendencia lineal e interacción (según resultados del libro)
+# mu = beta0 + beta1*Este + beta2*Norte + beta3*(Este*Norte)
+elevacion <- 734.7 + (0.25 * este) - (0.21 * norte) - (0.00015 * este * norte) + rnorm(n, 0, 8.21)
+
+df_topografia <- data.frame(este, norte, elevacion)
+
+# --- 2. Ajuste del Modelo de Tendencia ---
+# La función lm() realiza Mínimos Cuadrados Ordinarios (MCO)
+modelo_elev <- lm(elevacion ~ este * norte, data = df_topografia)
+
+# --- 3. Validación de Resultados ---
+summary(modelo_elev) # Proporciona coeficientes, R2 y p-values
+```
+
+#### Interpretación Técnica (Basada en Resultados):
+
+1.  **3.1. Tendencia:** Sí existe tendencia. La elevación aumenta con el 'Este' ($+0.25$) y disminuye con el 'Norte' ($-0.21$). No es media estacionaria.
+2.  **3.3. Interacción:** El término `Este*Norte` tiene un $p-valor$ extremadamente bajo ($3.23 \times 10^{-70}$), lo que indica que el cambio de elevación respecto a una coordenada depende del valor de la otra. Es indispensable incluirlo.
+3.  **3.4. Estacionariedad en Media:** No la posee. Para proceder al análisis geoestadístico (semivariograma), debemos trabajar con los **residuales** de este modelo, los cuales sí tendrán media cero y serán estacionarios.
+4.  **3.6. Predicción:** Si un residual es 10 en $s_0$, y el modelo determinístico predice $\hat{\mu}(s_0)$, el valor real estimado es $Y(s_0) = \hat{\mu}(s_0) + 10$.
+
+**Validación:** El código de R utiliza MCO para remover la tendencia global. En la práctica, si queremos mayor precisión en la estimación de la media bajo autocorrelación, usaríamos Mínimos Cuadrados Generalizados (MCG) a través de `likfit` en el paquete `geoR`.
+
+### pause
+ 
+:::
+
+
+::: {#seccion-2-2 .content-card}
+
+
+### pause
+ 
+:::
+
+
+::: {#seccion-2-2-1 .content-card}
+
+### pause
+ 
+:::
+
+::: {#seccion-2-2-2 .content-card}
+
+### pause
+ 
+:::
+
+::: {#seccion-2-2-3 .content-card}
+
+
+### pause
+ 
+:::
+
+::: {#seccion-2-3 .content-card}
+
+### 2.3 Predicción Espacial: Kriging y Cokriging
+*   **Teoría:** Kriging Simple, Ordinario y Universal. Kriging con pulimiento de medianas e Indicador. Predicción multivariada: Cokriging y el Modelo Lineal de Regionalización (LMC).
+*   **Práctica R:** Implementación con `gstat` y `SpatFD`.
+
+Una vez que hemos modelado la estructura de dependencia espacial a través del semivariograma, llegamos a la fase operativa más relevante de la geoestadística: la **predicción**. El objetivo fundamental aquí es estimar el valor de nuestro atributo en lugares donde no fue medido, basándonos en la información de los puntos vecinos y su configuración espacial,,.
+
+### Explicación Teórica
+
+El término **Kriging** fue acuñado por Georges Matheron en honor a Daniel Krige, un ingeniero de minas sudafricano que sentó las bases de la estimación de bloques de mineral. 
+
+Intuitivamente, el Kriging es un promedio ponderado de los valores observados en una muestra espacial,,. A diferencia de otros métodos de interpolación (como el IDW), los pesos ($\lambda_i$) del Kriging no dependen solo de la distancia, sino de la **interacción espacial** definida por el semivariograma que ya ajustamos,.
+
+Existen cuatro variantes principales según el supuesto sobre la media ($\mu$):
+1.  **Kriging Simple:** Se asume que la media es conocida y constante en toda el área,,,.
+
+2.  **Kriging Ordinario:** Es el más utilizado. La media es desconocida pero se asume constante localmente,,,.
+
+3.  **Kriging Universal:** Se aplica cuando los datos presentan una **tendencia determinística** (drift); es decir, la media cambia sistemáticamente con las coordenadas geográficas,,,.
+
+4.  **Cokriging:** Es la extensión multivariada. Permite predecir una variable difícil de medir utilizando información de otras variables (covariables) que están correlacionadas espacialmente con ella,,.
+
+### Fundamentación Matemática
+
+El predictor Kriging se define formalmente como:
+$$Y^*(s_0) = \sum_{i=1}^n \lambda_i Y(s_i)$$,,,
+
+Donde los pesos $\lambda_i$ se calculan para cumplir dos condiciones:
+1.  **Insesgamiento:** $E[Y^*(s_0) - Y(s_0)] = 0$,,,.
+2.  **Varianza Mínima:** El predictor minimiza la varianza del error de predicción $Var[Y^*(s_0) - Y(s_0)]$,,.
+
+**Ecuaciones de pesos para Kriging Simple (en notación matricial):**
+$$\lambda = \Sigma^{-1} \sigma_0$$,,,
+Donde $\Sigma$ es la matriz de covarianza entre los puntos observados y $\sigma_0$ es el vector de covarianza entre los puntos observados y el punto a predecir,.
+
+**Varianza del error de predicción (Kriging Simple):**
+$$\sigma^2_{sk}(s_0) = C(0) - \sigma_0' \Sigma^{-1} \sigma_0$$,,
+
+### Implementación en R
+
+Para la predicción espacial utilizaremos el paquete `gstat`, que es el estándar para Kriging univariado y multivariado,,.
+
+```{r}
+library(gstat)
+library(sf)
+# 1. Extraer los componentes de 'ca20' a un data.frame estructurado
+datos_df <- data.frame(
+  east  = ca20$coords[, 1],
+  north = ca20$coords[, 2],
+  calcio = ca20$data
+)
+
+# 1. Preparación de datos (Basado en el flujo de las fuentes)
+# Convertimos el dataframe a objeto sf (Simple Features)
+datos_sf <- st_as_sf(datos_df, coords = c("east", "north"), crs = 21897)
+
+# 2. Creación de la grilla de predicción (lugar s0)
+# Definimos el área donde queremos 'completar el mapa'
+grilla <- st_make_grid(datos_sf, n = c(50, 50), what = "centers")
+grilla_sf <- st_as_sf(grilla)
+
+# 3. Definición del modelo ajustado (Módulo 2.2)
+# Supongamos un modelo Exponencial con Silla=200000 y Rango=50
+modelo_vgm <- vgm(psill = 200000, model = "Exp", range = 50, nugget = 0)
+
+# 4. Ejecución del Kriging Ordinario
+# formula = z ~ 1 indica media constante desconocida
+krig_ord <- krige(calcio ~ 1, locations = datos_sf, 
+                  newdata = grilla_sf, model = modelo_vgm)
+
+# 5. Visualización de la predicción y el error
+plot(krig_ord["var1.pred"], main = "Mapa de Predicción Kriging")
+plot(krig_ord["var1.var"], main = "Varianza del Error (Incertidumbre)")
+```
+
+### Interpretación de Resultados
+
+*   **Mapa de Predicciones (`var1.pred`):** Muestra la superficie suavizada del fenómeno. Las fuentes destacan que el Kriging es un **interpolador exacto**: en las ubicaciones donde sí hubo una medición, la predicción será exactamente igual al valor observado,,.
+
+*   **Mapa de Varianzas (`var1.var`):** Es fundamental. Indica la calidad de la predicción. En los puntos de muestreo, la varianza es **cero**,. A medida que nos alejamos de los datos hacia zonas sin información, la varianza aumenta, advirtiéndonos que la predicción es menos confiable,,.
+
+### Errores Comunes
+
+1.  **Confundir Kriging con un suavizador (smoother):** Aunque el mapa resultante parece suave, el Kriging busca honrar los datos. Si existe un "Efecto Pepita" por error de medición, forzar la interpolación exacta puede ser contraproducente; en esos casos se debe usar Kriging con filtrado,.
+
+2.  **Ignorar la Tendencia en Kriging Ordinario:** Usar Kriging Ordinario (media constante) cuando los datos tienen una clara tendencia geográfica ("drift") resulta en una sobreestimación de la varianza y una pérdida de precisión en los bordes,.
+
+3.  **El "Efecto de Relevo" (Relay Effect):** Ignorar que puntos muy distantes (más allá del rango) pueden seguir teniendo pesos no nulos si están alineados con otros puntos más cercanos al objetivo. Este comportamiento geométrico es intrínseco al sistema de ecuaciones y no un error del software.
+
+### Vacío de Información
+Las fuentes detallan exhaustivamente la teoría del **Cokriging** y el **Modelo Lineal de Corregionalización (MLC)**, pero advierten que su cómputo es complejo y que, si bien está implementado en `gstat`, requiere que el usuario defina manualmente las matrices de corregionalización para garantizar que sean definidas positivas, un proceso que no siempre es automático,,,.
+
+### pause
+ 
+:::
+
+
+::: {#seccion-2-3-1 .content-card}
+
+### pause
+ 
+:::
+
+::: {#seccion-2-3-2 .content-card}
+
+### pause
+ 
+:::
+
+::: {#seccion-2-3-3 .content-card}
+
+
+### pause
+ 
+:::

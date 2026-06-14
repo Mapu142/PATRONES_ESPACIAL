@@ -1,0 +1,16 @@
+
+::: {#seccion-6-1 .content-card}
+### 6.1 Geoestadística Espacio-Temporal
+*   **Teoría:** Procesos $Z(s, t)$ y funciones de covarianza separables vs. no separables. Kriging espacio-temporal.
+
+### pause
+:::
+
+::: {#seccion-6-2 .content-card}
+### 6.2 Geoestadística Funcional
+*   **Teoría:** Datos funcionales como curvas en el espacio. Componentes Principales Funcionales (FPCA) aplicados a la geoestadística. Kriging funcional.
+*   **Práctica R:** Uso intensivo del paquete `SpatFD`.
+
+
+### pause
+:::

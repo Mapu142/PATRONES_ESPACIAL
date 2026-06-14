@@ -1,0 +1,16 @@
+
+::: {#seccion-4-1 .content-card}
+### 4.1 La Matriz de Pesos Espaciales (W)
+*   **Teoría:** Criterios de vecindad (Contigüidad: torre, reina; Distancia: k-NN). Estandarización por filas.
+*   **Práctica R:** Generación de matrices con `spdep` (`poly2nb`, `nb2listw`).
+
+### pause
+:::
+
+::: {#seccion-4-2 .content-card}
+### 4.2 Pruebas de Autocorrelación Global y Local
+*   **Teoría:** Índice de Moran y c de Geary. Indicadores Locales de Asociación Espacial (LISA) y estadística Getis-Ord.
+*   **Práctica R:** `moran.test`, `moran.plot` y `localmoran`.
+
+### pause
+:::

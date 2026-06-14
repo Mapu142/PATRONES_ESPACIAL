@@ -1,0 +1,745 @@
+
+
+::: index-box
+-   [1. La Naturaleza de los Datos Espaciales.](#seccion-1-1)
+-   [2. Estacionariedad e Isotropía.](#seccion-1-2)
+:::
+
+::: {#seccion-1-1 .content-card}
+
+### 1.1 La Naturaleza de los Datos Espaciales
+*   **Teoría:** Definición de procesos geoestadísticos, datos de área y patrones puntuales. Diferencia entre dependencia determinística (tendencia) y autocorrelación (dependencia estocástica). La Primera Ley de la Geografía de Tobler.
+*   **Práctica en R:** Manejo de objetos `sf` y visualización básica.
+
+
+
+### Explicación Teórica
+Un **proceso geoestadístico** (o campo aleatorio espacial) es un fenómeno que ocurre de manera continua en el espacio, lo que significa que el atributo de interés puede ser observado en cualquier punto de una región determinada. La base de nuestra disciplina descansa sobre la **Primera Ley de la Geografía de Tobler**: "todas las cosas están relacionadas entre sí, pero las cosas cercanas están más relacionadas que las cosas distantes".
+
+Existen tres grandes familias de datos espaciales según la naturaleza de su dominio ($D_s$):
+
+1.  **Geoestadística (Dominio Continuo):** El atributo varía continuamente (ej. temperatura, pH del suelo) y el interés suele ser la predicción en lugares no muestreados.
+
+2.  **Datos de Área o Lattice (Dominio Discreto):** Las observaciones están asociadas a regiones con fronteras definidas, como municipios o departamentos (ej. PIB, tasas de mortalidad).
+
+3.  **Patrones Puntuales:** Lo que es aleatorio no es el valor de una variable en un sitio, sino la ubicación misma donde ocurre un evento (ej. epicentros de sismos, casos de una epidemia).
+
+### Fundamentación Matemática
+Formalmente, denotamos un proceso espacial como una familia de variables aleatorias indexadas por su ubicación:
+$$\{Y(s) : s \in D_s \subset \mathbb{R}^d\}$$
+Donde $s$ representa el vector de coordenadas (usualmente Este y Norte en $\mathbb{R}^2$). 
+
+El **modelo geoestadístico básico** descompone la variable observada en dos componentes fundamentales:
+$$Y(s) = \mu(s) + Z(s)$$
+
+*   $\mu(s)$: Es la **media o tendencia (drift)**, que representa la parte determinística del proceso.
+
+*   $Z(s)$: Es el **proceso estocástico centrado**, que captura la autocorrelación espacial (la dependencia de la variable con ella misma en puntos cercanos).
+
+### Implementación en R
+Para el manejo moderno de estos datos, utilizaremos principalmente la librería `sf` (simple features) para datos vectoriales y `geoR` para el análisis geoestadístico inicial.
+
+```{r message=FALSE, warning=FALSE}
+# Carga de librerías fundamentales
+library(sf)     # Manejo de objetos espaciales modernos
+library(geoR)   # Geoestadística clásica
+library(spdep)  # Análisis de datos de área y vecinos
+
+# 1. Carga de datos (Simulado basado en fuentes de 'aquifer')
+# Supongamos un dataframe con columnas: Este, Norte, Profundidad
+datos_df <- data.frame(
+  este = c(42.78, -27.39, -1.16, -18.61, 96.46),
+  norte = c(127.62, 90.78, 84.89, 76.45, 64.58),
+  z = c(1464, 2553, 2158, 2455, 1756)
+)
+
+# 2. Conversión a objeto de clase 'geodata' (específico de geoR)
+# Esto indica al software que la tabla contiene información espacial
+datos_geo <- as.geodata(datos_df, coords.col = 1:2, data.col = 3)
+
+# 3. Visualización exploratoria fundamental
+# Genera una matriz de 4 gráficos: ubicación, histograma y tendencias en X e Y
+plot(datos_geo)
+
+# 4. Manejo como objeto 'sf' para datos de área o mapas
+puntos_sf <- st_as_sf(datos_df, coords = c("este", "norte"), crs = 21897)
+plot(st_geometry(puntos_sf), pch = 19, main = "Ubicación de Muestreo")
+```
+
+### Interpretación de Resultados
+Al ejecutar `plot(datos_geo)`, observará un panel de diagnóstico crucial:
+
+*   **Gráfico de Cuartiles:** Si los colores (rojo, amarillo, verde, azul) están agrupados en zonas geográficas, existe una **tendencia** clara. Si están mezclados aleatoriamente, la media podría considerarse constante.
+
+*   **Dispersogramas contra Coordenadas:** Si los puntos muestran una forma funcional (lineal o curva) respecto a X o Y, se confirma la presencia de una dependencia determinística que debe ser corregida antes de modelar la autocorrelación.
+
+### Errores Comunes
+1.  **Tratar puntos fijos como patrón puntual:** Un error frecuente es aplicar métodos de patrones puntuales (como la función K de Ripley) a datos donde las ubicaciones fueron fijadas por el investigador (ej. estaciones meteorológicas). En estos casos, la ubicación no es aleatoria y lo correcto es usar geoestadística.
+2.  **Confundir Tendencia con Autocorrelación:** Creer que la variable depende de sí misma cuando en realidad depende de una variable externa o de las coordenadas geográficas (ej. el pH aumenta hacia el Norte porque hay una mina allí). La tendencia es determinística; la autocorrelación es estocástica.
+3.  **Ignorar la Tercera Dimensión (Altitud):** Es común asumir $s \in \mathbb{R}^2$ por simplicidad. Sin embargo, en zonas con topografía abrupta, ignorar la altitud como variable auxiliar o coordenada puede invalidar el modelo de distancia.
+
+**Nota:** Recuerde que "medir el lugar no obliga a usar un modelo espacial". La dependencia debe verificarse mediante pruebas de autocorrelación que estudiaremos en el siguiente tema.
+
+### 1.1. Introducción al Análisis de Datos de Área
+
+<!-- Los **datos de área** se definen como observaciones asociadas a regiones espaciales discretas que forman una partición de una zona de interés ($D_s$). -->
+<!-- A diferencia de la geoestadística, donde los datos varían de forma continua, en los datos de área el dominio es **discreto y fijo**. -->
+
+<!-- -   **Objetivo principal:** El interés no suele ser la predicción en puntos no observados, sino el análisis de la **variabilidad espacial**, la detección de agrupamientos (**clusters**) y la estimación de modelos de regresión que incorporen la dependencia geográfica. -->
+
+<!-- -   **Representación:** Para facilitar cálculos de distancia, cada área (polígono) se representa mediante un **centroide** ($S = \{s_1, s_2, ..., s_k\}$), que es un punto de coordenadas representativo. -->
+
+<!-- -   **Variables típicas:** Tasas de mortalidad, producto interno bruto (PIB) por municipio o indicadores sociodemográficos. -->
+
+<!-- ### 1.2. Matriz de Pesos Espaciales ($W$ o $C$) -->
+
+<!-- La matriz de pesos espaciales es la herramienta matemática que cuantifica la **estructura de vecindad** o interdependencia entre las $N$ unidades geográficas. -->
+
+<!-- #### Teoría y Formulación -->
+
+<!-- Es una matriz cuadrada de dimensión $N \times N$ donde las entradas $w_{ij}$ representan la magnitud de la interacción entre la región $i$ y la región $j$. -->
+<!-- \* **Restricciones:** Por convención, las entradas son no negativas y finitas, y la diagonal principal es cero ($w_{ii} = 0$), lo que significa que una región no se considera vecina de sí misma. -->
+<!-- \* **Multidireccionalidad:** A diferencia de las series de tiempo (donde la dependencia es unidireccional hacia atrás), en el espacio la influencia es **multidireccional**; una zona puede afectar a sus vecinas en cualquier orientación. -->
+
+<!-- #### Criterios de Construcción -->
+
+<!-- 1.  **Contigüidad Física:** -->
+<!--     -   **Torre (Rook):** Áreas que comparten un lado común. -->
+<!--     -   **Reina (Queen):** Áreas que comparten un lado o un vértice (el más utilizado). -->
+<!--     -   **Alfil (Bishop):** Áreas que comparten solo vértices. -->
+<!-- 2.  **Basados en Distancia:** -->
+<!--     -   **Inversa de la distancia (**$1/d_{ij}^k$): Refleja la premisa de que la similitud decae con la separación física. -->
+<!--     -   $k$-vecinos más cercanos: Se seleccionan las $k$ áreas con centroides más próximos, garantizando que cada unidad tenga el mismo número de conexiones. -->
+<!-- 3.  **Estandarización por filas (**$W$): Consiste en dividir cada entrada por la suma de su fila ($\sum_j c_{ij}$). Esto convierte a la matriz en un **operador de rezago espacial**, permitiendo que el producto $WZ$ represente un **promedio móvil espacial** de los vecinos. -->
+
+<!-- ### 1.3. Medidas de Autocorrelación Espacial -->
+
+<!-- La autocorrelación espacial mide la relación de una variable consigo misma en función de su ubicación. -->
+<!-- Se fundamenta en la **Primera Ley de la Geografía**: "todo está relacionado con todo lo demás, pero las cosas cercanas están más relacionadas que las distantes". -->
+
+<!-- #### Coeficiente de Moran ($I$) -->
+
+<!-- Es el índice más utilizado y se basa en la **covariación**. -->
+
+<!-- * **Interpretación:** \* $I > E(I)$: Autocorrelación **positiva** (similaridad; valores altos rodean a altos). -->
+
+<!-- * $I < E(I)$: Autocorrelación **negativa** (disimilitud; patrón de tablero de ajedrez). -->
+
+<!-- * **Valor esperado:** Bajo la hipótesis de independencia, $E(I) = -1/(n-1)$, valor que tiende a cero conforme aumenta el tamaño de la muestra. -->
+
+<!-- * **Expresión Matricial:** Cuando $W$ está estandarizada por filas, se simplifica a: -->
+
+<!-- $$I = \frac{\mathbf{z}^T \mathbf{W} \mathbf{z}}{\mathbf{z}^T \mathbf{z}}$$ -->
+<!-- donde $\mathbf{z}$ es el vector de desviaciones respecto a la media. -->
+
+<!-- #### Índice de Geary ($C$) -->
+
+<!-- Se basa en las **diferencias al cuadrado** entre pares de vecinos, siendo análogo al variograma en geoestadística. -->
+
+<!-- * **Interpretación:** \* $C \approx 0$: Fuerte autocorrelación positiva. -->
+
+<!-- * $C = 1$: Independencia espacial (ausencia de patrón). -->
+
+<!-- * $C > 1$: Autocorrelación negativa. -->
+
+<!-- #### Indicadores Locales (LISA y Getis-Ord) -->
+
+<!-- -   **LISA:** Descompone el índice global para identificar dónde ocurren agrupamientos específicos (Hot Spots de altos-altos o Cold Spots de bajos-bajos). -->
+<!-- -   **Getis-Ord** $G_i$: Específicamente útil para distinguir entre concentraciones de valores altos y bajos. -->
+
+<!-- ### 1.4. Consideraciones e Inferencia -->
+
+<!-- La validación de estos índices requiere determinar si el valor obtenido es estadísticamente significativo. -->
+
+<!-- -   **Inferencia Asintótica:** Para muestras grandes, los índices estandarizados ($z$-scores) siguen una distribución normal $N(0,1)$. -->
+<!-- -   **Pruebas de Permutación y Montecarlo:** Cuando la muestra es pequeña o no se asume normalidad, se recurre a la **aleatorización**. Se reasignan los valores observados a las ubicaciones al azar miles de veces para construir una distribución empírica del estadístico. -->
+<!-- -   **Pseudo valor-p:** En la prueba de Montecarlo, el nivel de significancia se determina comparando el valor real con la distribución de las permutaciones aleatorias. -->
+<!-- -   **Impacto en la Regresión:** Ignorar la autocorrelación en modelos clásicos (MCO) produce estimadores **sesgados e inconsistentes**. Por ello, se deben emplear modelos espaciales como el **SAR** (Autorregresivo Espacial) o el **SMA** (Medias Móviles Espaciales). -->
+
+<!-- El cálculo del Índice de Moran, la distinción entre criterios de vecindad y el uso de funciones kernel son pilares fundamentales del análisis de datos de área. -->
+<!-- A continuación, se detalla cada uno según las fuentes: -->
+
+<!-- #### 1.4.1. Cálculo matricial del Índice de Moran -->
+
+<!-- El Índice de Moran ($I$) cuantifica la autocorrelación espacial global basándose en la covariación entre sitios vecinos. -->
+<!-- Su expresión matricial general es: -->
+
+<!-- $$I = \frac{n}{S_0} \cdot \frac{\mathbf{z}^T \mathbf{C} \mathbf{z}}{\mathbf{z}^T \mathbf{z}}$$ -->
+
+<!-- Donde:  -->
+<!-- * $n$: Es el número de unidades espaciales. -->
+
+<!-- * $\mathbf{z}$: Es el vector de datos **centrados** (cada observación menos la media: $z_i = y_i - \bar{y}$). -->
+
+<!-- * $\mathbf{C}$: Es la matriz de pesos espaciales. -->
+
+<!-- * $S_0$: Es la suma de todos los elementos de la matriz de pesos ($\sum_{i=1}^{n} \sum_{j=1}^{n} c_{ij}$), también expresada como $\mathbf{1}^T \mathbf{C} \mathbf{1}$. -->
+
+<!-- * $\mathbf{z}^T \mathbf{z}$: Representa la suma de cuadrados de las desviaciones. -->
+
+<!-- **Caso especial (Matriz estandarizada** $W$): Si la matriz de pesos está estandarizada por filas (donde cada fila suma 1), entonces $S_0 = n$. -->
+<!-- En este escenario, el factor de escala $\frac{n}{S_0}$ se convierte en **1**, simplificando la fórmula a: -->
+
+<!-- $$I = \frac{\mathbf{z}^T \mathbf{W} \mathbf{z}}{\mathbf{z}^T \mathbf{z}}$$ -->
+
+<!-- #### 1.4.2. Diferencia entre los criterios Rook y Queen -->
+
+<!-- Ambos criterios se basan en la **contigüidad física** entre polígonos, pero difieren en qué tipo de contacto consideran necesario para definir la vecindad: -->
+
+<!-- -   **Criterio Torre (Rook):** Dos áreas se consideran vecinas solo si comparten un **lado de longitud distinta de cero**. En una grilla regular, esto permite un máximo de **4 vecinos** por celda. -->
+<!-- -   **Criterio Reina (Queen):** Es una extensión del criterio Rook que incluye áreas que comparten **lados o solo un vértice** (puntos de contacto). En una grilla regular, esto permite hasta **8 vecinos** por celda. -->
+
+<!-- **Impacto:** El uso del criterio Reina suele incrementar el número de conexiones en aproximadamente un **10%** respecto al criterio Torre en mapas administrativos. -->
+
+<!-- #### 1.4.3. Funciones Kernel para ponderar matrices de pesos -->
+
+<!-- Cuando la matriz de pesos no se basa en contigüidad física sino en **distancia entre centroides**, se utilizan funciones kernel ($\kappa$) que dependen de la distancia ($d$) y de un ancho de banda ($b$). -->
+<!-- Las funciones más comunes citadas son: -->
+
+<!-- -   **Gaussiano:** $\kappa(\omega) = \frac{1}{\sqrt{2\pi}} \exp(-\omega^2/2)$, donde $\omega = d/b$. -->
+<!-- -   **Bicuadrático (Bi-square):** Asigna peso cero a puntos fuera del ancho de banda y reduce gradualmente el peso de los interiores conforme se alejan. -->
+<!-- -   **Tri-cúbico:** Similar al bicuadrático pero con una caída de peso distinta. -->
+<!-- -   **Rectangular:** Asigna peso uniforme (1) a todos los puntos dentro del ancho de banda y 0 a los de fuera. -->
+<!-- -   **Triangular (Bartlett):** El peso decae linealmente con la distancia hasta llegar a cero en el límite del ancho de banda. -->
+<!-- -   **Exponencial:** El peso decae de forma exponencial con la distancia. -->
+<!-- -   **Otras funciones:** Las fuentes también mencionan los kernels de **Haining**, **Hamming**, **Blackman y Tukey** como opciones para la ponderación espacial. -->
+
+### pause
+
+:::
+
+
+::: {#seccion-1-2 .content-card}
+
+
+### 1.2 Estacionariedad e Isotropía
+*   **Teoría:** Estacionariedad de segundo orden, estacionariedad intrínseca e isotropía frente a anisotropía.
+*   **Práctica en R:** Exploración gráfica de tendencias con `geoR`
+
+Una vez comprendida la naturaleza de los datos, debemos abordar los supuestos que permiten realizar inferencia estadística a partir de una única realización del fenómeno. En estadística espacial, no solemos tener "n" repeticiones del mismo mapa; tenemos un solo mapa y necesitamos que el proceso se "repita a sí mismo" en el espacio para poder estudiarlo.
+
+### Explicación Teórica
+
+**Estacionariedad:**
+Es un estado de "equilibrio espacial". Intuitivamente, significa que las propiedades estadísticas del proceso no cambian según la ubicación absoluta ($s$), sino únicamente según la separación entre puntos ($h$).
+
+*   **Estacionariedad de Segundo Orden (o Débil):** Requiere que la media sea constante en toda la región y que la covarianza entre dos puntos dependa solo del vector que los separa.
+
+*   **Estacionariedad Intrínseca:** Es una forma más flexible que no exige que la varianza sea finita. Se centra en la variable **incrementos** ($Z(s+h) - Z(s)$), exigiendo que su media sea cero y su varianza dependa solo de $h$.
+
+**Isotropía:**
+Un proceso es **isotrópico** si la dependencia espacial (autocovarianza o semivarianza) depende únicamente de la **magnitud** de la distancia ($\|h\|$) y no de la dirección o ángulo. Si el comportamiento cambia según la dirección (por ejemplo, la variable cambia más rápido de Norte a Sur que de Este a Oeste), el proceso es **anisotrópico**.
+
+### Fundamentación Matemática
+
+1.  **Media constante (Bajo estacionariedad de 2do orden):**
+    $$E[Y(s)] = \mu, \forall s \in D_s$$
+
+2.  **Función de Autocovarianza estacionaria:**
+    $$Cov[Y(s), Y(s+h)] = C(h)$$
+
+3.  **Semivariograma (Bajo estacionariedad intrínseca):**
+    $$\gamma(h) = \frac{1}{2} Var[Z(s+h) - Z(s)]$$
+
+4.  **Condición de Isotropía:**
+    $$C(h) = C(\|h\|) \quad \text{y} \quad \gamma(h) = \gamma(\|h\|)$$
+
+### Implementación en R
+
+Para verificar estos supuestos, utilizaremos el paquete `geoR` y herramientas visuales de diagnóstico.
+
+```{r}
+library(geoR)
+
+# 1. Preparación de datos (usando ejemplo 'aquifer' de las fuentes)
+# Supongamos que 'datos_df' ya existe con columnas: este, norte, z
+datos_geo <- as.geodata(datos_df, coords.col = 1:2, data.col = 3)
+
+# 2. Diagnóstico visual de Estacionariedad en Media
+# Si los colores en el gráfico de cuartiles están mezclados, hay indicios de estacionariedad.
+# Si hay grupos definidos de colores, hay una tendencia (no estacionariedad).
+summary(dist(datos_df[, 1:2]))
+plot(datos_geo) 
+
+# 3. Exploración de Isotropía mediante Semivariogramas Direccionales
+# Calculamos el semivariograma empírico en 4 direcciones: 0°, 45°, 90°, 135°
+# Se usa una tolerancia angular (usualmente pi/8) para capturar pares suficientes.
+# Aumentamos la tolerancia angular a 45 grados y bajamos los intervalos a 2
+variog_dir <- variog4(datos_geo, uvec = 2, tolerance = pi/4)
+
+# Graficar para comparar si las formas son similares (Isotropía) 
+# o si los alcances/rangos difieren (Anisotropía)
+plot(variog_dir)
+
+## Interpretación
+# El gráfico muestra una clara anisotropía (el comportamiento de la variabilidad espacial cambia según la dirección que se mire)
+# Las curvas no muestran intenciones de estabilizarse (no se observa una "meseta" o sill).
+```
+
+### Interpretación de Resultados
+
+*   **Gráfico de Geodata (`plot`):** Al observar las proyecciones de la variable contra las coordenadas X e Y, si los puntos forman una línea horizontal, la media es constante (estacionaria). Si muestran una parábola o una pendiente, existe una **deriva** o tendencia determinística que debe removerse antes de proceder.
+
+*   **Semivariogramas Direccionales:** Si las curvas de las 4 direcciones son notablemente diferentes (por ejemplo, una alcanza la "silla" a una distancia de 10 y otra a 50), estamos ante **anisotropía geométrica**. Si las curvas son similares, el proceso se considera aproximadamente **isotrópico**.
+
+### Errores Comunes
+
+1.  **Asumir estacionariedad sin verificar tendencias:** Muchos investigadores ignoran el análisis previo de la media. Si el semivariograma empírico crece indefinidamente sin estabilizarse, es probable que la "contaminación" por una tendencia no corregida esté ocultando la verdadera estructura de dependencia.
+
+2.  **Confundir la muestra con el proceso:** Un error recurrente es creer que un histograma gaussiano de la muestra garantiza estacionariedad. La estacionariedad se refiere a la **invariancia de la distribución conjunta** en el espacio, no solo a la distribución marginal de los datos observados.
+
+3.  **Ignorar la Anisotropía por simplicidad:** Es común usar modelos "omnidireccionales" (un solo promedio de todas las direcciones). Sin embargo, si existe anisotropía, los alcances de predicción serán incorrectos, tomando demasiada información en direcciones de baja correlación o cortando información útil en direcciones de alta correlación.
+
+
+**Nota:** La detección de la anisotropía es un proceso "a sentimiento" inicialmente, comparando los rangos en el diagrama de rosa. Si encuentra anisotropía, en el siguiente módulo aprenderemos a corregirla mediante la **rotación y re-escalamiento** de las coordenadas.
+
+### 2. Modelos autoregresivos para datos espaciales
+
+<!-- *(Espacio reservado para agregar contenido sobre modelos SAR, CAR, ESAR, especificaciones, estimación por máxima verosimilitud y pruebas de diagnóstico.)* -->
+
+<!-- Los modelos autorregresivos para datos espaciales son la extensión de la teoría de series de tiempo al plano geográfico, diseñados para capturar la interdependencia entre ubicaciones. A diferencia de la estadística clásica, donde se asume independencia, aquí se parte de la **Primera Ley de la Geografía de Tobler**: "todo está relacionado con todo lo demás, pero las cosas cercanas están más relacionadas que las distantes". -->
+
+<!-- A continuación, se detalla la teoría, formulación matricial, métodos de estimación e implementación práctica. -->
+
+<!-- ### 2.1. Fundamentos Teóricos: El Rezagado Espacial -->
+<!-- En series de tiempo, el operador de retardo $B$ mira hacia atrás unidireccionalmente. En el espacio, la influencia es **multidireccional**; una zona afecta a sus vecinas en todas las direcciones. Esta relación se captura mediante la **Matriz de Pesos Espaciales ($W$)**, que define la estructura de vecindad. -->
+
+<!-- El **rezago espacial ($WZ$)** es la suma ponderada (o promedio, si $W$ está estandarizada) de los valores de los vecinos. -->
+
+<!-- --- -->
+
+<!-- ### 2.2. Modelos Autorregresivos Principales -->
+
+<!-- #### A. Modelo Autorregresivo Simultáneo (SAR) -->
+<!-- También conocido como modelo de retardo espacial (Lag Model), asume que la variable respuesta $Y$ en un sitio depende de los valores de $Y$ en los sitios vecinos. -->
+
+<!-- *   **Ecuación:** $Y = \rho WY + X\beta + \epsilon$ -->
+
+<!-- *   **Interpretación:** $\rho$ es el parámetro de intensidad de la autocorrelación espacial. Un $\rho$ positivo alto genera clústeres suaves (Hot Spots); un $\rho$ negativo genera un patrón de "tablero de ajedrez". -->
+
+<!-- *   **Memoria:** Se considera un proceso de **memoria larga** o comportamiento global, ya que el impacto de una perturbación se transmite a través de toda la red de conexiones. -->
+
+<!-- #### B. Modelo Autorregresivo Condicional (CAR) -->
+<!-- Define la distribución de una ubicación condicionada a sus vecinos. -->
+
+<!-- *   **Lógica:** $E(Z_i | Z_{-i}) = \mu_i + \rho_c \sum w_{ij}(Z_j - \mu_j)$. -->
+
+<!-- *   **Uso:** Muy común en epidemiología y análisis bayesiano de mapas. -->
+
+<!-- #### C. Modelo de Medias Móviles Espaciales (SMA) -->
+<!-- La autocorrelación ocurre solo en el término del error. -->
+
+<!-- *   **Ecuación:** $Y = X\beta + (I + \theta W)\epsilon$ -->
+
+<!-- *   **Memoria:** Es un proceso de **memoria corta**, donde la influencia se limita estrictamente a los vecinos inmediatos. -->
+
+<!-- --- -->
+
+<!-- ### 2.3. Demostración: ¿Por qué no usar Mínimos Cuadrados Ordinarios (MCO)? -->
+<!-- En un modelo SAR, el estimador MCO de $\rho$ es **sesgado e inconsistente**. -->
+<!-- **Demostración:** -->
+<!-- Si $Y = \rho WY + \epsilon$, el valor esperado de $\hat{\rho}_{MCO}$ es: -->
+<!-- $E(\hat{\rho}) = \rho + (Z^T W^T W Z)^{-1} Z^T W^T \epsilon$. -->
+<!-- Dado que el término rezagado $WY$ está correlacionado con el error $\epsilon$ (pues $Y$ depende de $\epsilon$ en todas las ubicaciones simultáneamente), el segundo término de la ecuación no desaparece, invalidando la consistencia de MCO. Por ello, se prefiere la **Máxima Verosimilitud (ML)**. -->
+
+<!-- --- -->
+
+<!-- ### 2.4. Demostración: El Operador de Filtrado Espacial -->
+<!-- El modelo SAR puede reescribirse como $Y = (I - \rho W)^{-1}(X\beta + \epsilon)$. -->
+<!-- La matriz $(I - \rho W)^{-1}$ se puede expandir como una serie infinita: -->
+<!-- $$(I - \rho W)^{-1} = I + \rho W + \rho^2 W^2 + \rho^3 W^3 + \dots$$. -->
+<!-- Esta expansión demuestra cómo el modelo autorregresivo permite que la influencia de una zona se propague no solo a sus vecinos directos ($W$), sino a los vecinos de los vecinos ($W^2$), y así sucesivamente, capturando la dependencia global. -->
+
+<!-- --- -->
+
+<!-- ### 2.5. Ejemplo Manual: Proceso de Simulación SAR -->
+<!-- Para ilustrar cómo se generan datos autorregresivos: -->
+<!-- 1.  **Ruido Blanco ($U$):** Genere valores aleatorios independientes (ej. $0.5, -1.2, 0.8, \dots$). -->
+<!-- 2.  **Parámetro $\rho$:** Defina la fuerza (ej. $\rho = 0.8$). -->
+<!-- 3.  **Matriz $W$:** Identifique vecinos (ej. Zona 1 es vecina de 2 y 3). -->
+<!-- 4.  **Cálculo:** La variable final $Z$ se obtiene multiplicando el ruido por el filtro inverso: $Z = (I - 0.8W)^{-1} U$. -->
+<!-- **Resultado:** Si el ruido original era caótico, el vector $Z$ final mostrará que zonas vecinas tienen ahora valores similares. -->
+
+<!-- --- -->
+
+<!-- ### 2.6. Implementación en R -->
+<!-- La base de la estadística espacial es el manejo de la topología (quién es vecino de quién) y la estimación por Máxima Verosimilitud (ML). -->
+
+<!-- ```{r librerias1, message=FALSE, warning=FALSE} -->
+<!-- # ====================== -->
+<!-- # 1. Cargar librerías -->
+<!-- # ====================== -->
+<!-- library(sf)          # Para objetos con geometría (Simple Features) -->
+<!-- library(spdep)       # Pesos espaciales y test de Moran -->
+<!-- library(spatialreg)  # Estimación de modelos SAR/SEM por ML -->
+<!-- library(ggplot2)     # Visualización avanzada -->
+<!-- library(dplyr)       # Manipulación de datos (piping) -->
+
+<!-- set.seed(1003)        # Reproducibilidad para el ruido blanco (U) -->
+<!-- ``` -->
+
+<!-- #### Creación del Dominio (Datos de Área) -->
+<!-- Los datos de área son particiones discretas del espacio donde cada observación representa un polígono completo. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 2. Crear datos espaciales (Cuadrícula 10x10) - SOLUCIÓN AL ERROR -->
+<!-- # ====================== -->
+<!-- n <- 10 -->
+<!-- # Creamos un bounding box manualmente para definir el área de 10x10 unidades -->
+<!-- bbox <- st_bbox(c(xmin = 0, xmax = n, ymin = 0, ymax = n)) -->
+
+<!-- # Ahora usamos el bbox como el argumento 'x' que faltaba -->
+<!-- grid <- st_make_grid(bbox, cellsize = 1, n = c(n, n)) |>  -->
+<!--   st_sf() |>  -->
+<!--   mutate(id = 1:(n^2)) -->
+
+<!-- # Interpretación: Hemos creado una partición discreta del espacio (lattice) [pdf 3 (422)]. -->
+<!-- # Cada polígono representa una unidad de área con su propio identificador único. -->
+<!-- ``` -->
+
+<!-- #### Matriz de Pesos Espaciales ($W$) -->
+<!-- La matriz $W$ es el "corazón" del modelo; define cómo interactúan las unidades geográficas. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 3. Matriz de pesos W (Estandarizada por fila) -->
+<!-- # ====================== -->
+<!-- vecinos <- poly2nb(grid, queen = TRUE)           # Criterio Reina: Lados o vértices compartidos -->
+<!-- W_list <- nb2listw(vecinos, style = "W", zero.policy = TRUE) -->
+
+<!-- # Teoría: La estandarización por filas ("W") permite que WZ sea un  -->
+<!-- # "promedio móvil espacial", donde cada fila suma 1. -->
+<!-- ``` -->
+
+<!-- #### Simulación del Proceso Autorregresivo Espacial (SAR) -->
+<!-- El modelo **SAR (Simultaneous Autoregressive)** asume que $Y$ depende de los valores de $Y$ en los vecinos. La ecuación es $Y = \rho WY + X\beta + \epsilon$, lo que implica $Y = (I - \rho W)^{-1}(X\beta + \epsilon)$. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 4. Simular proceso SAR: Y = (I - ρW)^-1 * (Xβ + ε) -->
+<!-- # ====================== -->
+<!-- rho <- 0.75          # Intensidad de la autocorrelación -->
+<!-- beta <- c(10, 2.5)   # Intercepto y efecto de X -->
+
+<!-- grid$X <- rnorm(nrow(grid), mean = 50, sd = 15)  # Covariable -->
+<!-- u <- rnorm(nrow(grid), 0, 1)                     # Ruido blanco (IID) -->
+
+<!-- # Operador de filtrado espacial (I - ρW)^-1 -->
+<!-- # Este operador propaga el impacto a través de toda la red (memoria larga). -->
+<!-- I_mat <- diag(nrow(grid)) -->
+<!-- W_mat <- listw2mat(W_list) -->
+<!-- A_inv <- solve(I_mat - rho * W_mat) -->
+
+<!-- # Generar variable dependiente con estructura espacial -->
+<!-- grid$Y <- as.vector(A_inv %*% (beta + beta * grid$X + u)) -->
+<!-- ``` -->
+
+<!-- #### Visualización y Diagnóstico de Autocovarianza -->
+<!-- Antes de modelar, debemos verificar si se cumple la **Primera Ley de Tobler**: cosas cercanas son más parecidas. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 5. Visualización y Test de Moran -->
+<!-- # ====================== -->
+<!-- ggplot(grid) + geom_sf(aes(fill = Y)) + scale_fill_viridis_c() + theme_minimal() -->
+
+<!-- # Test de Moran Global: H0 = Independencia espacial -->
+<!-- moran.test(grid$Y, W_list, alternative = "greater") -->
+<!-- ``` -->
+
+<!-- *   **Interpretación:** Si el Índice de Moran es significativamente mayor que su valor esperado $-1/(n-1)$, existe **Autocorrelación Espacial Positiva (PSA)**. -->
+
+<!-- #### Por qué Mínimos Cuadrados Ordinarios (MCO) falla -->
+<!-- En modelos espaciales, el estimador MCO es **sesgado e inconsistente** porque el término rezagado $WY$ está correlacionado con el error $\epsilon$. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 6. MCO (Incorrecto) -->
+<!-- # ====================== -->
+<!-- mod_mco <- lm(Y ~ X, data = grid) -->
+
+<!-- # Test de Multiplicador de Lagrange (LM) para decidir el modelo -->
+<!-- lm.LMtests(mod_mco, W_list, test = c("LMlag", "LMerr")) -->
+<!-- ``` -->
+
+<!-- *   **Interpretación:** Si `LMlag` es significativo, se prefiere un modelo de **rezago espacial (SAR)**; si `LMerr` es significativo, un modelo de **error espacial (SEM)**. -->
+
+<!-- #### Estimación por Máxima Verosimilitud (SAR-Lag) -->
+<!-- Dado que MCO falla, utilizamos la **Log-Verosimilitud**, que incluye el determinante de la matriz de pesos para corregir el sesgo. -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 7. Modelo SAR-Lag (Estimación Correcta) -->
+<!-- # ====================== -->
+<!-- mod_sar <- lagsarlm(Y ~ X, data = grid, listw = W_list) -->
+<!-- summary(mod_sar) -->
+<!-- ``` -->
+
+<!-- *   **Salida clave:** -->
+<!--     *   **Rho ($\rho$):** Indica que el $75\%$ (en este caso simulado) de las perturbaciones se transmiten a los vecinos. -->
+<!--     *   **AIC:** El criterio de Akaike debe ser menor que el del modelo MCO para justificar la complejidad espacial. -->
+
+<!-- #### Impactos: Efectos Directos e Indirectos -->
+<!-- En modelos espaciales, un cambio en $X$ en la zona $i$ afecta a $Y$ en la zona $i$ (Efecto Directo) y a $Y$ en todas las zonas vecinas (Efecto Indirecto o *Spillover*). -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # 8. Post-estimación: Impactos y Residuos -->
+<!-- # ====================== -->
+<!-- # Los impactos resumen la retroalimentación espacial -->
+<!-- summary(impacts(mod_sar, listw = W_list, R = 500), zstats = TRUE) -->
+
+<!-- # Verificación de residuos: El modelo debe haber "filtrado" la autocorrelación -->
+<!-- moran.mc(residuals(mod_sar), W_list, nsim = 999) -->
+<!-- ``` -->
+
+<!-- *   **Interpretación final:** Si el test de Moran en los residuos ya no es significativo ($p > 0.05$), el modelo SAR ha capturado con éxito la estructura de dependencia y los residuales son ahora ruido blanco (IID). -->
+
+<!-- #### Resumen Teórico de Comparación -->
+<!-- | Modelo | Memoria Espacial | Interpretación | -->
+<!-- | :--- | :--- | :--- | -->
+<!-- | **MCO** | Nula | Ignora la geografía; estimadores sesgados. | -->
+<!-- | **SMA** | Corta | La dependencia es local, solo entre vecinos inmediatos. | -->
+<!-- | **SAR** | Larga | El impacto de una zona se propaga globalmente por la matriz $W$. | -->
+
+<!-- --- -->
+
+<!-- ### 2.7. Consideraciones y Alternativas: MESF -->
+<!-- Una alternativa moderna a los modelos autorregresivos clásicos es el **Filtrado Espacial de Eigenvectores de Moran (MESF)**. -->
+
+<!-- *   **Problema de SAR/CAR:** Requieren cálculos intensivos para invertir matrices gigantescas (especialmente en "Big Data"). -->
+
+<!-- *   **Solución MESF:** En lugar de modificar el error o la variable dependiente, se extraen los **vectores propios (eigenvectors)** de la matriz $W$ y se incluyen como covariables adicionales en una regresión normal. -->
+
+<!-- *   **Ventaja:** Estos vectores actúan como "filtros" que absorben la autocorrelación, permitiendo que los residuales finales sean independientes (IID). El p-valor del índice de Moran de los residuales debe aproximarse a una zona de tolerancia cercana a cero para validar el éxito del filtro. -->
+
+<!-- El cálculo del Índice de Moran y el uso de funciones kernel para la ponderación espacial son herramientas avanzadas para modelar la interdependencia geográfica. A continuación, se detalla su formulación matricial, las funciones utilizadas, un ejemplo manual y su implementación en código. -->
+
+<!-- ### 2.8. Cálculo Matricial del Índice de Moran ($I$) -->
+
+<!-- El Índice de Moran mide la autocorrelación espacial global basándose en la covariación entre sitios vecinos. Su expresión matricial general es: -->
+
+<!-- $$I = \frac{n}{S_0} \cdot \frac{\mathbf{z}^T \mathbf{C} \mathbf{z}}{\mathbf{z}^T \mathbf{z}}$$ -->
+
+<!-- Donde: -->
+
+<!-- *   **$n$:** Número de unidades espaciales. -->
+
+<!-- *   **$\mathbf{z}$:** Vector de datos **centrados** ($z_i = y_i - \bar{y}$). -->
+
+<!-- *   **$\mathbf{C}$:** Matriz de pesos espaciales (binaria o general). -->
+
+<!-- *   **$S_0$:** Suma de todos los elementos de la matriz ($\mathbf{1}^T \mathbf{C} \mathbf{1}$). -->
+
+<!-- *   **$\mathbf{z}^T \mathbf{z}$:** Suma de cuadrados de las desviaciones. -->
+
+<!-- **Nota:** Si la matriz está **estandarizada por filas ($W$)**, la suma de cada fila es 1, por lo que $S_0 = n$. En este caso, el factor $\frac{n}{S_0}$ desaparece y la fórmula se simplifica a $I = \frac{\mathbf{z}^T \mathbf{W} \mathbf{z}}{\mathbf{z}^T \mathbf{z}}$. -->
+
+<!-- --- -->
+
+<!-- ### 2.9 Funciones Kernel para Ponderar Matrices -->
+
+<!-- Cuando la vecindad no es binaria (0 o 1), se usan funciones **kernel ($\kappa$)** que asignan pesos decrecientes según la distancia ($d$) y un ancho de banda ($b$). Las más comunes son: -->
+
+<!-- | Función Kernel | Fórmula (para $\omega = d/b \leq 1$) | Características | -->
+<!-- | :--- | :--- | :--- | -->
+<!-- | **Gaussiano** | $\kappa(\omega) = \frac{1}{\sqrt{2\pi}} \exp(-\frac{1}{2}\omega^2)$ | Peso decreciente suave, nunca llega a cero absoluto. | -->
+<!-- | **Bicuadrático** | $\kappa(\omega) = (1 - \omega^2)^2$ | Muy usado en regresión ponderada (GWR); corta en el límite $b$. | -->
+<!-- | **Rectangular** | $\kappa(\omega) = 1$ | Asigna peso uniforme a todos los vecinos dentro del radio $b$. | -->
+<!-- | **Triangular** | $\kappa(\omega) = 1 - |\omega|$ | Decaimiento lineal de la influencia con la distancia. | -->
+<!-- | **Haining** | $\kappa(\omega) = \frac{1}{2}(1 + \cos(\pi\omega))$ | Basado en funciones trigonométricas para suavizado. | -->
+
+<!-- --- -->
+
+<!-- ### 2.10. Ejemplo Manual Fácil -->
+
+<!-- Utilizaremos la configuración espacial de 5 áreas con los valores: **10, 11, 8, 5, 7**. -->
+
+<!-- **Datos base:** -->
+
+<!-- *   Valores ($Y$): $\{10, 11, 8, 5, 7\}$. Media ($\bar{y}$) = **8.2**. -->
+
+<!-- *   Vector centrado ($\mathbf{z}$): $\{1.8, 2.8, -0.2, -3.2, -1.2\}$. -->
+
+<!-- *   Suma de cuadrados ($\mathbf{z}^T \mathbf{z}$): $1.8^2 + 2.8^2 + \dots = \mathbf{22.8}$. -->
+
+<!-- **Matriz de Pesos (Binaria $C$ - Criterio Reina):** -->
+<!-- Suponiendo que el 10 es vecino del 11 y el 8; el 11 es vecino de todos; etc. (Suma total $S_0 = 16$). -->
+
+<!-- **Cálculo del numerador ($\mathbf{z}^T \mathbf{C} \mathbf{z}$):** -->
+<!-- Consiste en sumar los productos de las desviaciones de los vecinos. Tras el cálculo detallado en sesiones previas, la suma es **-6.96**. -->
+
+<!-- **Resultado Final:** -->
+<!-- $$I = \frac{5}{16} \cdot \frac{-6.96}{22.8} = 0.3125 \cdot (-0.3052) \approx \mathbf{-0.0954}$$ -->
+
+<!-- --- -->
+
+<!-- ### 2.11. Implementación en Código R -->
+
+<!-- ```{r} -->
+<!-- # 1. Carga de librerías -->
+<!-- library(spdep) -->
+
+<!-- # 2. Creación de datos y matriz manual -->
+<!-- y <- c(10, 11, 8, 5, 7) -->
+<!-- n <- length(y) -->
+<!-- z <- y - mean(y) # Centrar datos -->
+
+<!-- # Matriz binaria C (ejemplo manual 5x5) -->
+<!-- C <- matrix(c(0,1,1,0,0, -->
+<!--               1,0,1,1,1, -->
+<!--               1,1,0,1,1, -->
+<!--               0,1,1,0,1, -->
+<!--               0,1,1,1,0), nrow=5, byrow=TRUE) -->
+
+<!-- # 3. Cálculo matricial del Índice de Moran -->
+<!-- S0 <- sum(C) -->
+<!-- I_matriz <- (n / S0) * (t(z) %*% C %*% z) / sum(z^2) -->
+<!-- cat("Moran I calculado matricialmente:", I_matriz, "\n") -->
+
+<!-- # 4. Ejemplo de ponderación por Kernel (Gaussiano) -->
+<!-- distancia <- 10  # distancia entre dos puntos -->
+<!-- ancho_banda <- 50 -->
+<!-- omega <- distancia / ancho_banda -->
+<!-- peso_kernel <- exp(-0.5 * (omega^2)) # Kernel Gaussiano simplificado -->
+<!-- cat("Peso asignado por Kernel Gaussiano:", peso_kernel, "\n") -->
+<!-- ``` -->
+
+<!-- --- -->
+
+<!-- ### 2.12. Interpretación de Resultados -->
+
+<!-- *   **Signo del Índice:** -->
+<!--     *   **$I > -1/(n-1)$:** Autocorrelación **Positiva**. Los valores similares se agrupan (Hot spots/Cold spots). En nuestro ejemplo, $-0.095 > -0.25$, indicando una leve tendencia a la agrupación. -->
+<!--     *   **$I < -1/(n-1)$:** Autocorrelación **Negativa**. Patrón disímil (efecto tablero de ajedrez). -->
+
+<!-- *   **Magnitud:** A diferencia del coeficiente de Pearson, el Índice de Moran no está limitado estrictamente a $[-1, 1]$. Sus límites dependen de los autovalores de la matriz de pesos, pudiendo exceder 1.0 (ej. 1.15) o ser mayores a -1.0 (ej. -0.5). -->
+
+<!-- *   **Significancia:** Un valor de $I$ por sí solo no basta; se debe calcular su puntuación $z$ o realizar una **prueba de Montecarlo** (permutaciones aleatorias) para obtener un p-valor y rechazar la hipótesis de independencia espacial. -->
+
+
+<!-- ### 2.13. Preguntas -->
+<!-- #### 2.13.1 ¿Cómo se elige la mejor matriz de pesos espaciales ($W$)? -->
+
+<!-- En la práctica, no existe un algoritmo único para definir los pesos espaciales, y la elección suele dejarse al criterio del investigador basado en el fenómeno estudiado. Sin embargo, el método estadístico estándar para comparar matrices competidoras es la **minimización del Criterio de Información de Akaike (AIC)**. -->
+
+<!-- **El proceso lógico es:** -->
+<!-- 1.  Proponer diferentes estructuras de vecindad (Contigüidad Reina, Torre, $k$-vecinos más cercanos, etc.). -->
+<!-- 2.  Estimar el modelo de regresión espacial para cada una de las matrices. -->
+<!-- 3.  Seleccionar la matriz que resulte en el modelo con el **menor AIC**, ya que este indica un mejor ajuste con la mayor parsimonia posible. -->
+
+<!-- **Ejemplo en R con un bucle de selección** -->
+<!-- Utilizando la cuadrícula de $10 \times 10$ de tu ejemplo, compararemos tres criterios de vecindad: -->
+
+<!-- ```{r} -->
+<!-- # ====================== -->
+<!-- # Bucle para elegir el mejor W (basado en AIC) -->
+<!-- # ====================== -->
+
+<!-- # 1. Definir diferentes tipos de vecinos -->
+<!-- vecinos_list <- list( -->
+<!--   reina = poly2nb(grid, queen = TRUE), -->
+<!--   torre = poly2nb(grid, queen = FALSE), -->
+<!--   k4    = knn2nb(knearneigh(st_centroid(grid), k = 4)) -->
+<!-- ) -->
+
+<!-- # 2. Inicializar variables para el bucle -->
+<!-- mejor_aic <- Inf -->
+<!-- mejor_tipo <- "" -->
+<!-- mejor_W    <- NULL -->
+
+<!-- # 3. Bucle de iteración -->
+<!-- for(tipo in names(vecinos_list)) { -->
+<!--   # Crear matriz W para este tipo -->
+<!--   W_temp <- nb2listw(vecinos_list[[tipo]], style = "W", zero.policy = TRUE) -->
+
+<!--   # Estimar modelo SAR-Lag -->
+<!--   modelo_temp <- lagsarlm(Y ~ X, data = grid, listw = W_temp) -->
+
+<!--   # Obtener AIC -->
+<!--   aic_actual <- AIC(modelo_temp) -->
+<!--   cat("Tipo:", tipo, "| AIC:", aic_actual, "\n") -->
+
+<!--   # Guardar si es el mejor encontrado -->
+<!--   if(aic_actual < mejor_aic) { -->
+<!--     mejor_aic  <- aic_actual -->
+<!--     mejor_tipo <- tipo -->
+<!--     mejor_W    <- W_temp -->
+<!--   } -->
+<!-- } -->
+
+<!-- cat("\n--- La mejor matriz es:", mejor_tipo, "con un AIC de:", mejor_aic, "---\n") -->
+<!-- ``` -->
+
+<!-- #### 2.13.2. Diferencia entre modelos SAR, SEM y SMA -->
+
+<!-- La principal diferencia radica en **dónde** se asume que ocurre la dependencia espacial y el tipo de **memoria** del proceso. -->
+
+<!-- *   **Modelo SAR (Simultaneous Autoregressive / Spatial Lag):** -->
+<!--     *   **Ecuación:** $Y = \rho WY + X\beta + \epsilon$. -->
+<!--     *   **Teoría:** El valor de la variable respuesta $Y$ en una zona depende directamente de los valores de $Y$ en las zonas vecinas. -->
+<!--     *   **Memoria:** Se considera de **memoria espacial larga o global**. Debido al operador inverso $(I - \rho W)^{-1}$, una perturbación en un punto se propaga a través de toda la red de la matriz $W$, afectando incluso a vecinos no directos. -->
+
+<!-- *   **Modelo SEM (Spatial Error Model):** -->
+<!--     *   **Ecuación:** $Y = X\beta + u$, donde $u = \lambda Wu + \epsilon$. -->
+<!--     *   **Teoría:** La dependencia espacial no está en la variable misma, sino en los factores no observados (el error). -->
+<!--     *   **Uso:** Se utiliza cuando existen variables omitidas que tienen una estructura geográfica. -->
+
+<!-- *   **Modelo SMA (Spatial Moving Average):** -->
+<!--     *   **Ecuación:** $Y = X\beta + (I + \theta W)\epsilon$. -->
+<!--     *   **Teoría:** La autocorrelación espacial está presente solo en el error, pero de forma ponderada respecto a los errores de los vecinos directos. -->
+<!--     *   **Memoria:** Es de **memoria espacial corta o local**. La influencia se limita estrictamente a los vecinos inmediatos definidos en $W$; más allá de esa frontera, la influencia desaparece inmediatamente. -->
+
+<!-- #### 2.13.3. Efectos Directos e Indirectos en un SAR -->
+
+<!-- En un modelo de regresión clásico (MCO), el coeficiente $\beta$ indica cuánto cambia $Y$ si $X$ cambia en una unidad. En un modelo espacial (SAR), esto cambia radicalmente debido a la retroalimentación geográfica. -->
+
+<!-- *   **Efecto Directo:** Es el impacto de un cambio en la variable independiente $X$ de la zona $i$ sobre la variable respuesta $Y$ de esa **misma zona $i$**. Incluye el efecto del coeficiente $\beta$ más los bucles de retroalimentación (la zona $i$ afecta a sus vecinos, y estos vuelven a afectar a la zona $i$) [Manual, lógica del modelo SAR]. -->
+
+<!-- *   **Efecto Indirecto (Spillover):** Es el impacto del cambio en $X$ en la zona $i$ sobre el valor de $Y$ en **todas las demás zonas $j$** [Manual]. Indica qué tanto "salpica" el cambio de una región hacia sus vecinas. -->
+
+<!-- *   **Efecto Total:** Es la suma del efecto directo y el indirecto. -->
+
+<!-- En tu código, la función `impacts()` calcula estos valores para evitar interpretaciones erróneas basadas únicamente en los coeficientes $\beta$ crudos, los cuales no capturan la multidireccionalidad del espacio. -->
+
+<!-- El análisis de modelos de regresión espacial requiere herramientas específicas para la selección de modelos, la interpretación de la propagación del impacto y la comprensión de la naturaleza de la dependencia. A continuación, se detallan las respuestas a tus interrogantes basadas en las fuentes proporcionadas: -->
+
+<!-- #### 2.13.4. Cálculo del AIC para comparar modelos -->
+<!-- El **Criterio de Información de Akaike (AIC)** es una medida utilizada para la selección de modelos que se basa en la función de verosimilitud ajustada. Su objetivo es identificar el modelo que mejor explica los datos con la mayor parsimonia posible, penalizando la inclusión de parámetros innecesarios. -->
+
+<!-- *   **Fórmula general:** Se calcula como: -->
+<!--     $$AIC = -2 \ln L + 2k$$ -->
+<!--     donde $L$ es la verosimilitud máxima del modelo y $k$ es el número de parámetros estimados.  -->
+<!-- *   **Interpretación:** Entre varios modelos competidores, se prefiere aquel que presente el **menor valor de AIC**. -->
+<!-- *   **Variaciones:** -->
+<!--     *   **BIC (Criterio de Información Bayesiano):** Aplica una penalización más fuerte basada en el tamaño de la muestra ($n$): $BIC = -2 \ln L + (\ln n)k$. -->
+<!--     *   **AICc (AIC corregido):** Se utiliza frecuentemente en la selección del ancho de banda para regresiones locales o cuando el tamaño de la muestra es pequeño para evitar el sobreajuste. -->
+<!--     *   **CLIC:** Es una adaptación del AIC para métodos de **pseudoverosimilitud** (verosimilitud compuesta), útil en datos de área masivos donde la verosimilitud completa es computacionalmente costosa. -->
+
+<!-- #### 2.13.5. Memoria espacial larga vs. corta -->
+<!-- Esta distinción radica en cómo se propaga la influencia de una observación a través del paisaje geográfico y define la diferencia fundamental entre los modelos autorregresivos y los de medias móviles. -->
+
+<!-- *   **Memoria Espacial Larga (Global):** -->
+<!--     *   **Modelos asociados:** Procesos autorregresivos como el **SAR** (Simultaneous Autoregressive). -->
+<!--     *   **Teoría:** Se considera "larga" porque el impacto de una perturbación en una ubicación $i$ se transmite a través de toda la red de conexiones definidas en la matriz de pesos $W$.  -->
+<!--     *   **Fundamento matemático:** Al despejar la variable dependiente, el modelo utiliza el operador inverso $(I - \rho W)^{-1}$. Este término puede expandirse como una serie infinita: $I + \rho W + \rho^2 W^2 + \rho^3 W^3 + \dots$, lo que demuestra que la influencia llega no solo a los vecinos directos ($W$), sino también a los vecinos de los vecinos ($W^2$) y así sucesivamente, afectando potencialmente a todo el sistema. -->
+
+<!-- *   **Memoria Espacial Corta (Local):** -->
+<!--     *   **Modelos asociados:** Procesos de medias móviles espaciales (**SMA**). -->
+<!--     *   **Teoría:** Solo tiene en cuenta el comportamiento local. La dependencia espacial está restringida estrictamente a las unidades vecinas inmediatas definidas en la matriz de pesos. -->
+<!--     *   **Fundamento matemático:** En estos modelos, la estructura de covarianza depende de términos como $(I + \theta W)$, donde la influencia se detiene abruptamente más allá de la frontera de vecindad directa definida en $W$. -->
+
+<!-- #### 2.13.6. Efectos directos e indirectos en un modelo SAR -->
+<!-- En los modelos de regresión clásica (MCO), el coeficiente $\beta$ representa el impacto total de una variable. Sin embargo, en un modelo espacial de rezago (SAR), la presencia del término $\rho WY$ genera procesos de retroalimentación que obligan a descomponer el impacto. -->
+
+<!-- *   **Efecto Directo:** Representa el impacto de un cambio en la variable explicativa $X$ de la zona $i$ sobre la variable respuesta $Y$ de esa **misma zona $i$**. A diferencia de MCO, este efecto incluye no solo el coeficiente $\beta$, sino también los **bucles de retroalimentación espacial**: el cambio en $i$ afecta a sus vecinos, y estos, a su vez, vuelven a influir en $i$ [Lógica del modelo SAR]. -->
+
+<!-- *   **Efecto Indirecto (Efecto Spillover o "Derrame"):** Representa el impacto de un cambio en la variable explicativa $X$ de la zona $i$ sobre el valor de la variable respuesta $Y$ en **todas las demás zonas $j$**. Este efecto cuantifica cuánto "salpica" o se propaga el cambio de una región hacia su vecindario geográfico [Manual de regresión espacial]. -->
+
+<!-- *   **Efecto Total:** Es la suma de los impactos directos e indirectos. En la práctica, se utiliza la función `impacts()` en R para calcular estos valores, ya que proporcionan una interpretación mucho más rica y precisa del fenómeno que los coeficientes $\beta$ crudos del resumen del modelo [R code context]. -->
+
+### pausa
+
+:::
+

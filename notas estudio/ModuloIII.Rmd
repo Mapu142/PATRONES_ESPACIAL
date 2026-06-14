@@ -1,0 +1,3075 @@
+
+::: {#seccion-3-1 .content-card}
+*Antes de procesar coordenadas, debemos entender qué tipo de proceso estocástico estamos observando.*
+
+*   **1.1 Definición de PPE:** Conjunto de ubicaciones georreferenciadas (eventos) cuya posición no es fija ni predeterminada por el investigador.
+*   **1.2 Conceptos Clave:**
+    *   **Evento vs. Punto:** El "evento" es la ubicación donde ocurrió el fenómeno (sismo, robo, árbol); el "punto" es cualquier lugar en la ventana de estudio.
+    *   **Patrón vs. Proceso:** El patrón es el dato observado; el proceso es el mecanismo estocástico que lo generó.
+*   **1.3 Ventana de Observación ($D_S$):** Definición del dominio espacial, que puede ser continuo o discreto.
+*   **💻 Implementación en R:** Uso del paquete `spatstat` y creación de objetos `ppp` (point pattern) y `owin` (observation window).
+
+
+
+ En la estadística clásica, tú controlas dónde mides (diseño de experimentos); en los **Patrones Puntuales Espaciales (PPE)**, la naturaleza decide dónde ocurre el fenómeno, y esa ubicación es, en sí misma, la variable aleatoria fundamental.
+
+### ¿Por qué estudiamos puntos y no solo números?
+
+En la estadística convencional, si medimos la temperatura en cinco ciudades, el interés reside en el valor (20°C, 30°C). Sin embargo, en PPE, si estudiamos la ubicación de crímenes o árboles, lo que nos quita el sueño no es un valor medido en el punto, sino **por qué el punto está ahí y no diez metros a la derecha**.
+
+La lógica estadística aquí sigue este orden:
+
+1.  **Reconocimiento de la Estocasticidad Espacial:** Aceptamos que las coordenadas $(x, y)$ no son fijas, sino el resultado de un mecanismo aleatorio.
+
+2.  **Necesidad de un Marco de Referencia (La Ventana):** No podemos hablar de "concentración" si no definimos el área total de juego. La ausencia de puntos en un área de la ventana es tan informativa como su presencia en otra.
+
+3.  **Búsqueda de la Interacción:** Investigamos si la presencia de un evento atrae o repele a otros (¿Los casos de COVID-19 se contagian por cercanía o son independientes?).
+
+
+### Explicación Esencial 
+
+Imagina que es de noche y estás observando un campo oscuro donde aterrizan luciérnagas. 
+
+*   Si las luciérnagas aterrizan en cualquier lugar sin importarles dónde están las demás, el mapa final parecerá una televisión con estática: eso es **aleatoriedad**. 
+
+*   Si se buscan para aparearse, verás grupos brillantes: eso es **agregación**. 
+
+*   Si cada una defiende un territorio y expulsa a las demás, verás luces repartidas de forma muy equitativa: eso es **regularidad**.
+
+En este escenario, el "campo" es tu **Ventana de Observación**. Cada "luciérnaga luz" es un **Evento**. Cualquier "centímetro de pasto" donde podría aterrizar una es un **Punto**. El mapa que ves al final de la noche es el **Patrón**, pero el instinto biológico que las hace agruparse es el **Proceso**.
+
+
+### Rigor Académico y Definiciones Estructurales
+
+Para avanzar hacia la modelación en R, debemos formalizar estos conceptos innegociables:
+
+#### 1.1 Definición de PPE (Patrones Puntuales Espaciales)
+Un PPE es un conjunto de ubicaciones georreferenciadas, denominadas eventos, cuya posición no es fija ni predeterminada por el investigador. Matemáticamente, se define como un mecanismo estocástico que genera un conjunto contable de eventos en el espacio $D_S$. A diferencia de la geoestadística, donde se asume un campo continuo y medimos en puntos fijos, en PPE las ubicaciones son variables aleatorias.
+
+#### 1.2 Conceptos Clave: La Dualidad de la Información
+
+*   **Evento vs. Punto:** 
+    *   El **Evento** es la ubicación específica donde el fenómeno de interés ha ocurrido (un sismo, un robo, un brote de enfermedad). 
+    
+    *   El **Punto** es cualquier ubicación $(\mu)$ dentro de la región de estudio $D_S$. Esta distinción es vital para la **Intensidad de Primer Orden** $\lambda(s)$, que se define como el límite del número esperado de eventos en una región cuando el área de dicha región tiende a ser un punto infinitesimal.
+    
+*   **Patrón vs. Proceso:**
+    *   El **Patrón** es la realización única y observable del fenómeno (el conjunto de datos $S=\{s_1, ..., s_k\}$ que tienes en tu archivo .csv).
+    
+    *   El **Proceso** es el modelo o mecanismo estocástico subyacente. El objetivo de la estadística espacial es inferir las propiedades del proceso (el motor) a partir de un único patrón observado (la foto).
+
+#### 1.3 Ventana de Observación ($D_S$)
+Es el dominio espacial o región de interés donde se registran los eventos. 
+
+*   **Importancia Crítica:** La ventana define la escala. Un patrón puede parecer aleatorio en una ventana pequeña pero agrupado en una ventana grande.
+*   **Efectos de Borde:** Como no podemos observar qué pasa fuera de la ventana, los eventos cercanos al límite parecen tener menos vecinos de los que realmente tienen en la naturaleza. Por ello, es obligatorio usar **correcciones de borde** al calcular estadísticas de interacción.
+*   **Naturaleza:** El dominio puede ser continuo (el plano $\mathbb{R}^2$) o discreto (como manzanas de una ciudad o municipios).
+
+
+### Conexión con la Práctica en R
+
+En tu trabajo final, implementarás estos conceptos mediante el paquete `spatstat`. Los términos teóricos que acabamos de ver se traducen directamente en objetos de programación:
+
+1.  La ventana de observación se define mediante el objeto **`owin`** (observation window).
+
+2.  El patrón de puntos, que integra las coordenadas y la ventana, se almacena en un objeto de clase **`ppp`** (planar point pattern).
+
+3.  Si tus eventos tienen información adicional (como la magnitud de un sismo o el diámetro de un árbol), estos se denominan **Marcas** y se adjuntan al objeto `ppp`.
+
+Recuerda: la calidad de tu análisis dependerá de qué tan bien definas tu ventana de observación inicial, pues de ella emanan todos los cálculos de intensidad y densidad. ¡Adelante con su investigación, colega!
+
+
+
+### pause
+:::
+
+
+
+::: {#seccion-3-1-1 .content-card}
+Como Matemático Estadístico y Revisor Académico, presento el desglose técnico de los cimientos que rigen el análisis de patrones puntuales. El estudio de los PPE se diferencia de la estadística clásica en que el objeto de análisis no es un valor medido en una ubicación, sino la **ubicación misma** como variable aleatoria.
+
+
+### 1. La Función de Intensidad: El Corazón del Proceso
+
+La intensidad es la propiedad de primer orden que cuantifica la "densidad" de eventos en el espacio.
+
+#### 1.1. Definición Matemática de Intensidad Puntual
+La intensidad en una ubicación específica $s$ se define como el límite del número esperado de eventos en una región infinitesimal que rodea a ese punto:
+
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+**Análisis por Chain-of-Thought:**
+
+*   **$N(ds)$**: Es una variable aleatoria que cuenta cuántos eventos ocurren en una región muy pequeña ($ds$) alrededor de la ubicación $s$.
+
+*   **$E[N(ds)]$**: Representa la esperanza matemática (el promedio teórico) de esos conteos.
+
+*   **$|ds|$**: Es el área de esa región pequeña (un disco o cuadrado infinitesimal).
+
+*   **La lógica del límite ($\lim_{|ds| \to 0}$)**: En PPE, un punto exacto no tiene área, por lo que la probabilidad de que un evento caiga exactamente en una coordenada es técnicamente cero. Al dividir el número esperado de puntos por el área y encoger esa área hasta casi desaparecer, obtenemos la "tasa de riesgo" o densidad de eventos en ese punto específico $s$.
+
+#### 1.2. El Valor Esperado en una Región (Lógica de Agregación)
+Para saber cuántos puntos esperamos encontrar en una ventana de observación o región $B$ más grande, debemos "sumar" (integrar) todas las intensidades locales dentro de esa área:
+
+$$E[N(B)] = \int_{B} \lambda(s) \, ds$$
+
+**Explicación desde la lógica de agregación espacial:**
+Imagine que divide la región $B$ en miles de cuadritos diminutos. Cada cuadrito tiene su propia intensidad $\lambda(s)$. Para obtener el total de la región, no podemos simplemente sumar números fijos porque la intensidad puede cambiar suavemente de un milímetro a otro. La **integral** funciona aquí como una sumatoria infinita de esos valores infinitesimales, acumulando el "potencial de ocurrencia" de eventos a lo largo de toda la superficie de $B$.
+
+
+### 2. El Modelo de Referencia: Aleatoriedad Espacial Completa (CSR)
+
+El concepto de CSR se materializa matemáticamente a través del **Proceso Homogéneo de Poisson (HPP)**.
+
+#### 2.1. La Distribución de Poisson para Conteos Espaciales
+Bajo CSR, la probabilidad de observar exactamente $n$ eventos en una región $B$ se define como:
+
+$$P(N(B) = n) = \frac{e^{-\lambda |B|} (\lambda |B|)^n}{n!}$$
+
+**Desglose de componentes:**
+
+*   **$\lambda$**: Es la intensidad constante (bajo el supuesto de homogeneidad, $\lambda(s) = \lambda$).
+
+*   **$|B|$**: Es el área total de la región de estudio.
+
+*   **$\lambda |B|$**: Es el parámetro de la distribución, que representa la media (número promedio de eventos esperados en esa área específica).
+
+*   **$n!$**: El factorial de $n$, necesario para normalizar la probabilidad considerando todas las permutaciones posibles de los puntos.
+
+### 3. Supuestos Críticos y Consecuencias de su Violación
+
+Para que un proceso sea considerado **CSR**, debe cumplir estrictamente dos supuestos fundamentales:
+
+1.  **Homogeneidad (Estacionariedad de primer orden):** La intensidad $\lambda(s)$ es constante en toda la ventana ($\lambda(s) = \lambda$).
+    *   *Si se viola:* Se genera un **Proceso de Poisson No Homogéneo (IPP)**, donde hay zonas con mayor "riesgo" o densidad que otras.
+
+2.  **Independencia Espacial (Falta de interacción):** El número de eventos en regiones que no se traslapan son variables aleatorias independientes.
+    *   *Si se viola:* Existe interacción. Si los eventos se atraen, se produce **agregación** (clusters); si se repelen, se produce **inhibición** (regularidad).
+
+
+### 4. Inferencia y Contraste de Hipótesis
+
+El análisis estadístico de PPE siempre comienza con una prueba de bondad de ajuste para desafiar el azar.
+
+#### 4.1. Sistema de Hipótesis
+
+*   **$H_0$ (Hipótesis Nula):** El patrón observado es una realización de un proceso de Poisson Homogéneo (existe CSR).
+
+*   **$H_1$ (Hipótesis Alternativa):** El patrón no es aleatorio; presenta estructura de agregación o inhibición significativa.
+
+#### 4.2. Interpretación del p-valor en PPE (Vía Monte Carlo)
+Dado que a menudo no conocemos la distribución exacta de los estadísticos espaciales (como la Función K o el Índice de Clark-Evans), recurrimos a **Pruebas de Monte Carlo**.
+
+1.  Se calcula el estadístico en el patrón observado ($u_1$).
+
+2.  Se simulan $k-1$ patrones bajo la hipótesis nula de CSR.
+
+3.  Se ordenan los resultados de menor a mayor.
+
+**La lógica del p-valor:**
+
+El p-valor es la proporción de simulaciones aleatorias que dieron un resultado más "extremo" que el observado. Si el p-valor es menor a $0.05$ (nivel de significancia estándar), concluimos que es extremadamente improbable que el azar haya generado ese patrón, por lo que **rechazamos $H_0$** y aceptamos que existe un proceso de interacción o una tendencia no constante en los datos.
+
+### pause
+:::
+
+
+
+::: {#seccion-3-1-2 .content-card}
+
+
+### 1. Problema de Estudio
+Un ecólogo forestal registra la ubicación de una especie de palma joven en una parcela experimental. El objetivo es realizar una primera aproximación descriptiva para entender la **intensidad** del fenómeno. Debemos diferenciar si lo observado es una realización de un **proceso** aleatorio (CSR - Aleatoriedad Espacial Completa) o si presenta indicios de una estructura espacial particular (agregación o regularidad).
+
+### 2. Datos (Dataset de Juguete)
+**Ventana de Observación ($D_S$):** Un cuadrado de $10 \times 10$ metros.  
+
+*   Límites: $x \in$, $y \in$.
+
+*   Área Total ($|D_S|$): $100 \, m^2$.
+
+**Ubicaciones de los Eventos ($n = 5$):**
+
+A diferencia de la geoestadística donde medimos una variable $Z$ en puntos fijos, aquí las coordenadas $(x, y)$ son el dato fundamental y aleatorio.
+
+*   $s_1 = (2, 2)$
+
+*   $s_2 = (2, 4)$
+
+*   $s_3 = (8, 8)$
+
+*   $s_4 = (1, 9)$
+
+*   $s_5 = (4, 4)$
+
+
+### 3. Procedimiento Detallado (Cálculo Manual)
+
+#### Paso 1: Caracterización del Proceso y la Ventana
+Primero, definimos el dominio. El área del estudio ($|D_S|$) es el denominador innegociable para cualquier medida de densidad.
+
+*   **Cálculo:** $10 \, m \times 10 \, m = 100 \, m^2$.
+
+*   **Conexión Teórica:** Esta es la "medida de Lebesgue" de nuestra ventana. Sin una ventana finita, no podríamos definir una tasa de ocurrencia.
+
+#### Paso 2: Estimación de la Intensidad Global ($\hat{\lambda}$)
+La intensidad es el número esperado de eventos por unidad de área. Para un proceso que se asume homogéneo (media constante), el estimador insesgado es simplemente el conteo total sobre el área total.
+
+*   **Operación:** $\hat{\lambda} = \frac{n}{|D_S|} = \frac{5}{100}$
+
+*   **Resultado Aritmético:** $0.05$ eventos/$m^2$.
+
+*   **Interpretación:** En promedio, esperamos encontrar una palma cada $20 \, m^2$.
+
+#### Paso 3: Análisis de Primer Orden (Método de Cuadros/Quadrats)
+Para ver si la intensidad es realmente constante (homogeneidad), dividimos la ventana en 4 cuadrantes disjuntos de $5 \times 5$ metros cada uno ($Area = 25 \, m^2$).
+
+1.  **Cuadrante Inferior Izquierdo ($x \in, y \in$):** Contiene a $s_1(2,2)$, $s_2(2,4)$ y $s_5(4,4)$. 
+    *   **Conteo:** $n_1 = 3$.
+    *   **Intensidad Local:** $\hat{\lambda}_1 = 3 / 25 = 0.12$.
+
+2.  **Cuadrante Superior Izquierdo ($x \in, y \in$):** Contiene a $s_4(1,9)$.
+    *   **Conteo:** $n_2 = 1$.
+    *   **Intensidad Local:** $\hat{\lambda}_2 = 1 / 25 = 0.04$.
+
+3.  **Cuadrante Superior Derecho ($x \in, y \in$):** Contiene a $s_3(8,8)$.
+    *   **Conteo:** $n_3 = 1$.
+    *   **Intensidad Local:** $\hat{\lambda}_3 = 1 / 25 = 0.04$.
+
+4.  **Cuadrante Inferior Derecho ($x \in, y \in$):** No contiene puntos.
+    *   **Conteo:** $n_4 = 0$.
+    *   **Intensidad Local:** $\hat{\lambda}_4 = 0$.
+
+
+### 4. Resultado Interpretado
+A nivel global, la intensidad es de $0.05$. Sin embargo, al observar los cuadrantes, vemos que la intensidad local fluctúa entre **0.12** y **0**. 
+
+*   **Patrón vs. Proceso:** Lo que tenemos sobre el papel es el **Patrón** (la realización única). El **Proceso** es el mecanismo que generó estos puntos. 
+
+*   **Diagnóstico Preliminar:** La alta concentración en el primer cuadrante sugiere que el proceso podría ser **Inhomogéneo** (la media depende de la ubicación $s$) o presentar **Agregación** (los puntos se atraen entre sí). Para confirmar esto, en laboratorios posteriores utilizaremos la **Prueba $\chi^2$ de bondad de ajuste** para comparar estos conteos (3, 1, 1, 0) contra lo esperado bajo una distribución de Poisson.
+
+
+### Guía de Autoevaluación (Errores Comunes)
+
+1.  **Confundir "Punto" con "Evento":** Un error común es intentar promediar las coordenadas $x$ (ej: $(2+2+8+1+4)/5 = 3.4$). En PPE, la media no es un promedio de coordenadas, sino la **densidad de eventos por área**.
+
+2.  **Ignorar la Ventana:** Olvidar que el área total es 100. Si calculas la intensidad usando solo el área donde están los puntos, estarás sobreestimando la densidad real del fenómeno.
+
+3.  **Error de Borde Aritmético:** Al contar cuadrantes, no definir qué pasa con los puntos que caen exactamente sobre la línea divisoria ($x=5$ o $y=5$). En el cálculo manual, se debe establecer una regla de pertenencia (ej: "cerrado por la izquierda, abierto por la derecha") para evitar contar un evento dos veces o ninguna.
+
+4.  **Asumir Homogeneidad sin Probar:** Declarar que $\lambda = 0.05$ es la verdad absoluta. Recuerde que este es solo un **estimador** basado en una muestra pequeña ($n=5$); la variabilidad en los cuadrantes es una señal de alerta.
+
+### pause
+:::
+
+
+
+::: {#seccion-3-1-3 .content-card}
+
+El análisis de PPE se distingue por tratar las ubicaciones de los eventos como variables aleatorias en sí mismas. A diferencia de la geoestadística clásica, donde medimos un valor en puntos fijos, aquí el dato primordial es "dónde" ocurre el fenómeno.
+
+### 1.1 Implementación Computacional y Lógica Estadística
+
+A continuación, se presenta un bloque de código reproducible que simula la creación, limpieza y visualización inicial de un patrón puntual, anclado en los conceptos estructurales de su ventana de observación y naturaleza estocástica.
+
+```{r message=FALSE}
+# --- Bloque de Configuración Inicial ---
+# Cargamos spatstat, el cual está dividido en sub-paquetes funcionales
+library(spatstat)
+
+# 1. Definición de la Ventana de Observación (Ds)
+# Razonamiento: Sin una ventana (owin), no podemos calcular la intensidad, 
+# ya que la probabilidad de encontrar un punto en el infinito es cero.
+# Creamos una ventana rectangular de 100x100 unidades (ej: metros).
+ventana_estudio <- owin(xrange = c(0, 100), yrange = c(0, 100)) #
+
+# 2. Creación del Patrón Puntual (Patrón vs. Proceso)
+# Definimos coordenadas "de juguete" para representar el Patrón (dato observado).
+# El Proceso es el mecanismo invisible (estocástico) que las generó.
+set.seed(123) # Para reproducibilidad
+x_coords <- c(10, 12, 80, 85, 50, 10) # Coordenadas X
+y_coords <- c(10, 15, 75, 90, 55, 10) # Coordenadas Y
+
+# Creamos el objeto de clase 'ppp' (planar point pattern)
+# Este objeto integra las coordenadas y la ventana Ds en una sola estructura.
+patron_observado <- ppp(x = x_coords, y = y_coords, window = ventana_estudio)
+
+# 3. Limpieza de Datos: Mejores Prácticas
+# Supuesto de Ordenamiento: Muchos procesos (como el Poisson simple) 
+# asumen que no puede haber más de un punto en la misma ubicación exacta.
+# Verificamos duplicados y los eliminamos para cumplir con la "orderliness".
+if(any(duplicated(patron_observado))) {
+  message("Se detectaron puntos duplicados. Aplicando limpieza...")
+  patron_limpio <- unique(patron_observado) #
+} else {
+  patron_limpio <- patron_observado
+}
+
+# 4. Visualización e Interpretación de Primer Orden
+# Graficamos el patrón y una estimación de densidad por Kernel (KDE).
+# La densidad es proporcional a la intensidad lambda(s).
+par(mfrow = c(1, 2)) # Ventana para dos gráficos
+
+# Gráfico A: Ubicaciones de los Eventos
+plot(patron_limpio, main = "Patrón de Eventos", pch = 16, cols = "blue")
+# Interpretación: Visualizamos la dispersión espacial. Cada círculo es un EVENTO.
+
+# Gráfico B: Superficie de Intensidad (KDE)
+# density.ppp estima la intensidad esperada en cada PUNTO (mu) de la ventana.
+plot(density(patron_limpio, sigma = 10), main = "Intensidad Estimada")
+# Interpretación: El mapa de calor muestra zonas de mayor 'riesgo' o probabilidad de ocurrencia.
+```
+
+### 1.2 Desglose de Conceptos Estructurales
+
+Para que tu documento `.Rmd` posea profundidad académica, es imperativo distinguir los términos que el código manipula internamente:
+
+#### 1.2.1 Evento vs. Punto
+En `spatstat`, la distinción es técnica y estadística:
+
+*   **Evento:** Se refiere a las ubicaciones registradas en el objeto `ppp` (los puntos azules en el código). Es donde el fenómeno ocurrió (un árbol, un crimen).
+
+*   **Punto:** Es cualquier ubicación infinitesimal dentro de la ventana `owin` donde *podría* haber ocurrido un evento. La función `density()` calcula un valor para cada uno de estos infinitos puntos de la ventana para generar la superficie continua.
+
+#### 1.2.2 Patrón vs. Proceso
+
+*   **El Patrón (Pattern):** Es el conjunto de datos $S=\{s_1, ..., s_k\}$ que observamos. Es estático, una "foto" del fenómeno en un momento $T$.
+
+*   **El Proceso (Process):** Es el motor estocástico. En el código, cuando ajustamos un modelo (como un Proceso de Poisson), estamos tratando de inferir las reglas del "motor" a partir de la "foto" (el patrón).
+
+#### 1.2.3 La Ventana de Observación ($D_S$)
+La ventana no es un simple marco estético; es una **restricción de muestreo**. 
+
+1.  **Información de Ausencia:** En PPE, el hecho de que no haya puntos en una zona de la ventana es tan importante como el hecho de que los haya en otra.
+
+2.  **Intensidad ($\lambda$):** Se define como el número esperado de eventos por unidad de área. Si cambias la ventana en `owin()`, cambias el área total $|D_S|$ y, por ende, el valor de la intensidad estimada $\hat{\lambda} = n / |D_S|$.
+
+3.  **Efectos de Borde:** El código de `spatstat` está diseñado para reconocer que no sabemos qué ocurre justo afuera de la ventana, lo cual es vital para cálculos de interacción de segundo orden posteriores.
+
+### 1.3 Interpretación de los Gráficos Resultantes
+
+1.  **Gráfico de Puntos:** Permite un diagnóstico visual rápido. Si los puntos se ven muy juntos, sospechamos de **agregación** (contagio); si se ven muy equidistantes, de **regularidad** (inhibición).
+
+2.  **Mapa de Densidad (KDE):** La función `density()` en el código aplica un suavizado (kernel gaussiano por defecto). Si la intensidad no es plana, el patrón es **inhomogéneo**, lo que significa que el proceso depende de la ubicación $s$ o de covariables ambientales.
+
+### pause
+:::
+
+
+
+::: {#seccion-3-2 .content-card}
+*¿Cómo se distribuyen los puntos en el espacio? ¿Hay zonas con mayor densidad?*
+
+*   **2.1 Función de Intensidad $\lambda(s)$:** Representa el número esperado de eventos por unidad de área en una ubicación infinitesimal $s$.
+*   **2.2 Estimación Global y Local:**
+    *   **Método de Cuadros (Quadrats):** División de la ventana en subregiones para contar eventos. Es útil pero subjetivo según el tamaño del cuadro.
+    *   **Estimación por Kernel (KDE):** Método no paramétrico para suavizar la densidad y generar mapas de calor continuos.
+*   **2.3 Selección del Ancho de Banda ($b$):** Parámetro crítico en KDE que determina el nivel de suavizado de la superficie.
+*   **💻 Implementación en R:** Función `density.ppp()` para mapas de intensidad y `quadratcount()` para conteos por cuadros.
+
+ En la jerarquía del análisis espacial, las propiedades de primer orden son el cimiento innegociable; antes de intentar comprender si los eventos se "atraen" o "repelen" (segundo orden), debemos cuantificar con precisión **cuántos son y cómo se distribuyen** sobre el terreno.
+
+
+### La Lógica del "Porqué" de la Intensidad
+
+Para entender la intensidad, sigamos esta secuencia de razonamiento estadístico:
+
+1.  **El problema de la escala:** Si observamos 100 árboles en un bosque, el número "100" no nos dice nada si no conocemos el área. Un árbol por metro cuadrado es una selva; un árbol por kilómetro cuadrado es un desierto. Necesitamos una medida de densidad.
+
+2.  **La trampa de la homogeneidad:** La estadística clásica suele asumir que la media es constante. Sin embargo, en el espacio, la fertilidad del suelo o la altitud cambian. Si ignoramos que hay zonas "naturalmente" más densas, confundiremos una variación ambiental con una interacción entre puntos.
+
+3.  **La necesidad de la resolución infinitesimal:** Como los puntos no tienen área, no podemos calcular una "densidad en el punto exacto" sin recurrir al concepto de límite. Necesitamos definir la intensidad como un potencial de ocurrencia en un lugar específico $s$.
+
+### Explicación Esencial (Técnica Feynman)
+
+Imagina que tienes un lienzo en blanco (tu ventana de estudio) y lanzas puñados de arena sobre él. 
+
+*   **Intensidad Global:** Sería simplemente contar cuántos granos de arena cayeron y dividirlos por el tamaño total del lienzo. Es un promedio aburrido que asume que la arena cayó igual de repartida en todos lados.
+
+*   **Método de Cuadros:** Es como poner una rejilla sobre el lienzo y contar cuánta arena hay en cada cuadrito. Si un cuadro tiene mucho y el de al lado nada, ya sabes que la "densidad" no es uniforme. Pero cuidado: si los cuadros son muy grandes, ocultas el detalle; si son muy pequeños, verás muchos cuadros vacíos por puro azar.
+
+*   **Estimación por Kernel (KDE):** Imagina que cada grano de arena es una pequeña mancha de pintura que se difumina hacia afuera. Donde los granos caen cerca, las manchas se solapan y crean un color intenso (un "punto caliente"). Donde caen lejos, el color es tenue. El **ancho de banda** es qué tanto dejas que esa mancha se difumine: si se difumina poco, verás muchos picos aislados (ruido); si se difumina mucho, verás una mancha borrosa que no define nada (pérdida de detalle).
+
+
+### Rigor Estadístico y Conceptos Fundamentales
+
+#### 2.1 Función de Intensidad $\lambda(s)$
+Matemáticamente, la intensidad en una ubicación $s$ se define como el límite del número esperado de eventos en una región infinitesimal $ds$ que rodea a $s$, dividido por el área de dicha región:
+
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+Donde $N(ds)$ es la variable aleatoria que cuenta los eventos en ese disco infinitesimal. Si $\lambda(s) = \lambda$ (constante), decimos que el proceso es **homogéneo** (CSR - Aleatoriedad Espacial Completa).
+
+#### 2.2 Estimación Global y Local
+
+*   **Método de Cuadros (Quadrats):** Se divide la ventana $W$ en $k$ subregiones de igual área. Se utiliza para probar la hipótesis nula de homogeneidad mediante una prueba $\chi^2$ de bondad de ajuste. El estadístico compara lo observado ($n_{ij}$) con lo esperado bajo azar ($\bar{n}$).
+
+*   **Estimación por Kernel (KDE):** Es un método no paramétrico que asigna un "peso" a cada evento observado en función de su distancia a la ubicación $u$ donde queremos estimar la intensidad. Se expresa comúnmente como:
+    $$\hat{\lambda}(u) = \sum_{i=1}^{n} \kappa(u - s_i)$$
+    donde $\kappa$ es la función kernel (usualmente Gaussiana o Cuártica).
+
+#### 2.3 Selección del Ancho de Banda ($b$)
+Es el parámetro más crítico de la suavización. En R, existen algoritmos de selección automática como el criterio de Diggle que minimiza el error cuadrático medio (MSE), aunque a menudo el investigador debe ajustar este valor basándose en el conocimiento del fenómeno (ej. la distancia de dispersión de una semilla).
+
+
+###  Implementación en R (`spatstat`)
+
+En su archivo `.Rmd`, la aplicación práctica de estos conceptos se realiza con las siguientes funciones del paquete `spatstat`:
+
+1.  **`quadratcount(X)`**: Divide el patrón puntual `X` en una rejilla y cuenta los eventos. Es el primer paso para detectar visualmente la falta de homogeneidad.
+
+2.  **`density.ppp(X, sigma=...)`**: Genera la superficie de intensidad continua (KDE). El parámetro `sigma` corresponde al ancho de banda.
+
+3.  **`plot(density(X))`**: Produce lo que popularmente se conoce como "mapa de calor", que no es otra cosa que la visualización de la intensidad de primer orden estimada.
+
+###️ Términos Innegociables
+
+*   **Intensidad de Primer Orden:** El número esperado de eventos por unidad de área en una ubicación.
+
+*   **Bandwidth (Ancho de Banda):** Parámetro que controla el balance entre sesgo (bias) y varianza en el suavizado por Kernel.
+
+*   **Inhomogeneidad:** Situación donde la intensidad $\lambda(s)$ no es constante, indicando que el proceso depende de la ubicación o de variables externas.
+
+### pause
+:::
+
+
+
+::: {#seccion-3-2-1 .content-card}
+Presento el desglose formal de las propiedades de primer orden para los **Patrones Puntuales Espaciales (PPE)**. Mientras que las estadísticas descriptivas tradicionales resumen valores de una variable, las propiedades de primer orden en PPE resumen la **distribución espacial de la densidad de eventos** a través de una ventana de observación $D_S$.
+
+
+### 1. La Función de Intensidad $\lambda(s)$
+
+La intensidad es el equivalente espacial a la media de una variable aleatoria. Representa la tasa de ocurrencia de eventos por unidad de área.
+
+#### 1.1. Definición Infinitesimal
+Matemáticamente, la intensidad en una ubicación específica $s$ se define mediante un límite:
+
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+**Análisis por Chain-of-Thought (Lógica de la fórmula):**
+
+*   **$ds$**: Imagine un disco o "lupa" extremadamente pequeña centrada en el punto $s$.
+
+*   **$|ds|$**: Es el área de ese pequeño disco.
+
+*   **$N(ds)$**: Es el conteo de eventos que caen dentro de ese disco.
+
+*   **$E[N(ds)]$**: Es la esperanza matemática o el promedio teórico de cuántos puntos esperaríamos ver ahí.
+
+*   **El Límite ($\lim$):** Dado que un punto geográfico exacto tiene área cero, la probabilidad de que un evento caiga exactamente sobre una coordenada es técnicamente nula. Al encoger el área ($|ds| \to 0$) y dividir el número esperado de puntos por dicha área, obtenemos una **densidad puntual** o "potencial de riesgo" en esa ubicación exacta.
+
+#### 1.2. Intensidad Acumulada (Lógica de Agregación)
+Para conocer el número esperado de eventos en una región más grande $B$ (subconjunto de nuestra ventana), debemos "sumar" todas las intensidades locales:
+
+$$E[N(B)] = \int_{B} \lambda(s) \, ds$$
+
+**Explicación desde la agregación espacial:**
+En lugar de sumar números discretos, la **integral** funciona aquí como una sumatoria infinita de las intensidades de cada milímetro cuadrado dentro de $B$. Si dividimos la región $B$ en una cuadrícula muy fina, el valor esperado total es la acumulación del "potencial" de cada celda.
+
+
+### 2. Métodos de Estimación de la Intensidad
+
+#### 2.1. Estimación Global (Proceso Homogéneo)
+Si asumimos que la intensidad es constante en toda la ventana ($\lambda(s) = \lambda$), el estimador insesgado es:
+
+$$\hat{\lambda} = \frac{n}{|D_S|}$$
+
+Donde $n$ es el número total de eventos observados y $|D_S|$ es el área total de la ventana.
+
+#### 2.2. Método de Cuadros (Quadrats)
+Este método divide la ventana en $k$ subregiones disjuntas de igual área. Se utiliza para calcular el **Índice de Dispersión (ICS)**:
+
+$$ICS = \frac{s^2}{\bar{x}} - 1$$
+
+**Componentes:**
+
+*   $s^2$: Varianza de los conteos entre cuadros.
+
+*   $\bar{x}$: Promedio de puntos por cuadro.
+
+*   **Lógica:** Bajo Aleatoriedad Espacial Completa (CSR), la media y la varianza de los conteos deben ser iguales ($ICS \approx 0$).
+
+#### 2.3. Estimación por Kernel (KDE)
+Es un método no paramétrico que genera una superficie continua de intensidad sin asumir una forma matemática rígida. La fórmula general es:
+
+$$\hat{\lambda}(u) = \frac{1}{nb} \sum_{i=1}^{n} \kappa \left( \frac{u - s_i}{b} \right)$$
+
+**Análisis por Chain-of-Thought:**
+
+*   **$\kappa$ (Kernel):** Es una función de peso (generalmente Gaussiana o Cuártica) que asigna "importancia" a los puntos observados $s_i$ según su cercanía a la ubicación $u$ donde queremos estimar la intensidad.
+
+*   **$b$ (Ancho de banda):** Es el parámetro crítico de suavizado. 
+    *   Si $b$ es muy pequeño, el mapa será "ruidoso" y mostrará picos en cada evento individual.
+    *   Si $b$ es muy grande, el mapa se suavizará demasiado, perdiendo los detalles de las concentraciones reales (oversmoothing).
+
+*   **$u - s_i$**: Representa la distancia entre el punto de estimación y el evento observado.
+
+
+### 3. Supuestos Críticos y Contraste de Hipótesis
+
+#### 3.1. Supuestos de la Hipótesis Nula ($H_0$)
+El análisis de intensidad suele buscar rechazar el modelo de **Aleatoriedad Espacial Completa (CSR)**, el cual se basa en dos supuestos:
+
+1.  **Homogeneidad:** $\lambda(s) = \lambda$ (la intensidad es constante en el espacio).
+
+2.  **Independencia:** El número de eventos en regiones disjuntas son variables aleatorias independientes (no hay atracción ni repulsión).
+
+#### 3.2. Prueba $\chi^2$ de Bondad de Ajuste
+Se utiliza para evaluar formalmente la homogeneidad.
+
+*   **$H_0$**: El patrón sigue un Proceso de Poisson Homogéneo (existe CSR).
+
+*   **$H_1$**: El patrón es No Homogéneo (la intensidad varía espacialmente).
+
+**Fórmula del estadístico:**
+$$\chi^2 = \sum \frac{(O_{ij} - E_{ij})^2}{E_{ij}}$$
+
+*   **$O_{ij}$**: Conteo de eventos observado en el cuadro $ij$.
+
+*   **$E_{ij}$**: Conteo esperado bajo el supuesto de uniformidad ($n/k$).
+
+#### 3.3. Interpretación del p-valor
+
+*   **$p < 0.05$**: Existe evidencia estadística suficiente para rechazar la homogeneidad. Concluimos que hay zonas con intensidades significativamente diferentes (clústeres o tendencias).
+
+*   **$p \geq 0.05$**: No se puede rechazar que el patrón sea fruto del azar uniforme (CSR).
+
+**Consecuencia de la violación:** Si se detecta no-homogeneidad, no se pueden usar estadísticas de segundo orden clásicas (como la Función K de Ripley original), ya que estas confundirían la variación de la media con la interacción entre puntos, produciendo resultados espurios. En tal caso, se debe proceder con la estimación de un **Proceso de Poisson No Homogéneo (IPP)**.
+
+### pause
+:::
+
+::: {#seccion-3-2-2 .content-card}
+
+### 1. Problema de Estudio
+Un equipo de geólogos está monitoreando una zona de $10 \times 10$ kilómetros en el piedemonte llanero colombiano para registrar micro-sismos asociados a una falla activa. Tras una semana de observación, han registrado la ubicación exacta de 4 eventos sísmicos. Como analista, se le solicita realizar una caracterización de primer orden para determinar la **intensidad global** y evaluar si el patrón presenta indicios de **no-homogeneidad** o **agregación** mediante el método de cuadros (Quadrats) y el Índice de Dispersión (ICS).
+
+### 2. Datos (Dataset de Juguete)
+**Ventana de Observación ($D_S$):**  
+Un plano bidimensional acotado por $x \in$ y $y \in$.  
+Área Total ($|D_S|$) = $10 \times 10 = 100 \, km^2$.
+
+**Ubicaciones de los Eventos ($n = 4$):**  
+
+*   $s_1 = (2, 2)$
+
+*   $s_2 = (2.5, 2.5)$
+
+*   $s_3 = (8, 1)$
+
+*   $s_4 = (1, 9)$
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso 1: Estimación de la Intensidad Global ($\hat{\lambda}$)
+La intensidad de primer orden cuantifica la media del proceso, es decir, el número esperado de eventos por unidad de área. Bajo el supuesto inicial de homogeneidad (que la intensidad es constante en toda la ventana), el estimador natural es el cociente entre el número total de puntos y el área.
+
+*   **Operación:** $\hat{\lambda} = \frac{n}{|D_S|} = \frac{4}{100}$
+
+*   **Resultado:** $0.04 \, sismos/km^2$.
+
+*   **Conexión Teórica:** Este valor representa la "tasa de riesgo" promedio. Si el proceso fuera un Proceso Homogéneo de Poisson (HPP), esperaríamos encontrar 0.04 eventos en cualquier kilómetro cuadrado de la ventana.
+
+#### Paso 2: Partición en Cuadros (Quadrats)
+Para detectar si la intensidad varía espacialmente (inhomogeneidad), dividimos la ventana en una rejilla de $2 \times 2$, generando $L = 4$ subregiones de igual área ($25 \, km^2$ cada una).
+
+1.  **Cuadro 1 (C1: $x \in, y \in$):** Contiene a $s_1(2,2)$ y $s_2(2.5, 2.5)$. **Conteo $n_1 = 2$.**
+
+2.  **Cuadro 2 (C2: $x \in, y \in$):** Contiene a $s_3(8,1)$. **Conteo $n_2 = 1$.**
+
+3.  **Cuadro 3 (C3: $x \in, y \in$):** Contiene a $s_4(1,9)$. **Conteo $n_3 = 1$.**
+
+4.  **Cuadro 4 (C4: $x \in, y \in$):** No contiene puntos. **Conteo $n_4 = 0$.**
+
+#### Paso 3: Cálculo del Índice de Dispersión (ICS)
+El ICS compara la variabilidad de los conteos observados contra la variabilidad esperada bajo el azar (CSR), donde la media debe ser igual a la varianza.
+
+*   **Media de conteos ($\bar{x}$):** $\frac{2+1+1+0}{4} = 1$.
+
+*   **Varianza de conteos ($s^2$):** $\frac{(2-1)^2 + (1-1)^2 + (1-1)^2 + (0-1)^2}{4-1} = \frac{1+0+0+1}{3} = \frac{2}{3} \approx 0.666$.
+
+*   **Fórmula del ICS:** $ICS = \frac{s^2}{\bar{x}} - 1 = \frac{0.666}{1} - 1$.
+
+*   **Resultado:** $-0.333$.
+
+### 4. Resultado Interpretado
+A nivel global, la intensidad es de $0.04$ eventos por unidad de área. Sin embargo, el análisis local mediante cuadros muestra que la intensidad no es perfectamente uniforme.
+
+*   **Interpretación del ICS:** Un valor de $ICS = 0$ indicaría Aleatoriedad Espacial Completa (CSR). En este ejercicio, obtenemos un valor negativo ($-0.333$), lo cual teóricamente sugiere una tendencia hacia la **regularidad o inhibición** (los eventos están más repartidos de lo que el azar dictaría). 
+
+*   **Nota Crítica:** Dado que el tamaño de muestra es extremadamente pequeño ($n=4$), este resultado debe tomarse con cautela. En la práctica, se requeriría una **Prueba $\chi^2$ de bondad de ajuste** para verificar si esta desviación del azar es estadísticamente significativa o si el p-valor (que en R se obtendría con `quadrat.test`) no permite rechazar la hipótesis nula de homogeneidad.
+
+
+### Guía de Autoevaluación (Errores Comunes)
+
+1.  **Error de Denominador:** Calcular la intensidad dividiendo el número de puntos por el número de cuadros en lugar del área total de la ventana ($4/4$ en lugar de $4/100$). Recuerde que la intensidad es una medida por unidad de superficie.
+
+2.  **Omisión del Área en el Valor Esperado:** Al realizar pruebas de bondad de ajuste, olvidar que el número esperado de puntos en una región $B$ es $\lambda \times |B|$. Si el área del cuadro cambia, el valor esperado también debe cambiar.
+
+3.  **Confusión en el Signo del ICS:** Interpretar un valor negativo como "agregación". Recuerde: $ICS > 0$ es agregado (clúster), $ICS < 0$ es regular (inhibición).
+
+4.  **Manejo de Bordes:** No definir una regla clara para los puntos que caen exactamente en los límites de los cuadros (ej: $x=5$). Esto puede llevar a contar un evento en dos cuadros o en ninguno, sesgando la varianza $s^2$.
+
+5.  **Subjetividad de la Partición:** Elegir una rejilla muy fina (ej: $10 \times 10$) para pocos puntos, lo que resultará en demasiados cuadros con valor cero, invalidando la potencia de la prueba de cuadros.
+
+### pause
+:::
+
+::: {#seccion-3-2-3 .content-card}
+El objetivo central es cuantificar la intensidad $\lambda(s)$, que representa la "densidad" o tasa de ocurrencia de eventos por unidad de área.
+
+
+La intensidad mide cómo se distribuyen los puntos en el espacio. En un escenario de **Aleatoriedad Espacial Completa (CSR)**, la intensidad es constante ($\lambda(s) = \lambda$), pero en procesos reales suele ser **inhomogénea**, variando según la ubicación.
+
+### 2.1 Implementación Computacional en R
+
+El siguiente bloque de código utiliza el paquete `spatstat` para estimar la intensidad mediante métodos de cuadros y suavizamiento por Kernel, integrando prácticas de limpieza de datos innegociables.
+
+```{r}
+# --- 1. Configuración y Mejores Prácticas de Limpieza ---
+library(spatstat)
+
+# Cargamos un dataset de ejemplo (pines japoneses)
+data(japanesepines)
+X <- japanesepines
+
+# Verificación de "Orderliness" (Simplicidad): 
+# La teoría asume que no hay puntos coincidentes.
+if(any(duplicated(X))) {
+  # Si hay duplicados, aplicamos jitter (desplazamiento mínimo) o limpieza
+  X <- unique(X) # Eliminamos duplicados exactos
+}
+
+# --- 2. Estimación por Cuadros (Quadrats) ---
+# Dividimos la ventana en una rejilla de 3x3
+cuadros <- quadratcount(X, nx = 3, ny = 3)
+
+# Prueba Chi-cuadrado para Homogeneidad (CSR)
+# H0: La intensidad es constante (Homogénea)
+# Trasfondo: X^2 = sum((Obs - Exp)^2 / Exp)
+prueba_csr <- quadrat.test(X, nx = 3, ny = 3)
+
+# --- 3. Estimación por Kernel (KDE) ---
+# Calculamos el ancho de banda óptimo usando el criterio de Diggle
+# Trasfondo: Minimiza el error cuadrático medio (MSE)
+h_optimo <- bw.diggle(X)
+
+# Generamos superficies de intensidad con diferentes suavizados
+densidad_fina <- density(X, sigma = 0.05) # Banda pequeña: mucho ruido
+densidad_suave <- density(X, sigma = 0.15) # Banda grande: muy borrosa
+densidad_auto <- density(X, sigma = h_optimo) # Banda optimizada
+
+# --- 4. Visualización Multimodal ---
+par(mfrow = c(2, 2), mar = c(2, 2, 2, 2))
+
+# A. Mapa de Cuadros
+plot(X, main = "Conteo por Cuadros", pch = 16, cols = "grey")
+plot(cuadros, add = TRUE, textargs = list(col = "red", cex = 1.5))
+
+# B. Mapa de Calor (Intensidad Estimada)
+plot(densidad_auto, main = "Intensidad Kernel (\u00d3ptima)")
+plot(X, add = TRUE, pch = "+", cols = "white")
+
+# C. Perspectiva 3D (Superficie de Intensidad)
+# Trasfondo: Visualiza la magnitud de lambda(s) como altura
+persp(densidad_auto, main = "Perspectiva 3D", col = "lightblue", theta = 30)
+
+# D. Curvas de Contorno
+contour(densidad_auto, main = "Isol\u00edneas de Intensidad")
+```
+
+
+### 2.2 Explicación Teórica y de Trasfondo
+
+#### A. La Función de Intensidad $\lambda(s)$
+Matemáticamente, se define como el límite del número esperado de eventos ($E[N(ds)]$) en una región que se encoge hacia el punto $s$, dividido por su área ($|ds|$):
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+*   **Aproximación global:** Si el proceso es homogéneo, el cálculo es simplemente $\hat{\lambda} = n / |A|$, donde $n$ es el total de puntos y $|A|$ el área de la ventana.
+
+#### B. Método de Cuadros (Quadrats)
+Este método es una forma de **discretizar el espacio**. 
+
+*   **Cálculo:** Se divide la ventana $W$ en subregiones $A_k$. El conteo en cada cuadro sigue una distribución Poisson si el patrón es CSR.
+
+*   **Interpretación:** Si los conteos varían mucho entre cuadros (varianza > media), el patrón es **agregado**. Si son muy similares (varianza < media), es **regular**.
+
+#### C. Estimación por Kernel (KDE)
+Es una técnica no paramétrica que "reparte" la masa de cada evento sobre su vecindad usando una función de peso $\kappa$.
+
+*   **Fórmula:** $\hat{\lambda}(x) = \frac{1}{h^2} \sum_{i=1}^n \kappa\left(\frac{x - x_i}{h}\right) \frac{1}{q(x)}$.
+
+*   **El Ancho de Banda ($h$):** Es el parámetro más crítico.
+    *   **$h$ pequeño:** Produce estimaciones "puntiagudas" (spiky), resaltando cada punto individual (alto sesgo).
+    *   **$h$ grande:** Produce una superficie muy lisa (oversmoothing), ocultando estructuras locales como clústeres.
+
+*   **Corrección de borde ($q(x)$):** Ajusta la intensidad cerca de los límites de la ventana para compensar los eventos no observados fuera de ella.
+
+
+### 2.3 Interpretación de los Resultados Gráficos
+
+1.  **Gráfico de Cuadros:** Permite ver rápidamente dónde se concentran los eventos. Si el valor $p$ de la prueba es $< 0.05$, rechazamos la homogeneidad y confirmamos que la intensidad varía en el espacio.
+
+2.  **Mapa de Densidad (KDE):** Las zonas rojas/oscuras indican una alta probabilidad de ocurrencia de eventos ("Hot Spots"). Es la herramienta principal para identificar tendencias espaciales.
+
+3.  **Perspectiva 3D (`persp`):** Ayuda a los analistas a visualizar la "fuerza" del proceso. Picos altos representan nudos de alta intensidad (agregación).
+
+4.  **Contornos:** Útiles para delimitar áreas de riesgo o influencia constante, facilitando la toma de decisiones geográficas.
+
+### pause
+:::
+
+
+::: {#seccion-3-3 .content-card}
+*La base de toda inferencia en PPE es probar si el patrón es "puro azar".*
+
+*   **3.1 Proceso Homogéneo de Poisson (HPP):** Es la realización matemática del CSR.
+*   **3.2 Propiedades Fundamentales:**
+    *   **Homogeneidad:** $\lambda$ es constante; no hay preferencia por ninguna ubicación.
+    *   **Independencia:** El número de eventos en regiones disjuntas son variables aleatorias independientes.
+*   **3.3 Proceso Binomial Condicional:** Relación entre el HPP y la distribución uniforme cuando se fija el número de puntos $n$.
+
+Abordaremos el concepto más fundamental para cualquier investigador: el **Modelo Nulo**. Para determinar si un patrón de puntos (como sismos, crímenes o la ubicación de árboles) tiene una causa biológica, física o social, primero debemos entender cómo se vería ese fenómeno si no existiera ningún proceso subyacente más que el puro azar. A este estado de "perfección aleatoria" lo denominamos **Aleatoriedad Espacial Completa (CSR - Complete Spatial Randomness)**.
+
+---
+
+### La Lógica de la Aleatoriedad
+
+Para comprender por qué el CSR es la base de toda inferencia, sigamos este razonamiento paso a paso:
+
+1.  **La necesidad de un punto de comparación:** En estadística clásica, comparamos promedios contra el cero o contra otras poblaciones. En PPE, comparamos nuestro mapa observado contra un mapa generado por un mecanismo sin memoria ni preferencias.
+2.  **El "Porqué" de la Homogeneidad:** Si un lugar en el mapa fuera más propenso a recibir puntos que otro, ya habría un "interés" geográfico (como una falla tectónica o un suelo fértil). Para que sea "puro azar", la probabilidad de encontrar un punto debe ser igual en cada milímetro de nuestra ventana de observación.
+3.  **El "Porqué" de la Independencia:** Si la aparición de un punto ayudara a que apareciera otro (contagio) o lo impidiera (competencia), el patrón tendría una estructura interna. Por tanto, el azar absoluto exige que los eventos no interactúen entre sí.
+
+---
+
+###  Explicación Esencial (Técnica Feynman)
+
+Imagina que tienes una hoja de papel en blanco y un puñado de arena muy fina. Si lanzas la arena desde muy alto, de modo que cada grano caiga sin "mirar" dónde cayó el anterior y sin que el viento sople más hacia un lado que hacia otro, obtendrás un patrón de **Aleatoriedad Espacial Completa**.
+
+Si al final ves que la arena formó montoncitos, sospecharás que hay pegamento en el papel (**atracción**). Si ves que los granos están perfectamente separados, pensarás que los granos tienen imanes que se repelen (**inhibición**). El CSR es ese estado intermedio donde no hay ni pegamento ni imanes; solo caída libre.
+
+---
+
+###  Rigor Académico y Conceptos Estructurales
+
+#### 3.1 Proceso Homogéneo de Poisson (HPP)
+El **HPP** es la realización matemática y el modelo estocástico que describe perfectamente el concepto de CSR. Se le considera el "estándar inalcanzable" porque en la naturaleza casi siempre existen factores que rompen la aleatoriedad, pero es vital como hipótesis nula ($H_0$).
+
+#### 3.2 Propiedades Fundamentales
+Para que un proceso sea un HPP, debe cumplir dos axiomas innegociables:
+
+*   **Homogeneidad (Propiedad de Primer Orden):** La intensidad $\lambda$ es una constante finita y positiva en toda la región de estudio. Esto implica que el número esperado de eventos en cualquier subregión es proporcional únicamente a su área ($E[N(B)] = \lambda |B|$).
+
+*   **Independencia (Independencia de Scattering):** Los conteos de puntos en regiones disjuntas (que no se tocan) son variables aleatorias totalmente independientes. Lo que sucede en el "Barrio A" no nos da ninguna información sobre el "Barrio B".
+
+#### 3.3 El Proceso Binomial Condicional y la Uniformidad
+Existe una confusión común entre el HPP y el Proceso Binomial. La distinción es técnica pero crucial para tu trabajo en R:
+
+*   En el **HPP**, el número total de puntos $n$ es una variable aleatoria (pueden ocurrir 10 o 10,000).
+
+*   Sin embargo, en la práctica, nosotros analizamos un mapa que ya tiene un número fijo de puntos $n$ (por ejemplo, los 84 sismos de tu dataset).
+
+*   Cuando fijamos $n$ en un proceso de Poisson, obtenemos un **Proceso Binomial**, donde la distribución de esos $n$ puntos es **Uniforme** en el espacio. Esto significa que cada punto fue ubicado de manera independiente siguiendo una distribución de probabilidad proporcional al área.
+
+---
+
+### ️ Términos Innegociables para el Examen y Trabajo Final
+
+*   **CSR (Complete Spatial Randomness):** Hipótesis de que el patrón es fruto del azar uniforme e independiente.
+*   **Intensidad ($\lambda$):** El parámetro del proceso de Poisson que define cuántos puntos hay por unidad de área.
+*   **Independencia Estocástica:** La ausencia de interacción (atracción o repulsión) entre eventos.
+*   **Proceso Binomial:** El modelo que usamos para simular el azar cuando conocemos de antemano el número total de puntos $n$.
+*   **Envolventes de Monte Carlo:** Técnica para comparar el patrón observado con múltiples simulaciones de un HPP para verificar si la desviación del azar es significativa.
+
+### pause
+:::
+
+::: {#seccion-3-3-1 .content-card}
+
+Como Matemático Estadístico y Revisor Académico, presento este análisis formal sobre la **Aleatoriedad Espacial Completa (CSR - Complete Spatial Randomness)**. Este concepto constituye el "ruido blanco" de los patrones puntuales y es el punto de referencia fundamental para cualquier inferencia estadística en esta disciplina.
+
+---
+
+### 1. El Proceso Homogéneo de Poisson (HPP): Realización del CSR
+
+El **Proceso Homogéneo de Poisson (HPP)** es el modelo estocástico que materializa matemáticamente la noción de un patrón puntual sin estructura, donde los eventos ocurren de forma independiente y uniforme.
+
+#### 1.1. Distribución de Conteos Espaciales
+Bajo CSR, la probabilidad de que existan exactamente $n$ eventos en una región acotada $B$ se define mediante la función de masa de probabilidad de Poisson:
+
+$$P(N(B) = n) = \frac{e^{-\lambda |B|} (\lambda |B|)^n}{n!}$$
+
+**Análisis de Componentes (Chain-of-Thought):**
+
+*   **$N(B)$**: Representa una variable aleatoria que cuenta el número de puntos en la región $B$.
+
+*   **$\lambda$ (Parámetro de Intensidad)**: Es la "tasa de riesgo" o el número medio de puntos por unidad de área. En el caso homogéneo, es una constante global.
+
+*   **$|B|$ (Medida de Lebesgue)**: Representa el tamaño de la ventana (área en $\mathbb{R}^2$ o volumen en $\mathbb{R}^3$).
+
+*   **$\lambda |B|$**: Es la esperanza matemática o media del proceso ($E[N(B)]$). Indica cuántos puntos "esperamos" encontrar si sumamos el potencial de ocurrencia en toda el área de $B$.
+
+*   **$n!$ (Factorial de $n$)**: Dado que en un patrón simple los puntos son indistinguibles y no tienen un orden específico, el factorial normaliza las posibles combinaciones de ubicaciones.
+
+#### 1.2. Lógica de la Agregación Espacial
+En estadística espacial, no sumamos valores aislados, sino que acumulamos la intensidad sobre una superficie. Si imaginamos dividir la ventana $B$ en celdas infinitamente pequeñas, el HPP asume que la probabilidad de encontrar un punto en cada celda es proporcional a su tamaño y que esta probabilidad no cambia de un lugar a otro.
+
+---
+
+### 2. Propiedades Fundamentales y Supuestos Críticos
+
+Para que un patrón sea clasificado como CSR, debe cumplir estrictamente dos propiedades que actúan como supuestos en los modelos de inferencia:
+
+#### 2.1. Homogeneidad (Propiedad de Primer Orden)
+La intensidad es constante en todo el dominio de estudio: $\lambda(s) = \lambda$.
+
+*   **Significado Físico**: Los eventos no tienen preferencia por ninguna ubicación geográfica.
+
+*   **Violación**: Si la intensidad varía según la ubicación (ej. más sismos cerca de una falla), el proceso se vuelve **Inhomogéneo (IPP)**. Ignorar esto lleva a detectar "agrupaciones" falsas que son simplemente reflejo de una media variable.
+
+#### 2.2. Independencia Espacial (Propiedad de Segundo Orden)
+Para dos regiones $A$ y $B$ que no se solapan ($A \cap B = \emptyset$), el número de eventos en $A$ es independiente del número de eventos en $B$.
+
+*   **Significado Físico**: La ocurrencia de un evento no "ayuda" ni "impide" que ocurra otro cerca. Matemáticamente, la covarianza entre los conteos de regiones disjuntas es cero: $Cov(N(A), N(B)) = 0$.
+
+*   **Violación**:
+    *   **Atracción (Clustering)**: La presencia de un punto aumenta la probabilidad de otros (ej. semillas cerca del árbol padre).
+    *   **Inhibición (Regularidad)**: La presencia de un punto repele a otros (ej. competencia territorial).
+
+---
+
+### 3. El Proceso Binomial Condicional
+
+Es común que el investigador trabaje con un número de puntos $n$ ya observado (fijo). Cuando condicionamos un HPP al número total de puntos $n$ en la ventana $D_S$, el resultado es un **Proceso Binomial**.
+
+$$f_n(s_1, \dots, s_n) = \frac{1}{|D_S|^n}$$
+
+**Explicación Técnica:**
+Bajo esta condición, cada uno de los $n$ puntos se distribuye de forma **Uniforme e Independiente** en la ventana. Esto significa que cualquier ubicación dentro de la ventana tiene la misma densidad de probabilidad de recibir un punto: $1/|D_S|$. Es el modelo que utiliza R en las pruebas de **Monte Carlo** para generar patrones aleatorios sintéticos con el mismo número de puntos que el original.
+
+---
+
+### 4. Inferencia y Juzgamiento de Hipótesis
+
+El análisis de CSR no busca "confirmar" el azar, sino ver si los datos proporcionan evidencia suficiente para **rechazarlo**.
+
+#### 4.1. Sistema de Hipótesis
+
+*   **$H_0$ (Hipótesis Nula)**: El patrón observado es una realización de un Proceso Homogéneo de Poisson (CSR).
+
+*   **$H_1$ (Hipótesis Alternativa)**: El patrón no es CSR (puede ser agregado o regular).
+
+#### 4.2. Prueba de Bondad de Ajuste ($\chi^2$ por Cuadros)
+Se divide la ventana en $L$ cuadros de igual área y se comparan los conteos observados ($n_i$) con el esperado bajo CSR ($\bar{n} = n/L$):
+
+$$\chi^2_0 = \sum_{i=1}^{L} \frac{(n_i - \bar{n})^2}{\bar{n}}$$
+
+**Interpretación del p-valor:**
+El p-valor indica la probabilidad de obtener un valor de $\chi^2$ tan extremo o más que el observado si el azar (H0) fuera cierto.
+
+*   **Si $p < 0.05$**: Rechazamos $H_0$. Concluimos que la variabilidad de los puntos entre los cuadros es demasiado alta (agregación) o demasiado baja (regularidad) para ser puro azar.
+
+*   **Si $p \geq 0.05$**: No hay evidencia suficiente para rechazar CSR. El patrón es "estadísticamente compatible" con el azar.
+
+**Nota sobre Monte Carlo**: En PPE, a menudo no confiamos en la distribución asintótica de la fórmula anterior (especialmente con pocos puntos). Por ello, generamos $k-1$ simulaciones de procesos binomiales, calculamos el estadístico para cada una y determinamos la posición (rango) del valor real en esa lista para hallar un p-valor exacto.
+
+### pause
+:::
+
+::: {#seccion-3-3-2 .content-card}
+En este laboratorio, no solo buscaremos un número, sino que entenderemos por qué el **Proceso Homogéneo de Poisson (HPP)** es nuestra "regla de medir" el azar. 
+
+Bajo la hipótesis de **Aleatoriedad Espacial Completa (CSR)**, asumimos que la naturaleza no tiene "memoria" ni "preferencias": los eventos no interactúan entre sí (independencia) y tienen la misma probabilidad de ocurrir en cualquier lugar (homogeneidad).
+
+---
+
+### 1. Problema de Estudio
+Un estudiante de ingeniería forestal ha registrado la ubicación de 6 plántulas de una especie nativa en una parcela experimental de $10 \times 10$ metros. El objetivo es determinar mediante cálculos manuales si la distribución de estas plántulas es compatible con el modelo de **Aleatoriedad Espacial Completa (CSR)** o si presenta una estructura de **agregación** (puntos que se atraen) o **regularidad** (puntos que se repelen).
+
+### 2. Datos (Dataset de Juguete)
+*   **Ventana de Observación ($W$):** Un cuadrado de $10 \times 10$ unidades (Área $|W| = 100$).
+*   **Número de eventos ($n$):** 6 plántulas registradas.
+*   **Coordenadas registradas ($s_i$):**
+    *   $s_1 = (1, 1)$
+    *   $s_2 = (2, 2)$
+    *   $s_3 = (1, 2)$
+    *   $s_4 = (8, 8)$
+    *   $s_5 = (9, 9)$
+    *   $s_6 = (8, 9)$
+
+*Nota teórica:* Al fijar $n=6$, el proceso se comporta técnicamente como un **Proceso Binomial Condicional**. Bajo CSR, esto implica que cada punto debe seguir una distribución **Uniforme** en la ventana.
+
+---
+
+### 3. Procedimiento Detallado (Cálculo Manual)
+
+Para evaluar el CSR, utilizaremos el **Método de Cuadros (Quadrats)** y el **Estadístico $\chi^2$ de bondad de ajuste**.
+
+#### Paso 1: Definición de la Partición y Conteos
+Dividiremos nuestra ventana de $10 \times 10$ en 4 cuadrantes iguales ($2 \times 2$) de $5 \times 5$ unidades cada uno ($L=4$ cuadros). Cada cuadro tiene un área de 25.
+
+1.  **Cuadro 1 ($x \in, y \in$):** Contiene a $s_1, s_2, s_3$. **Conteo $n_1 = 3$.**
+
+2.  **Cuadro 2 ($x \in, y \in$):** No contiene puntos. **Conteo $n_2 = 0$.**
+
+3.  **Cuadro 3 ($x \in, y \in$):** No contiene puntos. **Conteo $n_3 = 0$.**
+
+4.  **Cuadro 4 ($x \in, y \in$):** Contiene a $s_4, s_5, s_6$. **Conteo $n_4 = 3$.**
+
+#### Paso 2: Cálculo del Valor Esperado ($\bar{n}$) bajo CSR
+Bajo la propiedad de **Homogeneidad**, la intensidad $\lambda$ es constante. El número esperado de puntos en cada cuadro de igual área debe ser el promedio global:
+
+*   **Cálculo:** $\bar{n} = \frac{n}{L} = \frac{6}{4} = 1.5$.
+
+*   **Conexión Teórica:** Si el patrón fuera "puro azar", esperaríamos encontrar $1.5$ plántulas en cada uno de los 4 cuadros. Cualquier desviación sistemática de este valor pone en duda la homogeneidad del proceso.
+
+#### Paso 3: Cálculo del Estadístico $\chi^2$
+El estadístico mide la discrepancia entre lo observado ($n_i$) y lo esperado bajo el modelo nulo:
+$$\chi^2_0 = \sum_{i=1}^{L} \frac{(n_i - \bar{n})^2}{\bar{n}}$$
+
+*   **Término 1 y 4 (Conteos de 3):** $\frac{(3 - 1.5)^2}{1.5} = \frac{1.5^2}{1.5} = 1.5$
+*   **Término 2 y 3 (Conteos de 0):** $\frac{(0 - 1.5)^2}{1.5} = \frac{(-1.5)^2}{1.5} = 1.5$
+*   **Suma Total:** $\chi^2_0 = 1.5 + 1.5 + 1.5 + 1.5 = 6.0$.
+
+#### Paso 4: Evaluación mediante el Índice de Dispersión (ICS)
+Calculamos la varianza de los conteos ($s^2$) para ver si el proceso es "super-Poissoniano" (agregado) o "sub-Poissoniano" (regular).
+
+1.  **Media ($\bar{x}$):** $1.5$.
+
+2.  **Varianza ($s^2$):** $\frac{\sum (n_i - \bar{x})^2}{L-1} = \frac{(3-1.5)^2 + (0-1.5)^2 + (0-1.5)^2 + (3-1.5)^2}{3} = \frac{2.25 \times 4}{3} = \frac{9}{3} = 3.0$.
+
+3.  **ICS:** $\frac{s^2}{\bar{x}} - 1 = \frac{3.0}{1.5} - 1 = 1.0$.
+
+---
+
+### 4. Resultado Interpretado
+1.  **Análisis de Homogeneidad e Independencia:** El estadístico $\chi^2_0 = 6.0$ con $L-1=3$ grados de libertad se compara con un valor crítico (aprox. $7.81$ para $\alpha=0.05$). Aunque no se rechaza formalmente $H_0$ por un margen estrecho debido al tamaño de muestra tan pequeño ($n=6$), el valor es alto.
+2.  **Diagnóstico de la Estructura:** El **ICS = 1.0**. En la teoría, $ICS > 0$ indica **Agregación**. Observando los datos, vemos dos grupos definidos (uno cerca del origen y otro en el extremo opuesto), lo que viola el supuesto de **Independencia**.
+3.  **Conclusión:** El patrón sugiere que las plántulas tienden a agruparse en "clústers", posiblemente debido a factores biológicos (dispersión limitada de semillas) o ambientales (manchones de suelo fértil), alejándose del comportamiento de un **Proceso Homogéneo de Poisson**.
+
+---
+
+### Guía de Autoevaluación (Errores Comunes)
+
+1.  **Error en la Hipótesis Nula:** Pensar que "rechazar CSR" significa que los datos están mal. Al contrario, rechazar el modelo nulo es lo que nos permite descubrir procesos interesantes como la atracción o la competencia.
+2.  **Denominador Incorrecto en $\chi^2$:** Un error clásico es dividir por el conteo observado ($n_i$) en lugar del esperado ($\bar{n}$). Recuerda: la base de comparación es siempre el modelo teórico de Poisson.
+3.  **Confusión entre Proceso y Patrón:** Decir "el proceso es de 6 puntos". No; el **Patrón** tiene 6 puntos (es la realización), el **Proceso** es el mecanismo estocástico invisible (el HPP) que intentamos validar.
+4.  **Ignorar el Supuesto de Independencia:** Centrarse solo en si la media es constante (homogeneidad) y olvidar que los puntos también deben ser independientes. Si los puntos se atraen, la varianza de los conteos se infla, y el ICS será positivo, incluso si en promedio parece haber homogeneidad.
+5.  **Grados de Libertad:** Usar $n-1$ en lugar de $L-1$ (número de cuadros menos 1). Los grados de libertad dependen de la partición del espacio, no del número de puntos observados.
+
+### pause
+:::
+
+::: {#seccion-3-3-3 .content-card}
+Este modelo es el "ruido blanco" de la estadística de patrones puntuales y sirve como el estándar inalcanzable frente al cual comparamos la realidad.
+
+
+El análisis de un patrón puntual comienza siempre con el desafío al azar. El concepto de **CSR** implica dos pilares fundamentales: la **Homogeneidad** (intensidad $\lambda$ constante) y la **Independencia** (la ubicación de un evento no afecta a los demás).
+
+---
+
+### 3.1 Implementación Computacional en R
+
+El siguiente bloque de código integra las mejores prácticas de limpieza de datos, evaluación de homogeneidad mediante cuadros y evaluación de interacción mediante funciones de distancia con envolventes de Monte Carlo.
+
+```{r}
+# --- 1. Configuración y Limpieza de Datos (Best Practices) ---
+library(spatstat)
+
+# Cargamos datos (ej: sismicidad o pinos suecos)
+data(swedishpines)
+X <- swedishpines
+
+# Limpieza: Un patrón puntual bajo CSR debe ser "Simple" (sin duplicados).
+# La teoría de Poisson asume que la probabilidad de dos puntos en la misma 
+# ubicación exacta es cero.
+if(any(duplicated(X))) {
+  # unique.ppp remueve duplicados para cumplir con el supuesto de simplicidad
+  X <- unique(X) 
+}
+
+# --- 2. Evaluación de Homogeneidad (Propiedad de Primer Orden) ---
+# Usamos Quadrat Counting para evaluar si lambda(s) es constante.
+# Trasfondo: Divide la ventana Ds en L cuadros y usa la prueba Chi-cuadrado.
+# Formula: X^2 = sum((obs - exp)^2 / exp), donde exp = n_puntos / L.
+prueba_cuadros <- quadrat.test(X, nx = 4, ny = 4)
+
+# --- 3. Evaluación de Independencia (Propiedad de Segundo Orden) ---
+# Si la media es constante, evaluamos la interacción usando la Función L de Besag.
+# Trasfondo: L(r) es una transformación de la Función K de Ripley (K(r)).
+# Formula: L(r) = sqrt(K(r)/pi). Bajo CSR, L(r) = r.
+# Usamos Monte Carlo para generar envolventes de simulación porque la 
+# distribución exacta de L(r) es difícil de calcular analíticamente.
+env_L <- envelope(X, fun = Lest, nsim = 99, rank = 1, global = TRUE)
+
+# --- 4. Comparación: HPP vs. Proceso Binomial (Tema 3.3) ---
+# Un Proceso de Poisson Homogéneo (rpoispp) tiene un número de puntos aleatorio.
+# Un Proceso Binomial (runifpoint) fija el número de puntos n.
+set.seed(42)
+sim_poisson <- rpoispp(lambda = intensity(X), win = Window(X)) # n es aleatorio
+sim_binomial <- runifpoint(n = X$n, win = Window(X))           # n es fijo
+
+# --- 5. Visualización Multimodal ---
+
+# A. Patrón Observado y Cuadros
+plot(X, main = "Cuadros de Conteo", cols = "blue", pch = 16)
+plot(prueba_cuadros, add = TRUE, textargs = list(col = "red"))
+
+# B. Envolventes de Monte Carlo para CSR
+plot(env_L, . - r ~ r, main = "Función L (Centrada)")
+# Interpretación: Si la línea negra sale de la zona gris, rechazamos CSR.
+
+# C. Simulación HPP (Modelo Teórico Puro)
+plot(sim_poisson, main = paste("Simulación HPP (n =", sim_poisson$n, ")"))
+
+# D. Evaluación de Espacio Vacío (Función F)
+# F(r) mide la distancia de un PUNTO arbitrario al EVENTO más cercano.
+# Trasfondo: F(r) = 1 - exp(-lambda * pi * r^2) bajo CSR.
+plot(envelope(X, Fest, nsim = 39), main = "Función F (Espacio Vacío)")
+```
+
+---
+
+### 3.2 Desglose Teórico y Trasfondo Matemático
+
+#### 3.2.1 Proceso Homogéneo de Poisson (HPP)
+Es la realización matemática del CSR. Se define por dos propiedades:
+
+1.  **Conteo de Poisson:** El número de puntos en cualquier región $B$ sigue una distribución $N(B) \sim Poisson(\lambda |B|)$, donde $|B|$ es el área.
+
+2.  **Independencia:** Los conteos en regiones disjuntas son variables aleatorias independientes. Matemáticamente, $Cov(N(A), N(B)) = 0$ si $A \cap B = \emptyset$.
+
+#### 3.2.2 El Proceso Binomial Condicional (Tema 3.3)
+En la práctica, a menudo trabajamos con un número de puntos $n$ ya observado. Al condicionar un HPP al número total de puntos $N(D_S) = n$, el proceso resultante es un **Proceso Binomial**.
+
+*   **Fórmula de probabilidad:** $P(N(B) = k) = \binom{n}{k} p^k (1-p)^{n-k}$, donde $p = area(B)/area(D_S)$.
+
+*   **Importancia:** Las pruebas de Monte Carlo en `spatstat` (función `envelope`) suelen usar este proceso para mantener el $n$ constante y comparar patrones de igual tamaño.
+
+---
+
+### 3.3 Interpretación de Resultados y Gráficos
+
+1.  **Prueba de Cuadros (`quadrat.test`):**
+    *   **p-valor < 0.05:** Indica que la intensidad no es uniforme (Inhomogeneidad). Se rechaza CSR.
+    *   **Índice de Dispersión (ICS):** Si $X^2 / df > 1$, hay sospecha de agregación; si es $< 1$, de regularidad.
+
+2.  **Envolventes de la Función L (`envelope`):**
+    *   **Línea negra por encima de la envolvente:** Indica **Agregación** (los eventos están más cerca de lo esperado por azar).
+    *   **Línea negra por debajo:** Indica **Inhibición o Regularidad** (los eventos se repelen).
+    *   **Dentro de la envolvente:** El patrón es estadísticamente compatible con **CSR**.
+
+3.  **Función F (Espacio Vacío):** Evalúa si hay "huecos" grandes en el patrón. Si la curva observada es menor a la teórica, significa que los puntos están agrupados, dejando grandes áreas vacías.
+
+**Nota de Trasfondo:** El cálculo de las funciones de distancia (K, L, G, F) requiere **correcciones de borde** (como la de Ripley o la de Jones) porque no podemos observar eventos fuera de la ventana $D_S$, lo que sesgaría las estimaciones hacia abajo. `spatstat` aplica estas correcciones automáticamente en los ejes de los gráficos (`iso`, `trans`, etc.).
+
+### pause
+:::
+
+
+::: {#seccion-3-4 .content-card}
+*¿Rechazamos la hipótesis de azar? Si es así, ¿el patrón es agrupado o regular?*
+
+*   **4.1 Prueba $\chi^2$ de Bondad de Ajuste:** Compara el conteo de cuadros observado con el esperado bajo Poisson.
+*   **4.2 Estadísticos Basados en Distancias:**
+    *   **Vecino más cercano ($G$):** Distancia entre un evento y su par más próximo.
+    *   **Espacio Vacío ($F$):** Distancia desde un punto arbitrario al evento más cercano.
+*   **4.3 Índices de Asociación:**
+    *   **Clark-Evans ($R$):** Si $R < 1$ hay agrupación; si $R > 1$ hay regularidad/inhibición.
+    *   **Hopkins-Skellam ($HS$):** Evaluación de la uniformidad del patrón.
+*   **💻 Implementación en R:** Funciones `quadrat.test()`, `Gest()`, `Fest()` y `clarkevans.test()`.
+
+la inferencia. Ya no solo describimos dónde están los puntos; ahora debemos "juzgar" si su ubicación es fruto del puro azar o si existe una fuerza (biológica, social o geológica) que los agrupa o los separa.
+
+---
+
+### 🧠 La Lógica de la Inferencia Espacial
+
+Para entender estas pruebas, debemos seguir este razonamiento paso a paso:
+
+1.  **La Necesidad de un Modelo de Referencia:** En estadística, no podemos decir que algo es "especial" si no sabemos qué es lo "normal". En PPE, lo normal es la **Aleatoriedad Espacial Completa (CSR)**. Si no podemos rechazar el azar, nuestro análisis termina ahí porque no hay un patrón que explicar.
+2.  **¿Contar o Medir?:** Para desafiar al azar, tenemos dos caminos. El primero es **contar** cuántos eventos caen en cuadros (primer orden/intensidad). El segundo es **medir** la distancia entre los eventos (segundo orden/interacción). 
+3.  **El "Porqué" de las Distancias:** Los conteos por cuadros son útiles pero subjetivos (dependen de qué tan grande hagas el cuadro). Las distancias, en cambio, capturan la "geometría estocástica" del proceso: ¿qué tan cerca está un vecino del otro?.
+4.  **La Validación del Juicio:** Como la naturaleza tiene formas irregulares y procesos complejos, las fórmulas clásicas a veces fallan. Por eso usamos **Simulaciones de Montecarlo**: creamos miles de mapas al azar y vemos si el nuestro es un "bicho raro" entre ellos.
+
+---
+
+### 💡 Explicación Esencial (Técnica Feynman)
+
+Imagina que entras a una cafetería. 
+
+*   Si la gente está sentada en cualquier mesa sin importar quién esté al lado, eso es **CSR (Azar)**. 
+
+*   Si ves que todos están amontonados en una esquina porque ahí hay un enchufe o una banda tocando, eso es **Agregación (Clúster)**. 
+
+*   Si ves que cada persona se sienta lo más lejos posible de las demás para tener privacidad, eso es **Regularidad (Inhibición)**.
+
+Para saber en qué escenario estás, podrías:
+
+1.  Dividir el piso en baldosas y contar cuánta gente hay en cada una (**Prueba $\chi^2$**).
+
+2.  Medir la distancia entre cada persona y su vecino más cercano (**Función G**).
+
+3.  Ponerte en un lugar vacío y ver qué tan lejos te queda la persona más próxima (**Función F**).
+
+Si tu mapa de la cafetería muestra distancias mucho más cortas que un mapa generado por una computadora lanzando puntos al azar, entonces confirmas que hay una "fuerza" (atracción) actuando allí.
+
+---
+
+### 📚 Rigor Estadístico y Diagnósticos Técnicos
+
+#### 4.1. Prueba $\chi^2$ de Bondad de Ajuste
+Se utiliza para evaluar si la intensidad $\lambda$ es constante (homogeneidad).
+
+*   **El Estadístico:** $\chi^2_0 = \sum \frac{(O_i - E_i)^2}{E_i}$, donde $O_i$ es el conteo observado en el cuadro $i$ y $E_i$ es el esperado ($n/L$).
+
+*   **Índice de Dispersión (ICS):** Es la proporción varianza/media menos 1. 
+    *   $ICS = 0$: Compatible con CSR.
+    *   $ICS > 0$: Agregación (la varianza es mayor que la media).
+    *   $ICS < 0$: Regularidad (la varianza es menor que la media).
+
+#### 4.2. Estadísticos Basados en Distancias ($G$ y $F$)
+*   **Función G (Evento-Evento):** Es la función de distribución acumulada de las distancias al vecino más cercano. Bajo CSR, $G(y) = 1 - \exp(-\lambda \pi y^2)$. Si la curva observada sube más rápido que la teórica, indica que hay muchos vecinos a distancias cortas (agregación).
+*   **Función F (Punto-Evento):** Mide la distancia desde una ubicación arbitraria $u$ al evento más cercano (distancia de espacio vacío). Si la curva observada está por debajo de la teórica, significa que hay "grandes huecos" en el patrón, lo cual es típico de procesos agregados.
+
+#### 4.3. Índices de Asociación
+*   **Índice de Clark-Evans ($R$):** Compara la distancia media observada ($\bar{d}$) con la esperada bajo CSR.
+    *   $R < 1$: Agrupado.
+    *   $R > 1$: Regular/Inhibido.
+*   **Índice de Hopkins-Skellam ($HS$):** Relaciona las sumas de los cuadrados de las distancias $d$ (evento-evento) y $l$ (punto-evento). Si $HS < 1$ sugiere agrupación; $HS > 1$ sugiere regularidad.
+
+---
+
+### 💻 Implementación en RStudio (`spatstat`)
+
+Para su trabajo final, el flujo de validación en R sería:
+
+1.  `quadrat.test(X)`: Para el diagnóstico global de homogeneidad.
+
+2.  `Gest(X)` y `Fest(X)`: Para ver la distribución de distancias.
+
+3.  `envelope(X, Gest)`: **Fundamental.** Crea las "envolventes" de Montecarlo. Si la línea de sus datos sale de la zona gris, el resultado es estadísticamente significativo y puede rechazar la hipótesis de azar.
+
+4.  `clarkevans.test(X)`: Para obtener un p-valor formal basado en distancias.
+
+### 🗝️ Términos Innegociables
+*   **CSR (Complete Spatial Randomness):** Hipótesis nula que asume independencia y homogeneidad.
+*   **Homogeneidad:** Propiedad de primer orden donde la intensidad no cambia según la ubicación.
+*   **Interacción:** Propiedad de segundo orden que describe cómo un evento afecta la probabilidad de que ocurran otros cerca.
+*   **Efecto de Borde:** Sesgo que ocurre porque no podemos ver eventos fuera de la ventana de estudio; requiere corrección en R (ej. `iso`, `trans`).
+*   **Envolventes (Envelopes):** Límites críticos generados por simulaciones para determinar la significancia de un patrón.
+
+### pause
+:::
+
+
+::: {#seccion-3-4-1 .content-card}
+
+El objetivo primordial de esta etapa es transitar de la descripción visual a la validación estadística, determinando si un patrón observado puede ser explicado por el azar o si responde a procesos de interacción biológica, física o social.
+
+---
+
+### 1. El Fundamento de la Inferencia: Aleatoriedad Espacial Completa (CSR)
+
+Toda prueba de hipótesis en este contexto nace de comparar el patrón observado contra el modelo nulo de **CSR**. Este modelo se materializa en el **Proceso Homogéneo de Poisson (HPP)**, el cual exige dos supuestos innegociables:
+
+1.  **Homogeneidad:** La intensidad $\lambda(s)$ es constante en toda la ventana de observación ($\lambda(s) = \lambda$).
+
+2.  **Independencia Espacial:** La ocurrencia de un evento en un punto no afecta la probabilidad de que ocurran otros en su vecindad.
+
+---
+
+### 2. Prueba $\chi^2$ de Bondad de Ajuste e Índice de Dispersión (ICS)
+
+Esta prueba evalúa la propiedad de primer orden (intensidad) mediante la discretización del espacio.
+
+#### 2.1. El Estadístico de Prueba $\chi^2$
+Dividimos la ventana $D_s$ en $L$ subregiones (cuadros) de igual área. El estadístico se define como:
+
+$$\chi_{0}^{2} = \sum_{i=1}^{L} \frac{(n_{i} - \bar{n})^{2}}{\bar{n}}$$
+
+**Análisis por Chain-of-Thought (Lógica de agregación espacial):**
+
+*   **$n_{i}$:** Es el conteo observado de eventos en el cuadro $i$. Representa la "realidad" capturada en esa porción del terreno.
+
+*   **$\bar{n} = n/L$:** Es el conteo esperado bajo el supuesto de que los puntos se reparten equitativamente (Homogeneidad). En lugar de sumar valores abstractos, estamos "agregando" la discrepancia entre lo que vimos en cada cuadro y lo que el azar predice.
+
+*   **La sumatoria ($\sum$):** Acumula las desviaciones de toda la ventana. Si la suma total es muy alta, los "montones" y "vacíos" de puntos son demasiado extremos para ser aleatorios.
+
+#### 2.2. Índice de Tamaño de Clúster (ICS)
+Derivado del estadístico anterior, el ICS mide la relación entre la varianza muestral ($s^2$) y la media de los conteos ($\bar{x}$):
+
+$$ICS = \frac{s^{2}}{\bar{x}} - 1$$
+
+*   **Interpretación:** Bajo CSR, la media y la varianza de un proceso de Poisson son iguales, por lo que $ICS \approx 0$. 
+    *   Si $ICS > 0$: Existe **agregación** (la varianza es mayor a la media, indicando cuadros muy llenos y otros vacíos).
+    *   Si $ICS < 0$: Existe **regularidad** (la varianza es mínima, indicando que todos los cuadros tienen casi el mismo número de puntos).
+
+---
+
+### 3. Estadísticos Basados en Distancias ($G$ y $F$)
+
+A diferencia de los cuadros, estas pruebas utilizan la geometría de los puntos para detectar interacciones.
+
+#### 3.1. Función $G$: Distancia al Vecino más Cercano (Evento-Evento)
+Mide la probabilidad de que la distancia desde un evento arbitrario hasta su vecino más cercano sea menor o igual a $y$. Asintóticamente, bajo CSR:
+
+$$G(y) = 1 - \exp(-\lambda \pi y^{2})$$
+
+*   **Lógica de la fórmula:** El término exponencial $\exp(-\lambda \pi y^2)$ representa la probabilidad de que un círculo de radio $y$ alrededor de un evento esté **vacío**. Al restarlo de 1, obtenemos la probabilidad de que haya *al menos un* vecino en ese radio.
+*   **Diagnóstico:** Si la curva calculada con los datos sube más rápido que la teórica, los vecinos están "demasiado cerca", sugiriendo agregación.
+
+#### 3.2. Función $F$: Función de Espacio Vacío (Punto-Evento)
+Mide la distancia desde un punto arbitrario $u$ (que no es un evento) hasta el evento más cercano. 
+
+*   **Interpretación:** En patrones agregados, existen grandes "huecos" de espacio vacío, por lo que las distancias $F$ serán mayores de lo esperado, y la curva subirá más lento que la teórica.
+
+---
+
+### 4. Índices de Asociación: Clark-Evans y Hopkins-Skellam
+
+#### 4.1. Índice de Clark-Evans ($R$)
+Compara la distancia media observada entre vecinos ($\bar{d}$) con la distancia esperada bajo CSR ($E[D]$):
+
+$$R = \frac{\bar{d}}{E[D]} = 2\bar{d}\sqrt{\hat{\lambda}}$$
+
+*   **Chain-of-Thought:** Si la distancia promedio que medimos en el mapa es menor a la que debería haber por azar ($R < 1$), los puntos están "apiñados" (agrupación). Si la distancia es mayor ($R > 1$), los puntos se repelen (inhibición).
+
+#### 4.2. Índice de Hopkins-Skellam ($HS$)
+Relaciona las distancias evento-evento ($d_i$) con las punto-evento ($l_i$):
+
+$$HS = \frac{\sum d_{i}^{2}}{\sum l_{i}^{2}}$$
+
+*   **Lógica:** Compara la intensidad de los "clústeres" frente a la intensidad de los "vacíos". Se distribuye como una $F$ de Snedecor bajo CSR.
+
+---
+
+### 5. Supuestos Críticos y el Juicio de la Hipótesis
+
+#### 5.1. Supuestos y Violaciones
+
+*   **Independencia:** Si se viola, el patrón muestra interacción (atracción o repulsión).
+
+*   **Homogeneidad:** Si se viola, el patrón es **Inhomogéneo (IPP)**. El mayor riesgo es detectar una agrupación "falsa" que en realidad es solo una respuesta a una tendencia ambiental (ej. más árboles cerca de un río).
+
+#### 5.2. El Valor P vía Monte Carlo
+Dado que las formas de las ventanas suelen ser irregulares, las distribuciones teóricas ($\chi^2, F, Z$) pueden fallar. Por ello, se recurre a simulaciones:
+
+1.  Se generan 999 patrones aleatorios (CSR).
+
+2.  Se calcula el estadístico para el patrón real ($u_1$) y para los 999 simulados ($u_2, \dots, u_{1000}$).
+
+3.  Se ordenan de menor a mayor.
+
+*   **Interpretación:** Si el valor real ocupa una posición extrema (ej. es el más pequeño o el más grande de los 1000), el p-valor será $< 0.05$ y **rechazamos CSR** con alta confianza.
+
+#### 💻 Implementación en RStudio
+En su archivo `.Rmd`, utilice:
+
+*   `quadrat.test(X)` para la prueba de cuadros.
+
+*   `Gest(X)`, `Fest(X)` y `Lest(X)` para funciones de distancia.
+
+*   `envelope(X, Lest, nsim=99)` para generar los límites críticos de Monte Carlo. Si la línea negra sale de la zona gris, el patrón no es aleatorio.
+
+### pause
+:::
+
+
+::: {#seccion-3-4-2 .content-card}
+El objetivo es "juzgar" si el patrón observado puede ser explicado por el azar o si existe un proceso de interacción (agregación o inhibición).
+
+---
+
+### 1. Problema de Estudio
+Un biólogo marino ha registrado la ubicación de 4 nidos de una especie de ave costera en una zona de dunas de $10 \times 10$ metros. Se sospecha que las aves anidan en colonias (agregación). Debemos evaluar mediante cálculos manuales si se puede rechazar la **Aleatoriedad Espacial Completa (CSR)** y diagnosticar el tipo de patrón.
+
+### 2. Datos (Dataset de Juguete)
+
+*   **Ventana de Observación ($D_S$):** Un cuadrado de $10 \times 10$ m. Área $|D_S| = 100 \, m^2$.
+*   **Eventos registrados ($n = 4$):**
+    *   $s_1 = (1, 1)$
+    *   $s_2 = (2, 2)$
+    *   $s_3 = (8, 8)$
+    *   $s_4 = (9, 9)$
+
+---
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso 1: Caracterización de la Intensidad ($\lambda$)
+Para cualquier prueba de segundo orden o índice, necesitamos la tasa de ocurrencia global bajo el supuesto de homogeneidad.
+
+*   **Cálculo:** $\hat{\lambda} = \frac{n}{|D_S|} = \frac{4}{100} = 0.04 \, eventos/m^2$.
+
+#### Paso 2: Prueba $\chi^2$ de Bondad de Ajuste (Método de Cuadros)
+Dividimos la ventana en $L=4$ cuadros de $5 \times 5$ m cada uno ($2 \times 2$).
+
+1.  **Conteo de Eventos ($n_i$):**
+    *   Cuadro Inf. Izq ($x \in, y \in$): Contiene $s_1, s_2$. **$n_1 = 2$.**
+    *   Cuadro Sup. Izq ($x \in, y \in$): Vacío. **$n_2 = 0$.**
+    *   Cuadro Inf. Der ($x \in, y \in$): Vacío. **$n_3 = 0$.**
+    *   Cuadro Sup. Der ($x \in, y \in$): Contiene $s_3, s_4$. **$n_4 = 2$.**
+
+2.  **Esperado bajo CSR ($\bar{n}$):** $\frac{n}{L} = \frac{4}{4} = 1$.
+
+3.  **Estadístico $\chi_0^2$:**
+    $$\chi_0^2 = \sum_{i=1}^{L} \frac{(n_i - \bar{n})^2}{\bar{n}} = \frac{(2-1)^2}{1} + \frac{(0-1)^2}{1} + \frac{(0-1)^2}{1} + \frac{(2-1)^2}{1} = 1 + 1 + 1 + 1 = 4.0$$
+
+*   **Conexión Teórica:** Un $\chi_0^2 = 4.0$ con $L-1=3$ grados de libertad se compara con tablas (valor crítico $\approx 7.81$ para $\alpha=0.05$). No rechazamos CSR solo con cuadros por el tamaño de muestra ínfimo, pero el ICS nos dirá más.
+
+#### Paso 3: Índice de Clark-Evans ($R$)
+Este índice utiliza la distancia al **vecino más cercano** ($d_i$) para evaluar la interacción.
+
+1.  **Distancias al vecino más cercano:**
+    *   $s_1 \to s_2$: $d_1 = \sqrt{(2-1)^2 + (2-1)^2} = \sqrt{2} \approx 1.41$
+    *   $s_2 \to s_1$: $d_2 = \sqrt{(1-2)^2 + (1-2)^2} = \sqrt{2} \approx 1.41$
+    *   $s_3 \to s_4$: $d_3 = \sqrt{(9-8)^2 + (9-8)^2} = \sqrt{2} \approx 1.41$
+    *   $s_4 \to s_3$: $d_4 = \sqrt{(8-9)^2 + (8-9)^2} = \sqrt{2} \approx 1.41$
+
+2.  **Distancia media observada ($\bar{d}$):** $(1.41 \times 4) / 4 = 1.41$.
+
+3.  **Distancia esperada bajo CSR ($E[D]$):**
+    $$E[D] = \frac{1}{2\sqrt{\lambda}} = \frac{1}{2\sqrt{0.04}} = \frac{1}{2 \times 0.2} = \frac{1}{0.4} = 2.5$$
+
+4.  **Índice $R$:** $R = \frac{\bar{d}}{E[D]} = \frac{1.41}{2.5} = 0.564$.
+
+---
+
+### 4. Resultado Interpretado
+
+1.  **Diagnóstico de Agregación:** El índice de Clark-Evans $R = 0.564$ es **menor que 1**, lo cual es una evidencia teórica de **Agregación** (los eventos están más cerca de lo esperado por azar). 
+
+2.  **Índice de Dispersión (ICS):**
+    *   Media ($\bar{x} = 1$), Varianza de conteos ($s^2 = \frac{(2-1)^2 + (0-1)^2 \times 2 + (2-1)^2}{3} = \frac{4}{3} \approx 1.33$).
+    *   $ICS = \frac{1.33}{1} - 1 = 0.33$. Como $ICS > 0$, se confirma la estructura de **clúster o agregación**.
+
+3.  **Conclusión Académica:** Aunque la prueba $\chi^2$ no es conclusiva por el bajo $n$, los índices de distancia revelan que la distancia media entre nidos es casi la mitad de lo que dictaría el azar (1.41m vs 2.5m). Las aves muestran un comportamiento social de agrupamiento espacial significativo.
+
+---
+
+### 📝 Guía de Autoevaluación (Errores Comunes)
+
+1.  **Subjetividad de los Cuadros:** Un error común es elegir una rejilla donde todos los puntos caen en un solo cuadro, inflando artificialmente el $\chi^2$. La división debe ser "informada" o estandarizada.
+2.  **Error en la fórmula de Clark-Evans:** Olvidar que el denominador es la esperanza bajo Poisson. Si se usa la distancia media de *otro* mapa, el índice carece de validez como prueba de CSR.
+3.  **Confusión $G$ vs $F$:** Medir distancias desde puntos vacíos de la cuadrícula y llamarlo "vecino más cercano". Recuerde: la **Función G** es evento-evento (interacción); la **Función F** es punto-evento (espacio vacío).
+4.  **Omisión del Efecto de Borde:** En el cálculo manual no lo corregimos, pero en R es obligatorio. Sin corrección, los eventos cerca del límite parecen no tener vecinos, sesgando el análisis hacia la "inhibición" falsamente.
+
+### pause
+:::
+
+
+::: {#seccion-3-4-3 .content-card}
+En esta etapa, el objetivo no es solo describir, sino **diagnosticar formalmente** si un patrón se desvía de la **Aleatoriedad Espacial Completa (CSR)** y determinar la naturaleza de esa desviación (agregación o inhibición).
+
+El análisis de PPE se basa en el desafío constante al modelo nulo de Poisson Homogéneo. Para ello, utilizamos herramientas que evalúan tanto la intensidad (primer orden) como la interacción entre eventos (segundo orden).
+
+### 4.1 Implementación Computacional y Protocolo de Inferencia en R
+
+El siguiente bloque de código integra las pruebas clásicas de conteo y las funciones modernas basadas en distancias, aplicando simulaciones de Montecarlo para garantizar la validez estadística incluso en ventanas irregulares.
+
+```{r}
+# --- 1. Preparación y Limpieza de Datos (Best Practices) ---
+library(spatstat)
+
+# Cargamos un dataset de prueba (pinos suecos)
+# Este patrón es un clásico para evaluar regularidad/inhibición.
+data(swedishpines)
+X <- swedishpines
+
+# Limpieza: La teoría de Poisson asume procesos "Simples" (sin puntos duplicados).
+# Verificamos duplicados para evitar violar el supuesto de 'Orderliness'.
+if(any(duplicated(X))) {
+  message("Se detectaron puntos duplicados. Aplicando remoción única...")
+  X <- unique(X) # Asegura que cada evento ocupe una ubicación única
+}
+
+# --- 2. Diagnóstico de Primer Orden: Prueba Chi-cuadrado (Quadrats) ---
+# Trasfondo Matemático: X2 = sum((ni - n_esp)^2 / n_exp)
+# ni: conteo observado en cuadro i; n_exp: conteo esperado (n_total / L cuadros).
+# La función divide el espacio en subregiones disjuntas.
+prueba_chi <- quadrat.test(X, nx = 5, ny = 5) 
+
+# --- 3. Diagnóstico de Segundo Orden: Funciones G y F ---
+# G(r): Distribución de distancias al vecino más cercano (evento-evento).
+# F(r): Función de espacio vacío (punto-evento).
+# Trasfondo: Bajo CSR, G(r) = 1 - exp(-lambda * pi * r^2).
+
+# Usamos envolventes de Montecarlo (nsim=99) para generar límites de significancia.
+# Esto evita depender de distribuciones asintóticas que fallan en ventanas finitas.
+env_G <- envelope(X, fun = Gest, nsim = 99, fix.n = TRUE)
+env_F <- envelope(X, fun = Fest, nsim = 99, fix.n = TRUE)
+
+# --- 4. Índices de Asociación y regularidad ---
+# Clark-Evans (R): Compara distancia media observada vs esperada.
+# Trasfondo: R = d_media / (1 / (2 * sqrt(lambda))).
+# R < 1: Agregación; R > 1: Regularidad; R = 1: CSR.
+clark_test <- clarkevans.test(X)
+
+# Hopkins-Skellam (HS): Relaciona distancias entre eventos y distancias punto-evento.
+# Un valor HS = 1 indica azar; HS < 1 indica agregación; HS > 1 indica regularidad.
+# Calculamos HS manualmente a partir de los objetos de spatstat
+d_nn <- nndist(X) # Distancias al vecino más cercano (entre eventos)
+# Generamos puntos aleatorios para obtener distancias de espacio vacío (l)
+l_empty <- nncross(runifpoint(X$n, win=X$window), X)$dist 
+hs_val <- sum(d_nn^2) / sum(l_empty^2) # Fórmula del índice
+
+# --- 5. Visualización Multimodal ---
+par(mfrow = c(2, 2), mar = c(2, 2, 1, 1)) # Configura la disposición de gráficos
+
+# A. Gráfico de Cuadros y Residuos
+plot(X, main = "Conteos por Cuadros", cols="grey")
+plot(prueba_chi, add = TRUE, textargs = list(col = "red", cex = 0.8))
+# Interpretación: Números rojos muestran Obs, Exp y Residuales por celda.
+
+# B. Envolventes de Función G (Interacción)
+plot(env_G, main = "Función G (Neighbor)", legend=FALSE)
+# Interpretación: Si la curva negra está SOBRE la zona gris, hay AGREGACIÓN.
+
+# C. Envolventes de Función F (Espacio Vacío)
+plot(env_F, main = "Función F (Empty Space)", legend=FALSE)
+# Interpretación: Si la curva negra está BAJO la zona gris, hay HUECOS (Agregación).
+
+# D. Resumen de Índices
+# plot(X, main = paste("R-Clark:", round(clark_test$estimate, 3), 
+#                      "\nHS-Index:", round(hs_val, 3)), pch=16, cex=0.5)
+
+# D. Resumen de Índices (CORREGIDO)
+# Extraemos el primer elemento numérico de estimate con [1]
+val_clark <- round(as.numeric(clark_test$estimate[1]), 3)
+val_hs    <- round(hs_val, 3)
+
+plot(X, main = paste0("R-Clark: ", val_clark, " | HS-Index: ", val_hs), 
+     pch = 16, cex = 0.5)
+```
+
+---
+
+### 4.2 Desglose Teórico y Trasfondo de los Cálculos
+
+#### A. Prueba $\chi^2$ y el Índice de Tamaño de Clúster (ICS)
+La prueba de cuadros evalúa la **Homogeneidad**. El estadístico $\chi_0^2$ sigue una distribución con $L-1$ grados de libertad. 
+
+*   **Fórmula de trasfondo:** Se calcula el **ICS** como $ICS = (s^2 / \bar{x}) - 1$, donde $s^2$ es la varianza de los conteos y $\bar{x}$ el promedio.
+
+*   **Interpretación:** Un $ICS > 0$ indica que la varianza es mayor a la media (proceso super-Poisson), lo que se traduce estadísticamente como **agregación**.
+
+#### B. Estadísticos de Distancia ($G$ y $F$)
+Estas funciones capturan la geometría del patrón:
+
+*   **Función G (Evento-Evento):** Mide cuán rápido encontramos al vecino más cercano. En patrones agregados, las distancias cortas son muy frecuentes, por lo que la curva sube más rápido que la teórica de Poisson.
+
+*   **Función F (Punto-Evento):** Mide la distancia desde un lugar vacío al evento más cercano. Si hay clústeres, existen grandes espacios vacíos en el mapa; por ende, tardaremos más en encontrar un punto, y la curva observada estará por debajo de la teórica.
+
+#### C. Pruebas de Montecarlo y Envolventes
+Dado que las formas de las ventanas (como el mapa de un país) complican el cálculo de distribuciones exactas, generamos $k-1$ simulaciones de CSR. 
+
+*   **Aproximación:** Se ordenan los valores de los estadísticos $u_{(1)} \dots u_{(k)}$. Si el valor observado $u_1$ cae fuera del rango del 95% de las simulaciones (zona gris), rechazamos la hipótesis nula.
+
+---
+
+
+### 4.3 Guía de Interpretación para el Evaluador
+
+1.  **P-valor de `quadrat.test`:** Si $p < 0.05$, existe evidencia suficiente para decir que la intensidad $\lambda$ no es constante. El patrón es **inhomogéneo**.
+2.  **Índice de Clark-Evans ($R$):** Si en su informe el valor de $R$ es significativamente menor a 1, debe concluir que existe una fuerza de atracción o contagio. Si $R > 1$, existe **inhibición** (competencia por espacio), como ocurre en bosques maduros o nidos territoriales.
+3.  **Análisis de Envolventes:** Es la prueba visual más potente. No se fije solo en un número; mire a qué distancias ($r$) la línea negra sale de la zona gris. Eso indica la escala espacial a la que ocurre la interacción.
+
+**Nota sobre Inhomogeneidad:** Si el patrón es claramente inhomogéneo (tendencia espacial), los índices de Clark-Evans pueden dar valores menores a 1 falsamente. En ese caso, se recomienda transitar hacia modelos de intensidad variable antes de concluir sobre la interacción.
+
+### pause
+:::
+
+
+::: {#seccion-3-5 .content-card}
+
+*¿Cómo interactúan los puntos entre sí? ¿Un evento atrae o repele a otros?*
+
+*   **5.1 Función K de Ripley:** Mide el número esperado de eventos adicionales dentro de una distancia $h$ de un evento arbitrario.
+*   **5.2 Función L de Besag:** Transformación de la Función K para estabilizar la varianza y facilitar la interpretación visual ($L(r)-r = 0$ bajo CSR).
+*   **5.3 Función de Correlación por Pares $g(r)$:** Describe la probabilidad de encontrar un par de eventos separados por una distancia $r$.
+*   **5.4 Correcciones de Borde:** Ajustes necesarios porque los eventos fuera de la ventana no pueden ser observados, lo que sesga las distancias.
+*   **💻 Implementación en R:** Funciones `Kest()`, `Lest()` y `pcf()` con argumentos para corrección de borde (Ripley, Jones, etc.), comparacion y como tomar desición.
+
+
+Si en el módulo anterior aprendimos a contar cuántos puntos hay y cómo varía su densidad (primer orden), en este nivel profundizaremos en el **"comportamiento social"** de los eventos. Las propiedades de segundo orden no nos dicen cuántos puntos hay, sino **cómo se relacionan entre sí** a diferentes distancias.
+
+---
+
+### 🧠 Chain-of-Thought: La Lógica de la Interacción
+
+Para dominar este tema, debemos seguir un razonamiento secuencial:
+
+1.  **Más allá de la media:** Dos mapas pueden tener la misma intensidad promedio (ej. 10 puntos por km²), pero en uno los puntos están agrupados en una esquina y en el otro están perfectamente repartidos como un tablero de ajedrez. La media no detecta esta diferencia; necesitamos la **covarianza espacial**.
+2.  **La relación de pareja:** La interacción espacial se define por lo que sucede entre pares de puntos. Si la presencia de un evento aumenta la probabilidad de encontrar otro cerca, hablamos de **atracción o agregación**. Si la disminuye, hablamos de **inhibición o regularidad**.
+3.  **El problema del crecimiento geométrico:** Al medir vecinos dentro de un radio $r$, el área buscada crece de forma cuadrática ($\pi r^2$). Esto hace que las funciones de conteo sean curvas difíciles de interpretar visualmente, lo que nos obliga a realizar transformaciones matemáticas para "enderezar" la realidad y compararla con el azar.
+4.  **La ceguera de la ventana:** En la práctica, solo observamos eventos dentro de una ventana $D_S$. Sin embargo, los eventos que están justo afuera de nuestro límite invisible están interactuando con los de adentro. Ignorarlos sesgaría nuestros cálculos, haciéndonos creer que hay menos vecinos de los que realmente existen.
+
+---
+
+### 💡 Explicación Esencial (Técnica Feynman)
+
+Imagina que estás observando un bosque desde un helicóptero.
+
+*   **Agregación (Atracción):** Ves grupos de árboles jóvenes. ¿Por qué? Porque las semillas caen cerca de su "padre" o porque hay parches de tierra fértil. Un árbol "llama" a otros.
+*   **Inhibición (Repulsión):** Ves que los árboles grandes guardan una distancia mínima entre ellos. ¿Por qué? Porque compiten por la luz del sol y el agua; si nacen muy cerca, uno muere. Un árbol "empuja" a otros.
+*   **Azar (CSR):** Los árboles parecen caer como granos de arena lanzados al viento, sin importarles quién está al lado.
+
+Las herramientas de segundo orden son como **reglas mágicas** que pasamos sobre el mapa. La **Función K** cuenta cuántos vecinos hay en círculos que vamos agrandando. La **Función L** es esa misma regla pero ajustada para que, si el mapa fuera puro azar, el resultado sea una línea recta perfecta. Si la línea se encorva hacia arriba, hay "muchos amigos juntos" (agregación); si se encorva hacia abajo, hay "vecinos que se evitan" (regularidad).
+
+---
+
+### 📚 Rigor Académico y Definiciones Estructurales
+
+#### 5.1 Función K de Ripley
+Matemáticamente, $K(h)$ se define como el número esperado de eventos adicionales dentro de una distancia $h$ de un evento arbitrario, dividido por la intensidad $\lambda$:
+$$K(r) = \lambda^{-1} E[N_0(r)]$$
+Bajo la hipótesis de **Aleatoriedad Espacial Completa (CSR)**, el número esperado de eventos en un círculo de radio $r$ es simplemente la intensidad por el área del círculo, lo que nos da el modelo teórico: **$K(r) = \pi r^2$**.
+
+#### 5.2 Función L de Besag
+Debido a que $K(r)$ es una función cuadrática, Besag propuso una transformación para estabilizar la varianza y facilitar la lectura:
+$$L(r) = \sqrt{\frac{K(r)}{\pi}}$$
+Bajo CSR, $L(r) = r$. En la práctica, graficamos $L(r) - r$ contra $r$.
+
+*   **$L(r) - r > 0$:** Indica agregación (clúster) a esa distancia $r$.
+*   **$L(r) - r < 0$:** Indica regularidad o inhibición.
+
+#### 5.3 Función de Correlación por Pares $g(r)$
+A diferencia de K y L, que acumulan vecinos desde la distancia 0 hasta $r$, la función $g(r)$ analiza lo que ocurre **exactamente** a la distancia $r$. Es extremadamente útil para detectar a qué escala específica ocurre una interacción. Bajo CSR, $g(r) = 1$. Valores superiores a 1 indican que hay una frecuencia de pares a esa distancia mayor a la esperada por azar.
+
+#### 5.4 Correcciones de Borde
+Para estimar $K$ o $L$ sin sesgos, debemos aplicar factores de corrección ($e_{ij}(r)$) en la fórmula de estimación:
+$$\hat{K}(r) = \frac{|D_s|}{n(n-1)} \sum \sum 1\{||s_i - s_j|| \le r\} e_{ij}(r)$$
+Este factor compensa la fracción del círculo de búsqueda que queda fuera de la ventana de observación.
+
+---
+
+### 💻 Implementación en R (`spatstat`)
+
+Para su trabajo final, el protocolo de decisión utilizando `spatstat` sigue este flujo:
+
+1.  **`Kest(X)` / `Lest(X)`:** Calcula las funciones. R te devolverá varias curvas según la corrección de borde: `iso` (Ripley), `trans` (traslación) y `border` (muestreo reducido).
+2.  **`pcf(X)`:** Para la función de correlación por pares, ideal para ver interacciones de corto alcance.
+3.  **`envelope(X, Lest, nsim=99)`:** Esta es la **herramienta de decisión**. Genera una zona gris (envolvente) que representa la variabilidad del azar (CSR).
+    *   **Decisión:** Si su curva negra observada sale por encima de la zona gris, usted tiene evidencia estadística de **agregación**. Si sale por debajo, de **inhibición**.
+
+### 🗝️ Términos Innegociables
+
+*   **Interacción:** Dependencia entre la ubicación de dos o más eventos.
+*   **Isotropía:** El proceso se comporta igual en todas las direcciones, solo depende de la distancia $r$.
+*   **Estacionariedad de Segundo Orden:** La interacción entre dos puntos solo depende de su separación, no de su ubicación absoluta en el mapa.
+*   **Envolventes de Monte Carlo:** Método no paramétrico para evaluar si la interacción observada es significativamente distinta del azar.
+
+### pause
+:::
+
+::: {#seccion-3-5-1 .content-card}
+
+
+Mientras que las de primer orden (intensidad) analizan la densidad de eventos en un punto, las de segundo orden cuantifican la **interacción o dependencia espacial** entre pares de eventos. El objetivo es determinar si la ubicación de un punto influye en la aparición de otros en su vecindad.
+
+---
+
+
+### 1. Función K de Ripley: El Estándar de Interacción
+
+La función K mide el número esperado de eventos adicionales que se encuentran dentro de una distancia $r$ de un evento arbitrario del patrón.
+
+#### 1.1. Definición Teórica
+$$K(r) = \lambda^{-1} E[N_0(r)]$$
+
+**Análisis por Chain-of-Thought (Lógica de Agregación Espacial):**
+
+*   **$N_0(r)$**: Representa el número de eventos adicionales (sin contar el punto de referencia) dentro de un círculo de radio $r$.
+
+*   **$E[\cdot]$**: Es la esperanza matemática o promedio teórico de esos conteos.
+
+*   **$\lambda^{-1}$**: Es el inverso de la intensidad. Se usa para normalizar el conteo; sin esto, un patrón simplemente denso parecería "agregado" solo por tener muchos puntos. Al dividir por la intensidad, aislamos el efecto de la **colocación relativa** de los puntos.
+
+#### 1.2. Estimador Empírico de Ripley
+Para calcularlo a partir de datos reales, utilizamos la siguiente sumatoria doble:
+
+$$\hat{K}(r) = \frac{|D_s|}{n(n-1)} \sum_{i=1}^{n} \sum_{j=1, j \neq i}^{n} 1\{\|s_i - s_j\| \leq r\} e_{ij}(r)$$
+
+**Desglose de la lógica de agregación:**
+
+*   **La doble sumatoria ($\sum \sum$):** Imagine que se para sobre cada punto $i$ del mapa (primera suma) y mira a todos los demás puntos $j$ (segunda suma).
+
+*   **Función indicadora $1\{\cdot\}$:** Actúa como un interruptor. Si la distancia entre el punto $i$ y el punto $j$ es menor o igual a $r$, suma un "1". Si están más lejos, suma un "0". Básicamente, estamos "agregando" o contando cuántas parejas de puntos están cerca entre sí en todo el mapa.
+
+*   **$|D_s| / n(n-1)$:** Factor de escala que ajusta el resultado según el área de la ventana ($|D_s|$) y el número total de pares posibles ($n \times (n-1)$).
+
+---
+
+### 2. Función L de Besag: Estabilización y Diagnóstico
+
+Dado que $K(r)$ bajo azar absoluto (CSR) crece de forma cuadrática ($\pi r^2$), su visualización es difícil de juzgar a simple vista. Besag propuso una transformación lineal:
+
+$$L(r) = \sqrt{\frac{K(r)}{\pi}}$$
+
+**Chain-of-Thought:**
+
+*   Bajo CSR, sabemos que $K(r) = \pi r^2$. 
+
+*   Si reemplazamos esto en la fórmula de Besag: $L(r) = \sqrt{\pi r^2 / \pi} = r$.
+
+*   **Interpretación:** Esto convierte la parábola de Ripley en una línea recta de 45°. En R, se suele graficar $L(r) - r$. Si el resultado es **0**, hay azar; si es **positivo**, hay agregación; si es **negativo**, hay regularidad.
+
+---
+
+### 3. Función de Correlación por Pares $g(r)$
+
+A diferencia de $K(r)$, que acumula todos los puntos desde distancia 0 hasta $r$, la función $g(r)$ analiza la intensidad de las parejas a una distancia **exacta** $r$.
+
+$$g(r) = \frac{K'(r)}{2\pi r}$$
+
+**Explicación de la Derivada:**
+
+*   **$K'(r)$**: En matemáticas, la derivada representa la tasa de cambio. Aquí, nos dice cuántos puntos nuevos aparecen justo en el "borde" del círculo cuando aumentamos el radio un poquito.
+
+*   **$2\pi r$**: Es el perímetro del círculo. Dividimos por esto para obtener una medida de densidad sobre la circunferencia.
+
+*   **Valor de Referencia:** Bajo CSR, $g(r) = 1$. Si $g(r) > 1$, hay una probabilidad mayor a la del azar de encontrar dos puntos separados por esa distancia específica.
+
+---
+
+### 4. Correcciones de Borde: El Factor $e_{ij}(r)$
+
+Es un supuesto crítico que el fenómeno continúa fuera de nuestra ventana de observación $D_s$. 
+
+*   **El Problema:** Si un punto está cerca del límite, parte de su círculo de radio $r$ queda fuera. No podemos ver los vecinos que están allí, por lo que subestimaríamos $K(r)$.
+
+*   **La Solución:** El peso $e_{ij}(r)$ compensa esto. Si el círculo de búsqueda está parcialmente fuera, el "1" que sumamos se multiplica por un valor mayor a 1 (proporcional a la fracción del círculo que sí está dentro).
+
+---
+
+### 5. Supuestos Críticos y Violaciones
+
+1.  **Estacionariedad (Homogeneidad):** Se asume que la intensidad $\lambda$ es constante.
+    *   *Si se viola:* Un patrón con una tendencia de fondo (ej. más sismos en el sur que en el norte) producirá una función K que sube drásticamente, sugiriendo "agregación" cuando en realidad solo es una respuesta a la geografía.
+2.  **Isotropía:** Se asume que la interacción depende solo de la distancia $r$ y no de la dirección (ángulo).
+
+---
+
+### 6. Inferencia y Pruebas de Hipótesis
+
+#### 6.1. Contraste de Hipótesis
+
+*   **$H_0$ (CSR):** El patrón sigue un Proceso Homogéneo de Poisson ($K(r) = \pi r^2$). No hay interacción.
+
+*   **$H_1$:** Existe interacción significativa.
+    *   **Agregación:** $K(r) > \pi r^2$ (puntos se atraen/contagian).
+    *   **Inhibición/Regularidad:** $K(r) < \pi r^2$ (puntos compiten/se repelen).
+
+#### 6.2. Interpretación del p-valor vía Monte Carlo
+Dado que la distribución exacta de estas funciones es compleja, usamos simulaciones.
+
+1.  Se simulan $k-1$ patrones de azar absoluto (CSR) con el mismo número de puntos $n$.
+
+2.  Se calculan las funciones $L(r)$ para cada simulación, creando una "envolvente" (rango de lo que el azar puede producir).
+
+3.  **Decisión:** Si la curva de los datos reales se sale de la envolvente, el p-valor es pequeño ($p < 2/k$). Se rechaza $H_0$ y se concluye que la interacción es real y no fruto de una fluctuación aleatoria.
+
+### pause
+:::
+
+::: {#seccion-3-5-2 .content-card}
+El objetivo es determinar si la ubicación de un evento "atrae" o "repele" a otros a una distancia específica $r$. Para ello, calcularemos manualmente el estadístico más robusto de la estadística espacial: la **Función K de Ripley**.
+
+---
+
+### 1. Problema de Estudio
+Un ecólogo desea saber si una especie de arbusto en una parcela de regeneración presenta un patrón de **agregación** (por dispersión de semillas cercana) o **inhibición** (por competencia de recursos) a una distancia corta de **3 metros**. Para este ejercicio, evaluaremos la estructura de segundo orden comparándola con el modelo de **Aleatoriedad Espacial Completa (CSR)**.
+
+### 2. Datos (Dataset de Juguete)
+
+*   **Ventana de Observación ($D_s$):** Un cuadrado de $10 \times 10$ metros. Área $|D_s| = 100 \, m^2$.
+*   **Eventos registrados ($n = 3$):**
+    *   $s_1 = (2, 2)$
+    *   $s_2 = (4, 2)$
+    *   $s_3 = (8, 8)$
+*   **Distancia de evaluación ($r$):** 3 metros.
+*   **Supuesto de simplificación:** Para fines didácticos en este cálculo manual, asumiremos que el factor de corrección de borde $e_{ij}(r) = 1$ (sin corrección), aunque en la práctica real y en R es obligatorio usarlo.
+
+---
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso 1: Cálculo de la Intensidad ($\lambda$)
+La función K requiere normalizar los conteos por la intensidad global del proceso.
+
+*   **Aritmética:** $\hat{\lambda} = \frac{n}{|D_s|} = \frac{3}{100} = 0.03$.
+*   **Teoría:** Representa el número esperado de eventos por metro cuadrado. Es el parámetro base del Proceso de Poisson.
+
+#### Paso 2: Cálculo de la Matriz de Distancias Euclidianas
+Debemos conocer la distancia entre todos los pares posibles de eventos $i$ y $j$.
+
+1.  **Distancia $d_{12}$:** $\sqrt{(4-2)^2 + (2-2)^2} = \sqrt{2^2 + 0^2} = \mathbf{2.0}$.
+2.  **Distancia $d_{13}$:** $\sqrt{(8-2)^2 + (8-2)^2} = \sqrt{6^2 + 6^2} = \sqrt{72} \approx \mathbf{8.48}$.
+3.  **Distancia $d_{23}$:** $\sqrt{(8-4)^2 + (8-2)^2} = \sqrt{4^2 + 6^2} = \sqrt{52} \approx \mathbf{7.21}$.
+
+#### Paso 3: Identificación de Pares dentro del radio $r=3$
+La función K "cuenta" cuántos vecinos tiene cada punto dentro del círculo de radio $r$.
+
+*   Para $s_1$: Solo $s_2$ está a $\le 3$ m. (1 vecino).
+*   Para $s_2$: Solo $s_1$ está a $\le 3$ m. (1 vecino).
+*   Para $s_3$: Ningún evento está a $\le 3$ m. (0 vecinos).
+*   **Suma total de pares ($\sum \sum 1\{d_{ij} \le r\}$):** $1 + 1 + 0 = \mathbf{2}$.
+
+#### Paso 4: Estimación de la Función K de Ripley $\hat{K}(r)$
+Aplicamos la fórmula del estimador insesgado:
+$$\hat{K}(r) = \frac{|D_s|}{n(n-1)} \sum \sum 1\{\|s_i - s_j\| \leq r\}$$
+
+*   **Aritmética:** $\hat{K}(3) = \frac{100}{3(2)} \times 2 = \frac{100}{6} \times 2 = \frac{200}{6} \approx \mathbf{33.33}$.
+*   **Conexión Teórica:** Este valor representa el área "efectiva" de influencia de los puntos. Si fuera azar (CSR), esperaríamos $K(r) = \pi r^2 = \pi(3^2) \approx 28.27$.
+
+#### Paso 5: Transformación a Función L de Besag
+Para facilitar la interpretación, convertimos el crecimiento cuadrático en una medida lineal.
+
+*   **Cálculo:** $\hat{L}(3) = \sqrt{\frac{\hat{K}(3)}{\pi}} = \sqrt{\frac{33.33}{3.1416}} \approx \sqrt{10.61} \approx \mathbf{3.26}$.
+*   **Estadístico de prueba:** $\hat{L}(r) - r = 3.26 - 3 = \mathbf{0.26}$.
+
+---
+
+### 4. Resultado Interpretado
+A la distancia de **3 metros**, el valor de la función L estandarizada es **0.26**. 
+
+*   **Decisión:** Como $\hat{L}(r) - r > 0$, el patrón observado muestra indicios de **agregación o agrupación espacial** a esa escala. 
+*   **Interpretación Académica:** Los arbustos tienden a estar más cerca entre sí de lo que el azar dictaría. Esto sugiere que a distancias cortas (como los 2 metros que separan a $s_1$ de $s_2$), existe una fuerza de atracción o un factor ambiental común que favorece la co-ocurrencia.
+
+---
+
+### 📝 Guía de Autoevaluación (Errores Comunes)
+
+1.  **Olvidar los Pares Recíprocos:** Un error clásico es contar la distancia entre $s_1$ y $s_2$ solo una vez. La sumatoria doble exige contar el par $(1,2)$ y el par $(2,1)$ por separado.
+2.  **Confundir $n$ con $n(n-1)$:** En el denominador, si usas solo $n^2$ o $n$, el valor de K estará mal escalado y la comparación con $\pi r^2$ no tendrá sentido.
+3.  **Error en el Radio:** Usar el diámetro en lugar del radio para el cálculo de la superficie del modelo nulo ($\pi r^2$). 
+4.  **No corregir por Intensidad:** Intentar comparar el conteo bruto de puntos sin dividir por $\lambda$. Un patrón denso siempre tendrá más vecinos, pero eso no significa que esté "agregado" si no se normaliza por su intensidad.
+5.  **Interpretación del signo de L:** Recordar siempre: **L(r) - r > 0 es Agregado**; **L(r) - r < 0 es Regular**.
+
+### pause
+:::
+
+::: {#seccion-3-5-3 .content-card}
+Mientras que las estadísticas de primer orden resumen la intensidad (media), las de segundo orden describen la **interacción o correlación espacial** entre los eventos, permitiendo determinar si la ubicación de un punto influye en la aparición de otros en su vecindad.
+
+En esta sección, evaluamos el comportamiento "social" de los puntos para diagnosticar procesos de **agregación** (atracción/contagio) o **inhibición** (repulsión/regularidad) mediante funciones de distancia.
+
+### 5.1 Implementación Computacional y Protocolo de Inferencia en R
+
+El siguiente bloque de código funcional integra la limpieza de datos innegociable, la estimación de funciones de interacción y la validación mediante simulaciones de Monte Carlo.
+
+```{r}
+# --- 1. Configuración y Limpieza de Datos (Best Practices) ---
+# Razonamiento: Los procesos de Poisson asumen "simplicidad" (un solo punto por ubicación).
+# Duplicados violan la fundamentación estocástica del segundo momento.
+library(spatstat)
+data(swedishpines) # Patrón clásico de regularidad
+X <- swedishpines
+
+if(any(duplicated(X))) {
+  # unique() remueve duplicados exactos para cumplir con la "orderliness".
+  X <- unique(X) 
+}
+
+# --- 2. Estimación de la Función K de Ripley (5.1) ---
+# Trasfondo: K(r) mide el número esperado de eventos adicionales a distancia r de un evento arbitrario.
+# Formula: K(r) = lambda^(-1) * E[N0(r)].
+k_empirica <- Kest(X, correction = "all")
+
+# --- 3. Estimación y Envolventes de la Función L de Besag (5.2) ---
+# Trasfondo: Transformación para estabilizar la varianza: L(r) = sqrt(K(r)/pi).
+# Bajo CSR (Azar), L(r) - r = 0.
+# Usamos envelope() para generar bandas de confianza mediante Monte Carlo.
+# nsim=99 genera envolventes basadas en 99 simulaciones de procesos aleatorios.
+env_L <- envelope(X, fun = Lest, nsim = 99, global = TRUE)
+
+# --- 4. Función de Correlación por Pares g(r) (5.3) ---
+# Trasfondo: Resolución local exacta a la distancia r (derivada de K).
+# g(r) = K'(r) / (2*pi*r). Bajo CSR, g(r) = 1.
+pcf_X <- pcf(X, correction = "best")
+
+# --- 5. Visualización Multimodal ---
+
+# Gráfico A: Ripley's K con correcciones de borde
+plot(k_empirica, . ~ r, main = "Función K de Ripley")
+# Interpretación: Compara curvas con corrección 'iso' (Ripley) y 'trans' (traslación).
+
+# Gráfico B: Envolventes de L (Decisión Estadística)
+plot(env_L, . - r ~ r, main = "L-Besag (Centrada)", legend = FALSE)
+# Interpretación: Línea negra fuera de zona gris = rechazo de CSR.
+
+# Gráfico C: Correlación por Pares g(r)
+plot(pcf_X, main = "Función de Correlación g(r)")
+# Interpretación: Valores < 1 a distancias cortas indican 'hard core' o repulsión.
+```
+
+---
+
+### 5.2 Desglose Teórico y Dualidad Teoría-Práctica
+
+#### 5.2.1 Función K de Ripley (Análisis Global Acumulado)
+La función K cuenta cuántos eventos se ubican hasta una distancia específica de cualquier evento particular.
+
+*   **Trasfondo Matemático:** Se estima mediante el sumatorio doble:
+    $$\hat{K}(r) = \frac{|D_{s}|}{n(n-1)}\sum_{i=1}^{n}\sum_{j=1, j \neq i}^{n} 1\{||s_{i}-s_{j}||\le r\}e_{ij}(r)$$
+    donde el factor $1/n(n-1)$ normaliza por el número de pares posibles, y $|D_s|$ ajusta por el área de la ventana.
+
+*   **Implementación R:** `Kest()` automatiza esta sumatoria, calculando la distancia entre todos los eventos del patrón.
+
+#### 5.2.2 Función L de Besag (Interpretación Lineal)
+Debido a que $K(r)$ bajo azar (CSR) tiene un comportamiento cuadrático ($K(r) = \pi r^2$), Besag propuso linearizar la función para facilitar la lectura visual.
+
+*   **Explicación Intuitiva:** Es como "enderezar" la parábola de Ripley. Si restamos $r$ al resultado ($L(r)-r$), la hipótesis nula de azar se convierte en el eje horizontal $y=0$.
+
+*   **Criterio de Decisión:**
+    *   **$L(r) - r > 0$:** Agrupación espacial (clustering). Los eventos están más cerca de lo esperado.
+    *   **$L(r) - r < 0$:** Regularidad espacial (inhibición). Los eventos se repelen o compiten por espacio.
+
+#### 5.2.3 Función de Correlación por Pares $g(r)$
+A diferencia de K y L, que son acumulativas (consideran todo desde 0 hasta $r$), la función $g(r)$ analiza lo que ocurre **exactamente** en el radio $r$.
+
+*   **Cálculo:** Utiliza la derivada de la función K: $g(r) = K'(r)/(2\pi r)$.
+*   **Utilidad Práctica:** Es vital para detectar procesos de "núcleo duro" (distancia mínima física entre eventos, como el diámetro de las copas de árboles) donde $g(r)$ cae a cero cerca del origen.
+
+#### 5.2.4 Correcciones de Borde ($e_{ij}(r)$)
+Es un ajuste matemático necesario porque los eventos fuera de la ventana de observación no pueden ser detectados, lo que sesgaría las distancias hacia valores mayores (haciendo que el patrón parezca más regular de lo que es).
+
+*   **En R (`spatstat`):** Se implementan mediante el argumento `correction`. Las más usadas son `isotropic` (Ripley), `translate` (traslación) y `border` (muestreo reducido).
+
+### 5.3 Guía de Interpretación de Envolventes de Monte Carlo
+La decisión sobre la interacción no se toma por un valor puntual, sino por las **envolventes de simulación**:
+
+1.  Se simulan $k-1$ patrones bajo la hipótesis nula de azar absoluto (CSR).
+2.  Se calculan los límites superior ($U(d)$) e inferior ($L(d)$) de estas simulaciones.
+3.  **Veredicto:** Si la curva de sus datos reales (línea negra) sobrepasa la envolvente superior, usted tiene evidencia estadística significativa de **agregación**. Si cae por debajo de la envolvente inferior, el patrón es **regular o inhibido**.
+
+### pause
+:::
+
+::: {#seccion-3-6 .content-card}
+*¿Es significativa la desviación observada respecto al modelo teórico?*
+
+*   **6.1 Pruebas de Montecarlo:** Generación de múltiples patrones bajo CSR para comparar el estadístico observado contra el rango de variabilidad aleatoria.
+*   **6.2 Envolventes de Simulación:** Construcción de límites críticos (hi/low) para las funciones $K$, $L$ o $G$. Si la curva observada sale de la envolvente, existe evidencia de un patrón no aleatorio.
+*   **💻 Implementación en R:** Función `envelope()` y otras posibles.
+
+
+la validación mediante simulaciones. En la estadística espacial, a menudo nos enfrentamos a problemas donde las fórmulas cerradas de la estadística clásica no son suficientes para juzgar la realidad.
+
+---
+
+### 💡 Explicación Esencial (Técnica Feynman)
+
+Imagina que tienes un mapa con la ubicación de 100 árboles y notas que muchos parecen estar agrupados en el centro. Te preguntas: "¿Esto ocurrió por alguna razón biológica o fue simplemente un golpe de suerte?". 
+
+Para resolverlo, utilizaremos una técnica de "fuerza bruta" llamada **Montecarlo**. Imagina que le pides a una computadora que tome esos mismos 100 árboles y los lance al azar sobre el mapa 999 veces. Al final, tendrás 1,000 mapas: el tuyo (la realidad) y 999 mapas de "puro azar". 
+
+Ahora, comparas una medida (como la distancia entre árboles) de tu mapa real contra los 999 mapas inventados. Si en ninguno de los mapas de azar los árboles quedaron tan apretados como en el tuyo, entonces puedes decir con mucha seguridad que tu mapa no es producto de la suerte; hay una fuerza real agrupándolos.
+
+---
+
+### 🧠 La Lógica de la Validación Espacial
+
+Para entender por qué usamos Montecarlo en lugar de solo mirar un gráfico, sigamos este razonamiento:
+
+1.  **El Problema de la Complejidad:** En muchas situaciones, la forma de la zona de estudio es tan irregular o el número de puntos es tan inmenso (ej. 10,000 puntos) que calcular la probabilidad exacta de que el patrón sea aleatorio es matemáticamente imposible.
+2.  **La Necesidad de un Estándar:** Si no tenemos una fórmula, necesitamos un "rango de normalidad". Este rango lo construimos nosotros mismos mediante la simulación de múltiples procesos bajo la hipótesis de **Aleatoriedad Espacial Completa (CSR)**.
+3.  **La Posición Relativa:** No buscamos un valor exacto, buscamos el **rango (rank)** de nuestro dato real. Si nuestro dato ocupa el puesto 1 o el 1,000 en una lista ordenada de 1,000 simulaciones, es un "bicho raro" y, por tanto, estadísticamente significativo.
+4.  **De Puntos a Bandas:** Cuando evaluamos funciones de distancia ($K, L, G, F$), el azar ya no es un solo número, sino una zona gris. Si nuestra curva real sale de esa zona, el azar ha sido derrotado por la evidencia.
+
+---
+
+### 📚 Rigor Estadístico y Conceptos Fundamentales
+
+#### 6.1 Pruebas de Montecarlo
+Estas pruebas se activan cuando no se conoce la distribución exacta del estadístico de prueba. 
+
+*   **Procedimiento:** Se define $u_1$ como el valor observado de un estadístico (ej. la distancia media al vecino más cercano). Se generan $k-1$ simulaciones de un **Proceso Homogéneo de Poisson (HPP)** bajo CSR. 
+*   **Decisión:** Se ordenan los valores $u_{(1)} \leq u_{(2)} \leq \dots \leq u_{(k)}$. La hipótesis nula se rechaza si $u_1$ es muy pequeño (agregación) o muy grande (regularidad).
+*   **P-valor:** El nivel de significancia se establece como $\alpha = 2r/k$ para pruebas de dos colas.
+
+#### 6.2 Envolventes de Simulación (Simulation Envelopes)
+En lugar de evaluar un solo número, evaluamos funciones que dependen de la distancia $h$.
+
+*   **Límites Críticos:** Se definen el límite superior $U(d) = \max \hat{H}_i(d)$ y el límite inferior $L(d) = \min \hat{H}_i(d)$ a partir de las simulaciones.
+*   **Interpretación:** Proporcionan un estimador insesgado del comportamiento teórico bajo CSR. Si la curva empírica $\hat{H}_1(d)$ sobrepasa $U(d)$, existe evidencia de **agregación**; si cae por debajo de $L(d)$, de **inhibición**.
+
+---
+
+### 💻 Implementación en R (`spatstat`)
+
+En el entorno R, el análisis se automatiza principalmente con:
+
+*   **`envelope(X, fun=...)`**: Es la función maestra. Recibe el patrón puntual `X`, la función a evaluar (ej. `Lest`, `Kest`, `Gest`) y el número de simulaciones `nsim` (usualmente 99 o 999).
+*   **Interpretación Visual:** Genera un gráfico donde la zona gris representa las envolventes. Es muy práctico graficar la observada versus los límites para concluir de manera objetiva.
+
+### 🗝️ Términos Innegociables
+
+*   **CSR (Complete Spatial Randomness):** El estado de aleatoriedad pura que sirve como hipótesis nula.
+*   **Rank (Rango):** La posición de la muestra observada dentro del conjunto de simulaciones.
+*   **Envolventes (Envelopes):** Fronteras de variabilidad generadas por el modelo nulo.
+*   **P-valor de Montecarlo:** Probabilidad de obtener un resultado tan extremo como el observado bajo el supuesto de azar.
+
+### pause
+:::
+
+::: {#seccion-3-6-1 .content-card}
+la mayoría de los estadísticos de prueba no poseen una distribución analítica conocida (como una Normal o una T de Student) cuando la ventana de observación $D_S$ es irregular o cuando el número de interacciones entre puntos es masivo. Como su Catedrático, les presento la solución más robusta y moderna para este dilema: la validación mediante **Simulaciones de Montecarlo**.
+
+---
+
+### 6.1 Pruebas de Montecarlo: El Desafío al Azar
+
+La esencia de una prueba de Montecarlo es la comparación de un valor real (observado) contra una "población" de valores generados artificialmente bajo la hipótesis nula de **Aleatoriedad Espacial Completa (CSR)**.
+
+#### 6.1.1 La Lógica de la Prueba y Fórmulas Clave
+
+Sea $u_1$ el valor observado de un estadístico $U$ (por ejemplo, el índice de Clark-Evans o la distancia media al vecino más cercano). El procedimiento consiste en:
+
+1.  **Generación:** Se simulan $k-1$ procesos de Poisson homogéneos bajo CSR dentro de la misma ventana de estudio.
+2.  **Ordenamiento:** Se calculan los valores $u_2, \dots, u_k$ para cada simulación y se ordenan de menor a mayor:
+    $$u_{(1)} \leq u_{(2)} \leq \dots \leq u_{(k)}$$
+3.  **Posicionamiento (Rango):** Se determina la posición del valor real $u_1$ dentro de esta lista ordenada.
+
+**Análisis de Componentes (Chain-of-Thought):**
+
+*   **$k$**: Es el número total de realizaciones (la real + las simuladas). Un valor común es $k=100$ para un nivel de significancia del 2% ($r=1$), o $k=1000$ para un nivel del 0.2%.
+*   **$u_{(r)}$**: Representa el $r$-ésimo valor más pequeño. Si nuestro dato real es tan pequeño que cae en este extremo, sospechamos de **agregación**.
+*   **$u_{(k-r)}$**: Representa el extremo superior. Si el dato real cae aquí, sospechamos de **regularidad**.
+
+#### 6.1.2 El Nivel de Significancia ($\alpha$) y el P-valor
+
+En una prueba de dos colas, el nivel de significancia se define como:
+$$\alpha = \frac{2r}{k}$$
+
+**Interpretación del p-valor:**
+Si el rango de $u_1$ es muy extremo (puesto 1 o 1000), la probabilidad de que el patrón observado sea fruto del azar es mínima ($p < 0.05$). En este contexto, rechazamos $H_0$ (CSR) y aceptamos que existe una estructura espacial significativa.
+
+---
+
+### 6.2 Envolventes de Simulación: Validación de Funciones de Interacción
+
+Cuando no evaluamos un solo número (estadístico puntual) sino una función que depende de la distancia $r$ (como la función $K, L, G$ o $F$), el azar no es un punto, sino una **banda de variabilidad** denominada "Envolvente".
+
+#### 6.2.1 Construcción Matemática de las Envolventes
+
+Para cada distancia $d$, calculamos los límites de la variabilidad del azar basándonos en las $k-1$ simulaciones:
+
+1.  **Límite Superior (Upper Envelope):**
+    $$U(d) = \max_{i=2 \dots k} \hat{H}_i(d)$$
+2.  **Límite Inferior (Lower Envelope):**
+    $$L(d) = \min_{i=2 \dots k} \hat{H}_i(d)$$
+
+**Explicación desde la Lógica de Agregación Espacial:**
+Imagine que la función $\hat{H}_i(d)$ es un escáner que recorre el mapa. En lugar de mirar un solo punto, este escáner "agrega" información de todos los pares de eventos a una distancia $d$. La envolvente nos dice: "Bajo puro azar, es normal que la densidad de parejas a esta distancia fluctúe entre este máximo ($U$) y este mínimo ($L$)". Si la curva de sus datos reales se sale de estos límites, la "fuerza" de la interacción es mayor que la fluctuación máxima permitida por el azar.
+
+#### 6.2.2 Medición de la Discrepancia Global
+
+A veces queremos un solo número que resuma qué tan lejos está nuestro mapa de la teoría. Se utiliza la integral de la diferencia al cuadrado:
+$$\int (H_i(d) - H(d))^2 dd$$
+
+Aquí, la **integral** funciona como una sumatoria infinita de las desviaciones en todas las escalas posibles de distancia. Si esta "suma de errores" para el patrón real es mayor que la de las simulaciones, el patrón es no aleatorio.
+
+---
+
+### 6.3 Supuestos Críticos y Diagnóstico de Violación
+
+1.  **Intercambiabilidad:** Se asume que, bajo $H_0$, el patrón real y los simulados son estadísticamente indistinguibles (intercambiables).
+2.  **Independencia de las Simulaciones:** Cada patrón sintético debe ser una realización independiente del proceso de Poisson.
+3.  **Efecto de Borde:** Si no se aplican correcciones de borde en las funciones base ($K, L, G$), las envolventes estarán sesgadas y el p-valor de Montecarlo será inválido.
+
+**¿Qué ocurre si se violan?** Si generamos simulaciones sin respetar la ventana real o el número de puntos $n$, compararemos peras con manzanas. El resultado será un rechazo espurio de la aleatoriedad.
+
+---
+
+### 💻 Implementación en R (`spatstat`)
+
+El estándar de oro para estos cálculos es la función `envelope()`.
+
+```{r}
+# Carga de librería y datos
+library(spatstat)
+data(cells) # Patrón de ejemplo
+
+# 1. Ejecución de la Prueba de Montecarlo y Envolventes para la Función L
+# nsim = 99 significa que comparamos el real contra 99 simulaciones (r=1)
+# rank = 1 define que el límite es el máximo/mínimo absoluto
+envolvente_L <- envelope(cells, fun = Lest, nsim = 99, rank = 1, global = TRUE)
+
+# 2. Visualización
+# Graficamos L(r) - r (centrada en cero para facilitar lectura)
+plot(envolvente_L, . - r ~ r, main = "Envolventes de Montecarlo para CSR")
+
+# Interpretación Didáctica:
+# La zona gris es el 'reino del azar'. 
+# Si la línea negra (datos) sube por encima: Agregación.
+# Si la línea negra cae por debajo: Regularidad/Inhibición.
+```
+
+#### Otras Funciones de Validación
+
+*   **`dclf.test()`**: Prueba de Diggle-Cressie-Loosmore-Ford, que realiza una prueba de Montecarlo basada en la discrepancia integral mencionada en la sección 6.2.2.
+*   **`mad.test()`**: Prueba de desviación absoluta máxima, útil para detectar desviaciones extremas en una distancia específica.
+
+Como revisor académico, les recuerdo que un gráfico de envolventes es el **sustento científico** más poderoso en su Trabajo de Fin de Grado para afirmar que un patrón (como los sismos en Colombia) no es obra de la casualidad, sino de procesos estructurales profundos.
+
+### pause
+:::
+
+::: {#seccion-3-6-2 .content-card}
+Cuando los modelos matemáticos son demasiado complejos o las ventanas de estudio son irregulares (como el mapa de un país), no podemos usar tablas de probabilidad clásicas. En su lugar, utilizamos el **Método de Montecarlo**: comparamos nuestra "realidad" contra miles de "mundos paralelos" creados por puro azar.
+
+---
+
+### 1. Problema de Estudio
+Un ecólogo está estudiando la distribución de una planta rara. Ha registrado 3 individuos en una parcela de $10 \times 10$ metros. Visualmente, las plantas parecen estar muy agrupadas. El objetivo es determinar, mediante un test de Montecarlo manual, si esta agrupación es **estadísticamente significativa** o si pudo ocurrir por simple suerte bajo el modelo de Aleatoriedad Espacial Completa (CSR).
+
+### 2. Datos (Dataset de Juguete)
+
+*   **Ventana de Observación ($D_S$):** Cuadrado de $10 \times 10$ unidades (Área = 100).
+*   **Patrón Observado ($u_1$):** Eventos en las coordenadas $s_1=(1,1)$, $s_2=(2,2)$, $s_3=(1,2)$.
+*   **Número de Simulaciones ($k-1$):** Para este ejercicio manual, realizaremos solo 2 simulaciones ($k=3$). En la práctica real, se recomiendan al menos 99 para un nivel del 5%.
+*   **Estadístico de Prueba ($U$):** Distancia media al vecino más cercano ($\bar{d}$).
+
+---
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso 1: Cálculo del Estadístico Observado ($u_1$)
+Calculamos la distancia media al vecino más cercano de nuestro patrón real.
+
+1.  **Matriz de distancias:**
+    *   $d(s_1, s_2) = \sqrt{(2-1)^2 + (2-1)^2} = \sqrt{2} \approx 1.41$.
+    *   $d(s_1, s_3) = \sqrt{(1-1)^2 + (2-1)^2} = 1.0$.
+    *   $d(s_2, s_3) = \sqrt{(1-2)^2 + (2-2)^2} = 1.0$.
+2.  **Identificación de vecinos más cercanos:**
+    *   Para $s_1$, el más cercano es $s_3$ ($1.0$).
+    *   Para $s_2$, el más cercano es $s_3$ ($1.0$).
+    *   Para $s_3$, el más cercano puede ser $s_1$ o $s_2$ ($1.0$).
+3.  **Promedio observado ($u_1$):** $(1.0 + 1.0 + 1.0) / 3 = \mathbf{1.0}$.
+
+*   **Teoría:** Un valor pequeño de $\bar{d}$ sugiere que los puntos están "apretados" (agregación).
+
+#### Paso 2: Generación de Simulaciones bajo CSR
+Simulamos 2 patrones aleatorios ($k-1$) con el mismo número de puntos ($n=3$) en la misma ventana.
+
+*   **Simulación 2 ($P_2$):** Coordenadas generadas al azar: $s_{2.1}=(1,9)$, $s_{2.2}=(8,1)$, $s_{2.3}=(5,5)$.
+*   **Simulación 3 ($P_3$):** Coordenadas generadas al azar: $s_{3.1}=(4,4)$, $s_{3.2}=(4,5)$, $s_{3.3}=(5,4)$.
+
+#### Paso 3: Cálculo de Estadísticos para las Simulaciones ($u_2, u_3$)
+
+1.  **Para $u_2$ (Patrón Disperso):**
+    *   Distancias: $d(1.9, 5.5) \approx 5.65$; $d(8.1, 5.5) = 5.0$; $d(1.9, 8.1) \approx 10.63$.
+    *   Vecinos más cercanos: $5.65, 5.0, 5.0$.
+    *   **$u_2$:** $(5.65 + 5.0 + 5.0) / 3 = \mathbf{5.21}$.
+2.  **Para $u_3$ (Patrón Intermedio):**
+    *   Distancias: $d(4.4, 4.5) = 1.0$; $d(4.4, 5.4) = 1.0$; $d(4.5, 5.4) \approx 1.41$.
+    *   Vecinos más cercanos: $1.0, 1.0, 1.0$.
+    *   **$u_3$:** $(1.0 + 1.0 + 1.0) / 3 = \mathbf{1.0}$.
+
+#### Paso 4: Ordenamiento y Rango (Rank)
+Combinamos el valor real con los simulados y los ordenamos de menor a mayor:
+$$u_{(1)} = 1.0 \text{ (Real)}, \quad u_{(2)} = 1.0 \text{ (Sim3)}, \quad u_{(3)} = 5.21 \text{ (Sim2)}$$
+
+*   **Rango de $u_1$:** Puesto 1 de 3 realizaciones.
+*   **Conexión teórica:** Al ser el valor más pequeño, se ubica en el extremo de "agregación máxima" de esta muestra limitada.
+
+---
+
+### 4. Resultado Interpretado
+En este ejercicio con $k=3$, nuestro patrón observado obtuvo el rango más bajo posible ($r=1$).
+
+1.  **Significancia:** El pseudo p-valor sería $\alpha = r/k = 1/3 \approx 0.33$. Aunque el valor es el mínimo, con solo 2 simulaciones no podemos alcanzar el umbral de 0.05 requerido para rechazar la hipótesis de azar.
+2.  **Diagnóstico:** El valor observado $u_1 = 1.0$ es idéntico al límite inferior de la envolvente ($L = \min(u_2, u_3) = 1.0$). Si tuviéramos 999 simulaciones y nuestra línea siguiera siendo el mínimo absoluto, la evidencia de **agregación** sería abrumadora.
+3.  **Implementación en R:** Este proceso se automatiza con `envelope(patron, nndist, nsim=99)`. Si la curva de los datos reales sale de la zona gris (envolventes), confirmamos que el patrón no es aleatorio.
+
+---
+
+### 📝 Guía de Autoevaluación (Errores Comunes)
+
+1.  **Exclusión del Observado:** No incluir el dato real en la lista al ordenar. El observado **es parte** de la distribución de referencia bajo $H_0$.
+2.  **Error en el Denominador del P-valor:** Usar $k-1$ en lugar de $k$ (el total de realizaciones). Esto sesga la probabilidad.
+3.  **Simulación Incoherente:** Generar puntos al azar en una ventana distinta o con un número de puntos $n$ diferente al observado. Estarías comparando "manzanas con naranjas".
+4.  **No corregir Efectos de Borde:** En el cálculo manual lo ignoramos por sencillez, pero en R es vital. Sin corrección, los puntos cerca del borde parecen "solitarios" solo porque no vemos a sus vecinos de afuera, inflando falsamente el valor de $\bar{d}$.
+5.  **Confusión de Extremos:** Interpretar un valor alto de distancia como agregación. Recuerde: **Distancia corta = Agregación; Distancia larga = Regularidad**.
+
+### pause
+:::
+
+::: {#seccion-3-6-3 .content-card}
+Presento la implementación técnica y el marco conceptual riguroso para la **Simulación y Validación de Patrones Puntuales** mediante métodos de **Montecarlo**. 
+
+En la estadística espacial, la complejidad de las ventanas de observación y la naturaleza de las interacciones hacen que, a menudo, no sea posible encontrar una distribución analítica exacta para los estadísticos de prueba. Por ello, recurrimos a la simulación estocástica para construir "mundos paralelos" bajo la hipótesis nula y evaluar si nuestra realidad es un evento excepcional.
+
+---
+
+### 6.1 La Lógica de las Pruebas de Montecarlo
+La validación de un patrón puntual no busca "confirmar" un modelo, sino intentar rechazar la hipótesis de **Aleatoriedad Espacial Completa (CSR)**. El procedimiento general sigue esta lógica:
+
+1.  **Observación:** Se calcula un estadístico $u_1$ (como el índice de Clark-Evans o la función $K$) sobre el patrón real.
+2.  **Generación:** Se simulan $k-1$ procesos homogéneos de Poisson (HPP) bajo CSR dentro de la misma ventana de estudio.
+3.  **Ordenamiento:** Se combinan los resultados y se genera una lista ordenada $u_{(1)} \leq u_{(2)} \leq \dots \leq u_{(k)}$.
+4.  **Decisión:** La hipótesis nula se rechaza si $u_1$ ocupa una posición extrema (rango). El nivel de significancia se define como $\alpha = 2r/k$ para pruebas de dos colas.
+
+### 6.2 Envolventes de Simulación
+Cuando evaluamos funciones continuas de distancia (como $K(r)$ o $L(r)$), el azar no es un valor único, sino una **banda de variabilidad** o "zona gris". Si la curva observada sale de estos límites superior ($U(d)$) o inferior ($L(d)$), existe evidencia estadística de un patrón no aleatorio (agregación o regularidad).
+
+---
+
+### 💻 Implementación Computacional en R
+
+El siguiente bloque de código utiliza la función maestra `envelope()` de `spatstat` para realizar inferencia robusta sobre un patrón de puntos.
+
+```{r}
+# --- 1. Configuración y Preparación de Datos ---
+library(spatstat)
+
+# Cargamos un dataset de ejemplo: 'cells' (células biológicas)
+# Este patrón suele presentar inhibición (regularidad).
+data(cells)
+X <- cells
+
+# Mejores prácticas: Verificación de duplicados para asegurar "Orderliness"
+# Si existieran duplicados, la intensidad y las distancias se sesgarían.
+if(any(duplicated(X))) {
+  X <- unique(X)
+}
+
+# --- 2. Simulación y Construcción de Envolventes de Montecarlo ---
+# Trasfondo: La función envelope() genera k-1 simulaciones de CSR.
+# Para cada simulación, calcula la función de interés y extrae los 
+# límites máximos y mínimos en cada rezago 'r'.
+
+# Definimos 99 simulaciones para un nivel de significancia alpha = 0.02 (2/100)
+# Usamos la Función L de Besag (Lest) porque estabiliza la varianza.
+env_L <- envelope(X, 
+                  fun = Lest,      # Función de segundo orden a evaluar
+                  nsim = 99,       # Número de simulaciones bajo CSR
+                  rank = 1,        # Usa el valor máximo/mínimo absoluto como límite
+                  global = TRUE,   # Envolvente global para evitar comparaciones múltiples
+                  fix.n = TRUE)    # Mantiene el número de puntos 'n' fijo (Proceso Binomial)
+
+# --- 3. Validación de Espacio Vacío (Función F) ---
+# Trasfondo: F(r) mide la distancia desde un punto arbitrario al evento más cercano.
+# Útil para detectar "huecos" o silencios espaciales.
+env_F <- envelope(X, fun = Fest, nsim = 99, rank = 1)
+
+# --- 4. Visualización Multimodal para Evaluación de Significancia ---
+par(mfrow = c(1, 2), mar = c(2, 2, 1, 1)) # Configuración de gráficos lado a lado)
+
+# Gráfico A: Función L (Interacción Evento-Evento)
+# Trasfondo: Se grafica L(r) - r. Bajo CSR, la línea teórica es y = 0.
+plot(env_L, . - r ~ r, 
+     main = "Envolventes de Montecarlo (L)",
+     legend = FALSE)
+
+# Gráfico B: Función F (Espacio Vacío)
+plot(env_F, main = "Envolventes de Montecarlo (F)", 
+     legend = FALSE)
+
+
+```
+
+---
+
+### Fórmulas de las Envolventes
+Para cada distancia $d$, la función `envelope()` calcula:
+
+*   **Límite Superior:** $U(d) = \max_{i=2 \dots k} \hat{H}_i(d)$
+*   **Límite Inferior:** $L(d) = \min_{i=2 \dots k} \hat{H}_i(d)$
+Donde $\hat{H}_i(d)$ es la estimación del estadístico para la $i$-ésima simulación de CSR.
+
+### Interpretación de los Gráficos Resultantes
+Como analista jefe, usted debe concluir basándose en la posición de la **línea negra (observado)** respecto a la **zona gris (envolvente)**:
+
+1.  **Agregación (Clustering):**
+    *   En la **Función L**, la línea negra sube **por encima** de la zona gris. Significa que hay más vecinos a distancias cortas de lo que el azar permite.
+    *   En la **Función F**, la línea negra cae **por debajo** de la zona gris. Indica que tardamos más de lo normal en encontrar un punto desde una ubicación vacía, sugiriendo la existencia de grandes huecos en el mapa.
+2.  **Regularidad (Inhibición):**
+    *   En la **Función L**, la línea negra cae **por debajo** de la zona gris. Los eventos se "repelen" y guardan distancias mínimas entre sí.
+3.  **Compatibilidad con CSR (Azar):**
+    *   Si la línea negra permanece **dentro** de la zona gris en todo el recorrido de $r$, no hay evidencia estadística suficiente para rechazar la hipótesis de aleatoriedad espacial completa.
+
+**Nota de Pedagogía:** Es fundamental recordar que las envolventes **no son intervalos de confianza**; son bandas de significancia asociadas a una prueba de hipótesis de Montecarlo. Un rango extremo (puesto 1 de 1000) nos da un pseudo p-valor aproximado de $2/(999+1) = 0.002$.
+
+### pause
+:::
+
+::: {#seccion-3-7 .content-card}
+*Cuando el CSR es rechazado, debemos ajustar modelos que capturen la complejidad del fenómeno.*
+
+*   **7.1 Proceso de Poisson No Homogéneo (IPP):** La intensidad $\lambda(s)$ no es constante y depende de covariables o coordenadas geográficas.
+*   **7.2 Procesos de Cox (Doble Estocásticos):** La intensidad es en sí misma un proceso estocástico (ej. procesos log-gaussianos).
+*   **7.3 Procesos Clúster de Poisson:** Generación de puntos "hijos" alrededor de puntos "padre" (ej. Procesos de Neyman-Scott).
+*   **7.4 Procesos de Gibbs:** Modelan la interacción directa (atracción o inhibición) entre puntos, como el modelo de Strauss [8.2 del Mapa previo, 1107].
+*   **💻 Implementación en R:** Funciones `ppm()` (Point Process Model) para Poisson/Gibbs y `kppm()` para Cox/Cluster.
+
+
+Estimado estudiante, una vez que hemos superado la etapa de diagnóstico y hemos rechazado la hipótesis de **Aleatoriedad Espacial Completa (CSR)**, nos enfrentamos al verdadero reto del analista: la modelación. En la naturaleza, los fenómenos raramente son el resultado del puro azar; existen tendencias geográficas, variables ambientales ocultas o interacciones biológicas que dictan dónde aparece cada punto. Como su Catedrático, le guiaré a través de la lógica y la implementación de los modelos que permiten capturar esta complejidad.
+
+---
+
+###  La Lógica de la Modelación Avanzada
+
+Para modelar un patrón que no es aleatorio, debemos preguntarnos **por qué** se desvía del azar:
+
+1.  **¿Es por el entorno?:** Si la densidad de puntos cambia porque el terreno cambia (ej. más sismos cerca de una falla), el problema es de **Primer Orden**. Aquí ajustamos un **Proceso de Poisson No Homogéneo (IPP)** donde la intensidad $\lambda(s)$ es una función del espacio.
+2.  **¿Es por variables ocultas?:** Si la intensidad parece variar al azar debido a factores que no podemos medir directamente (como la humedad del aire en cada micro-punto), la intensidad misma se vuelve una variable aleatoria. Esto nos lleva a los **Procesos de Cox**.
+3.  **¿Es por descendencia o contagio?:** Si los puntos aparecen en "familias" (un evento genera otros a su alrededor), estamos ante un **Proceso Clúster**. La estructura depende de una generación de "padres" e "hijos".
+4.  **¿Es por contacto directo?:** Si los puntos "sienten" la presencia del vecino y deciden alejarse (inhibición) o acercarse (atracción) por competencia o beneficio, usamos **Procesos de Gibbs**, que modelan la interacción punto a punto.
+
+---
+
+### 💡 Explicación Esencial (Técnica Feynman)
+
+Imagina que estás mapeando la ubicación de personas en una ciudad:
+
+*   **IPP:** Hay más gente en el centro que en la periferia porque el diseño de la ciudad (covariable) lo dicta. El mapa es una respuesta al terreno.
+*   **Cox:** La gente se agrupa donde hay sombra, pero la sombra se mueve con las nubes. No tienes un mapa de nubes, así que la densidad parece cambiar "aleatoriamente" según un proceso oculto.
+*   **Clúster:** Ves grupos de personas. Son familias que salieron de una casa (punto padre invisible) y caminan juntas (puntos hijos observados).
+*   **Gibbs:** Las personas mantienen una distancia de un metro entre sí por comodidad (modelo de Strauss). Si alguien se acerca demasiado, el otro se mueve. Hay una "fuerza" de repulsión.
+
+---
+
+### 📚 Definiciones y Modelos Rigurosos
+
+#### 7.1 Proceso de Poisson No Homogéneo (IPP)
+En este modelo, la intensidad deja de ser una constante $\lambda$ para convertirse en una función $\lambda(s)$. Se asume que los eventos siguen siendo independientes entre sí, pero su probabilidad de ocurrencia varía geográficamente.
+*   **Forma Paramétrica:** Comúnmente se modela como un log-lineal: $\log \lambda(s) = \beta_0 + \beta_1 x + \beta_2 y$, donde $x, y$ son coordenadas.
+
+#### 7.2 Procesos de Cox (Doble Estocásticos)
+Es un proceso de Poisson donde la función de intensidad $\Lambda(s)$ es, en sí misma, un proceso estocástico. Una realización de este proceso genera un mapa de intensidad, y de ese mapa se derivan los puntos. Los **Procesos Log-Gaussianos de Cox (LGCP)** son los más utilizados, donde el logaritmo de la intensidad sigue un campo aleatorio Gaussiano.
+
+#### 7.3 Procesos Clúster de Poisson
+Se definen mediante un mecanismo de dos etapas:
+
+1.  Se genera un proceso de "padres" (que pueden ser invisibles).
+2.  Cada padre genera un número aleatorio de "hijos" siguiendo una distribución (usualmente Poisson) en un radio determinado.
+*   **Ejemplos:** Proceso de Matérn (hijos uniformes en un disco) o Thomas (hijos con dispersión normal alrededor del padre).
+
+#### 7.4 Procesos de Gibbs
+A diferencia de los anteriores, estos modelan la **interacción explícita** mediante una función de energía o potencial. El **Modelo de Strauss** es el estándar para la inhibición: penaliza la probabilidad de que un punto aparezca si ya existe otro a una distancia menor a $r$.
+
+---
+
+### 💻 Implementación en R (`spatstat`)
+
+El paquete `spatstat` centraliza estas herramientas mediante dos funciones maestras:
+
+*   **`ppm(X, ~ ...)`**: Se usa para modelos de intensidad (Poisson) y modelos de interacción (Gibbs).
+    *   *Ejemplo IPP:* `ppm(X ~ x + y)` ajusta una tendencia basada en coordenadas.
+    *   *Ejemplo Gibbs:* `ppm(X ~ 1, Strauss(r=0.1))` ajusta un modelo de inhibición.
+*   **`kppm(X, ~ ...)`**: Se especializa en modelos donde hay una estructura de covarianza de segundo orden compleja, como los de Cox o Clúster.
+    *   *Ejemplo Clúster:* `kppm(X ~ 1, clusters = "MatClust")` ajusta un proceso de clúster de Matérn.
+
+### 🗝️ Términos Innegociables
+
+*   **Intensidad $\lambda(s)$:** Tasa esperada de eventos en la ubicación $s$.
+*   **Doble Estocástico:** Proceso donde la fuente de aleatoriedad es doble (en la intensidad y en la ubicación).
+*   **Padres e Hijos (Parent/Offspring):** Estructura jerárquica de los procesos clúster.
+*   **Potencial de Interacción:** Función que mide la fuerza de atracción o repulsión entre eventos cercanos.
+
+### pause
+:::
+
+::: {#seccion-3-7-1 .content-card}
+Cuando la hipótesis nula de **Aleatoriedad Espacial Completa (CSR)** es rechazada en las etapas de diagnóstico, el analista debe abandonar la simplicidad del Proceso Homogéneo de Poisson (HPP) y ajustar modelos que capturen la estructura real del fenómeno.
+
+---
+
+### 7.1. Proceso de Poisson No Homogéneo (IPP o NHPP)
+
+El IPP es la extensión natural del modelo nulo cuando la intensidad $\lambda$ no es constante, sino que varía en función de la ubicación geográfica $s$ o de variables explicativas ambientales.
+
+#### Fórmulas Matemáticas y Lógica de Agregación
+La intensidad se define como una función determinística del espacio, $\lambda(s)$. Para conocer el número esperado de eventos en una región $B$, realizamos una **agregación espacial** (integral):
+
+$$E[N(B)] = \int_{B} \lambda(s) \, ds$$
+
+**Chain-of-Thought (Lógica de la fórmula):**
+
+*   **$\lambda(s)$**: Representa el "potencial de riesgo" o densidad de eventos en el punto exacto $s$.
+*   **La Integral ($\int_B ... ds$)**: Imagine que divide la región $B$ en celdas infinitamente pequeñas. En lugar de sumar números enteros, estamos "agregando" o recolectando el potencial de riesgo de cada milímetro cuadrado dentro de la zona.
+*   **Resultado**: Bajo IPP, la probabilidad de encontrar puntos en una zona depende exclusivamente del área y del valor acumulado de $\lambda(s)$ en esa superficie, manteniendo el supuesto de que los eventos ocurren de forma independiente entre sí.
+
+#### Modelado Paramétrico
+Comúnmente se utiliza un modelo log-lineal para asegurar que la intensidad sea siempre positiva:
+$$\log \lambda(s) = \beta_0 + \beta_1 x + \beta_2 y + \sum \beta_k Z_k(s)$$
+Donde $x, y$ son coordenadas y $Z_k(s)$ son covariables espaciales.
+
+---
+
+### 7.2. Procesos de Cox (Doble Estocásticos)
+
+El proceso de Cox es una generalización donde la intensidad misma deja de ser una función fija y se convierte en un proceso estocástico aleatorio, $\Lambda(s)$.
+
+#### Componentes y Análisis (Chain-of-Thought)
+Matemáticamente, la función de intensidad acumulada se expresa como:
+$$P(N(B) = n) = E\left[ \frac{e^{-\Lambda(B)} (\Lambda(B))^n}{n!} \right]$$
+
+**Lógica de Doble Aleatoriedad:**
+
+1.  **Nivel 1 (Proceso de Intensidad)**: La naturaleza genera primero un "mapa de riesgo" aleatorio $\Lambda(s)$.
+2.  **Nivel 2 (Realización)**: Una vez fijado ese mapa, los puntos se distribuyen siguiendo un proceso de Poisson basado en esa intensidad específica.
+
+*   **Variabilidad**: La varianza en un proceso de Cox siempre es mayor o igual a la media ($var(N(B)) \geq E[N(B)]$), lo que captura fenómenos con alta dispersión o "sobre-Poisson".
+
+Un caso común es el **Proceso Log-Gaussiano de Cox (LGCP)**, donde $\log \Lambda(s)$ sigue un campo aleatorio Gaussiano.
+
+---
+
+### 7.3. Procesos Clúster de Poisson
+
+Estos modelos capturan la formación de grupos o colonias mediante un mecanismo jerárquico de "padres e hijos".
+
+#### Mecanismo de Construcción (Chain-of-Thought)
+
+1.  **Generación de Padres**: Se crea un proceso de Poisson inicial $\Pi$ para ubicar los centros de los clústeres (puntos padre), que pueden ser invisibles en la muestra final.
+2.  **Generación de Hijos**: Cada padre $x_i$ genera un número aleatorio de descendientes (hijos) $\phi_i$ siguiendo una distribución de Poisson.
+3.  **Dispersión**: Los hijos se distribuyen alrededor del padre según una función de densidad espacial.
+
+**Ejemplo: Proceso Clúster de Matérn**
+Los hijos se distribuyen de forma **Uniforme** dentro de un disco de radio $r$ centrado en el padre. La agregación total $\Psi$ es la unión de todos los hijos.
+
+---
+
+### 7.4. Procesos de Gibbs y Modelo de Strauss
+
+A diferencia de los anteriores, los procesos de Gibbs modelan la **interacción directa** entre puntos, permitiendo representar tanto la atracción como la repulsión (inhibición).
+
+#### El Modelo de Strauss
+Es el estándar para modelar la regularidad o inhibición. La densidad de probabilidad de un patrón puntual $x$ se define como:
+$$f(x) = \alpha \beta^{n(x)} \gamma^{s(x)}$$
+
+*   **$\beta$**: Parámetro de intensidad base.
+*   **$\gamma$**: Parámetro de interacción ($0 \leq \gamma \leq 1$).
+*   **$s(x)$**: Número de pares de puntos que se encuentran a una distancia menor o igual a un radio de interacción $r$.
+
+**Chain-of-Thought:**
+
+*   Si $\gamma = 1$, el modelo se reduce a un proceso de Poisson (CSR).
+*   Si $\gamma < 1$, el modelo penaliza la probabilidad del patrón por cada par de puntos que "violen" la distancia mínima $r$. Esto representa procesos competitivos, como árboles que luchan por luz o territorios animales.
+
+---
+
+### 7.5. Supuestos Críticos y Violaciones
+
+
+1.  **Independencia (IPP)**: Aunque la intensidad cambie, el IPP asume que un evento no afecta la ubicación de otro. Si existe interacción real, se debe usar Gibbs o Clúster.
+2.  **Estacionariedad de Segundo Orden**: Los procesos de Cox y Clúster suelen asumir que la interacción solo depende de la distancia $h$, no de la posición absoluta.
+3.  **Orderliness (Simplicidad)**: Se asume que no hay dos puntos en la misma ubicación exacta. La violación de esto (puntos coincidentes) invalida el cálculo de la verosimilitud.
+
+---
+
+### 7.6. Contraste de Hipótesis y Validación
+
+Cuando ajustamos estos modelos avanzados en R mediante `ppm()` o `kppm()`, el juicio estadístico se realiza así:
+
+*   **$H_0$**: El patrón sigue un modelo simple (ej. IPP basado solo en coordenadas).
+*   **$H_1$**: El patrón requiere una estructura de interacción (ej. Modelo de Strauss o Clúster).
+
+#### Interpretación del P-valor y Envolventes
+
+*   **Prueba de Razón de Verosimilitud (LRT)**: Compara si la complejidad adicional del modelo avanzado es significativa. Un **p-valor < 0.05** indica que el modelo avanzado explica mejor la realidad que el azar o la tendencia simple.
+*   **Validación vía `envelope()`**: Se simulan múltiples realizaciones del modelo ajustado. Si el patrón real (línea negra) permanece dentro de la zona gris (envolventes de simulación), el modelo avanzado es considerado adecuado para representar el fenómeno.
+
+#### 💻 Implementación en R (`spatstat`)
+
+*   **`ppm(X ~ x + y, Strauss(r=0.1))`**: Ajusta un modelo de Gibbs que incluye tendencia (IPP) e interacción de Strauss.
+*   **`kppm(X ~ 1, clusters = "MatClust")`**: Ajusta un Proceso Clúster de Matérn.
+
+### pause
+:::
+
+::: {#seccion-3-7-2 .content-card}
+
+### 1. Problema de Estudio
+Tras realizar un análisis de primer orden, un equipo de ecólogos ha rechazado la hipótesis de **Aleatoriedad Espacial Completa (CSR)** para la ubicación de una especie de helecho en una parcela de $10 \times 10$ metros. Los datos sugieren que la densidad de las plantas aumenta a medida que nos acercamos a una fuente de humedad ubicada en el borde derecho de la parcela (crecimiento hacia el eje $x$). 
+
+Se solicita ajustar y evaluar manualmente un **Proceso de Poisson No Homogéneo (IPP)** con tendencia lineal en $x$, y compararlo conceptualmente con modelos de interacción (Gibbs) y de contagio (Clúster).
+
+### 2. Datos (Dataset de Juguete)
+
+*   **Ventana de Observación ($D_S$):** Cuadrado de $10 \times 10$ m. Área $|D_S| = 100 \, m^2$.
+*   **Modelo de Intensidad Propuesto:** $\log \lambda(x, y) = \beta_0 + \beta_1 x$.
+*   **Parámetros Estimados (vía Máxima Verosimilitud):**
+    *   $\hat{\beta}_0 = -2$ (Intercepto o intensidad base).
+    *   $\hat{\beta}_1 = 0.4$ (Efecto de la coordenada este/x).
+*   **Ubicaciones de Interés para Predicción:** 
+    *   $s_A = (2, 5)$ (Zona seca).
+    *   $s_B = (8, 5)$ (Zona húmeda).
+
+---
+
+### 3. Procedimiento Detallado (Chain-of-Thought)
+
+#### Paso 1: Definición de la Función de Intensidad $\hat{\lambda}(s)$
+En un IPP, la intensidad no es una constante $\lambda$, sino una función determinística del espacio $\lambda(s)$. Dado que usamos un enlace logarítmico para garantizar que la intensidad sea siempre positiva, la fórmula de cálculo es:
+$$\hat{\lambda}(x, y) = \exp(\beta_0 + \beta_1 x)$$
+
+*   **Conexión Teórica:** Este modelo asume que los eventos son independientes entre sí, pero su probabilidad de aparición está condicionada por la ubicación geográfica o covariables ambientales.
+
+#### Paso 2: Cálculo de la Intensidad Local en $s_A$ y $s_B$
+Calculamos cuántas plantas se esperan por metro cuadrado en los dos extremos de la parcela.
+
+*   **En $s_A (x=2)$:** $\hat{\lambda}(2, 5) = \exp(-2 + 0.4 \times 2) = \exp(-1.2) \approx \mathbf{0.301 \, helechos/m^2}$.
+*   **En $s_B (x=8)$:** $\hat{\lambda}(8, 5) = \exp(-2 + 0.4 \times 8) = \exp(1.2) \approx \mathbf{3.320 \, helechos/m^2}$.
+*   **Aritmética:** Note que al aumentar la coordenada $x$, la intensidad crece exponencialmente debido al signo positivo de $\beta_1$.
+
+#### Paso 3: Estimación del Número Esperado de Eventos ($E[N(B)]$)
+Bajo el modelo IPP, el número esperado de eventos en una región $B$ es la integral de la intensidad sobre esa área. Si tomamos una pequeña franja de $1 \times 1$ m centrada en $s_B$:
+
+*   **Operación:** $E[N(B)] \approx \hat{\lambda}(s_B) \times Area(B) = 3.320 \times 1 = \mathbf{3.32 \, helechos}$.
+*   **Comparación con CSR:** Si el proceso fuera homogéneo (CSR), con una intensidad media de $\bar{\lambda} = 1.0$, esperaríamos solo 1 planta en ese mismo cuadro. El modelo IPP captura el "atractivo" del sitio.
+
+#### Paso 4: Selección de Modelo ante Rechazo de IPP
+Si después de ajustar este modelo los residuales espaciales aún muestran patrones (ej. los helechos están más cerca entre sí de lo que predice el gradiente de humedad), debemos considerar:
+
+1.  **Procesos de Gibbs (ej. Strauss):** Si hay inhibición por competencia de nutrientes entre raíces.
+2.  **Procesos Clúster (ej. Matérn):** Si los helechos adultos generan esporas que caen cerca, creando "hijos" alrededor de un "padre".
+3.  **Procesos de Cox:** Si existe una variable ambiental no medida (como la composición química del suelo) que varía aleatoriamente.
+
+---
+
+### 4. Resultado Interpretado
+El modelo IPP ajustado revela que la intensidad de helechos no es uniforme, sino que aumenta drásticamente hacia el este ($x$), pasando de **0.30** a **3.32** plantas/$m^2$. 
+
+*   **Interpretación Biológica:** El parámetro $\beta_1 = 0.4$ es positivo, validando la hipótesis de que la cercanía a la fuente de humedad favorece la colonización. 
+*   **Validación:** En R, este ajuste se realizaría con `ppm(X ~ x)`. Si el **p-valor** de la prueba de razón de verosimilitud (LRT) es significativo respecto al modelo `X ~ 1`, el modelo no homogéneo es el adecuado para describir este patrón.
+
+---
+
+### 📝 Guía de Autoevaluación (Errores Comunes)
+
+1.  **Confundir Tendencia con Interacción:** El error más grave es modelar como "clúster" (atracción entre puntos) lo que es simplemente una "tendencia" (puntos que coinciden en un lugar porque el sitio es mejor). **Regla:** Primero modelar la media (IPP) y luego la interacción (Gibbs/Clúster).
+2.  **Error en el Enlace (Link):** Olvidar que el modelo es log-lineal. Calcular $\hat{\lambda} = -2 + 0.4x$ resultaría en intensidades negativas para valores bajos de $x$, lo cual es matemáticamente imposible para un conteo.
+3.  **Independencia:** Asumir que el IPP explica todo. Si los puntos en un IPP están muy juntos, no es por "contagio", sino por el valor de $\lambda(s)$. Si hay contagio real, se requiere un modelo **Doble Estocástico (Cox)** o **Clúster**.
+4.  **Uso de `ppm` vs `kppm`:** En la implementación en R, intentar ajustar un modelo Clúster con `ppm` (que es para Poisson/Gibbs) o un modelo de tendencia pura con `kppm` sin especificar la estructura de interacción.
+5.  **Interpretación de $\beta_0$:** Pensar que $\beta_0$ es el número de puntos. $\beta_0$ es el logaritmo de la intensidad cuando todas las covariables son cero. El número total de puntos esperado es la suma (integral) de las intensidades en toda la ventana.
+
+### pause
+:::
+
+::: {#seccion-3-7-3 .content-card}
+Una vez que la Aleatoriedad Espacial Completa (CSR) ha sido rechazada, el objetivo es capturar la estructura de los datos mediante modelos que consideren la **inhomogeneidad** (primer orden) y la **interacción o dependencia** (segundo orden).
+
+Cuando un patrón no es aleatorio, la desviación puede deberse a una respuesta al entorno (tendencia espacial) o a interacciones intrínsecas (atracción/repulsión).
+
+### 7.1 Implementación en R: Flujo de Trabajo y Mejores Prácticas
+
+El siguiente bloque de código demuestra cómo ajustar modelos IPP, de Clúster y de Gibbs, integrando diagnósticos de validación.
+
+```{r}
+# --- 1. Configuración y Limpieza de Datos (Mejores Prácticas) ---
+library(spatstat)
+# Usaremos 'bei' (ubicación de árboles), que presenta fuerte tendencia e interacción
+data(bei)
+X <- bei
+
+# Limpieza Crítica: La verosimilitud en ppm() y kppm() requiere patrones "simples".
+# Si hay puntos duplicados, las funciones de distancia y la intensidad fallan.
+if(any(duplicated(X))) {
+  X <- unique(X) # Elimina duplicados exactos para asegurar la 'orderliness'
+}
+
+# --- 2. Modelo de Poisson No Homogéneo (IPP) ---
+# Trasfondo: La intensidad λ(s) es una función determinística de covariables.
+# Parámetro estadístico: 'grad' es una imagen de elevación/pendiente.
+# Ajuste log-lineal: log(λ(s)) = β0 + β1*grad(s). 
+fit_ipp <- ppm(X ~ grad, data = bei.extra, Poisson()) #
+
+# --- 3. Modelo Clúster de Poisson (Thomas Process) ---
+# Trasfondo: Generación jerárquica de puntos "padre" e "hijos".
+# Parámetros: κ (intensidad de padres), σ2 (dispersión de hijos), μ (media de hijos/clúster).
+# Se ajusta mediante contraste de momentos o verosimilitud compuesta.
+fit_cluster <- kppm(X ~ grad, clusters = "Thomas", data = bei.extra) #
+
+# --- 4. Modelo de Interacción de Gibbs (Modelo de Strauss) ---
+# Trasfondo: Modela la repulsión directa. γ (parámetro de interacción).
+# γ = 1 es CSR; γ < 1 indica inhibición.
+# Usa la aproximación de Berman-Turner para la integración numérica de la verosimilitud.
+fit_gibbs <- ppm(X ~ grad, Strauss(r = 7), data = bei.extra) #
+
+# --- 5. Visualización Multimodal y Evaluación ---
+
+# A. Intensidad Ajustada (IPP)
+# Representa el número esperado de eventos por unidad de área según el modelo.
+plot(predict(fit_ipp), main = "Predicción λ(s) - IPP") #
+
+# B. Evaluación del Modelo de Clúster
+# Compara la función K de Ripley observada con la del modelo Thomas ajustado.
+plot(envelope(fit_cluster, Kest, nsim = 39), main = "Validación Clúster (Thomas)") #
+
+# C. Residuales de Pearson del Modelo
+# Trasfondo: R = O - E. Zonas verdes/azules indican donde el modelo subestima/sobreestima.
+plot(residuals(fit_ipp), main = "Residuales del Modelo IPP") #
+
+# D. Prueba de Razón de Verosimilitud (LRT)
+# Evalúa si la interacción de Strauss mejora significativamente el ajuste Poisson.
+anova(fit_ipp, fit_gibbs, test = "LR") #
+```
+
+### 7.2 Explicación Teórica y Dualidad Teoría-Práctica
+
+#### 7.2.1 Proceso de Poisson No Homogéneo (IPP)
+
+*   **Intuición:** El terreno dicta dónde aparecen los puntos. Si una zona tiene mayor elevación, hay mayor densidad, pero los puntos siguen siendo independientes entre sí.
+*   **Trasfondo:** El número esperado de puntos en una región $B$ se calcula mediante la **agregación espacial** (integral): $E[N(B)] = \int_{B} \lambda(s) ds$. En R, `ppm()` estima los coeficientes $\beta$ maximizando la verosimilitud mediante cuadratura numérica.
+
+#### 7.2.2 Procesos de Cox y Clúster
+
+*   **Intuición:** Los puntos de Cox son "doblemente estocásticos": la intensidad misma es un campo aleatorio (ej. manchas de fertilidad invisibles). Los de Clúster simulan procesos de dispersión (un árbol suelta semillas que caen cerca).
+*   **Trasfondo:** `kppm()` no suele usar verosimilitud directa (debido a la complejidad de la integral) sino el método de **mínimo contraste**, que minimiza la distancia entre la función $K$ empírica y la teórica del modelo.
+
+#### 7.2.3 Procesos de Gibbs (Modelo de Strauss)
+
+*   **Intuición:** Hay "competencia" por el espacio. Si un punto está en $s$, penaliza la probabilidad de que otro aparezca en un radio $r$.
+*   **Trasfondo:** La función de densidad se define como $f(x) = \alpha \beta^{n(x)} \gamma^{s(x)}$, donde $s(x)$ es el conteo de pares a distancia menor que $r$. Si el p-valor de la prueba LRT es $< 0.05$, rechazamos el modelo Poisson en favor de uno con interacción de Gibbs.
+
+### 7.3 Guía de Interpretación para las Notas de Clase
+
+1.  **Mapas de Intensidad (`predict`):** Permiten visualizar el gradiente ecológico o social. Si el mapa coincide visualmente con el patrón observado, el modelo de primer orden es fuerte.
+2.  **Envolventes de Simulación:** Al validar un modelo Thomas o Strauss, la línea negra (real) debe permanecer dentro de la zona gris (simulada del modelo ajustado). Si se sale, el modelo no está capturando toda la estructura de interacción.
+3.  **Residuales Espaciales:** Son la herramienta de diagnóstico definitiva. Si los residuales muestran patrones (clústeres de puntos negros), significa que hay información espacial que el modelo actual (IPP) aún no ha explicado, sugiriendo la necesidad de un modelo de segundo orden.
+
+### pause
+:::
+
+::: {#seccion-3-ex .content-card}
+### 3.2 Medidas de Intensidad e Interacción
+
+*   **Teoría:** Estimación de la intensidad (KDE). Propiedades de segundo orden: Función K de Ripley y función L. Pruebas de Montecarlo y sobres de simulación.
+*   **Práctica R:** Funciones `density.ppp`, `Kest` y `envelope`.
+
+
+### Explicación Teórica: De la Densidad a la Interacción
+
+El análisis de patrones puntuales busca comprender el mecanismo estocástico que genera la ubicación de eventos en el espacio. Este análisis se aborda desde dos perspectivas complementarias:
+
+1.  **Propiedades de primer orden (Intensidad):** Describen cómo varía la densidad media de puntos a través de la región de estudio. Intuitivamente, la intensidad responde a la pregunta: *¿Dónde hay más aglomeración de eventos?*. La técnica estándar es la **Estimación de Densidad Kernel (KDE)**, que genera lo que comúnmente se conoce como "mapas de calor". El KDE suaviza el patrón de puntos promediando la presencia de eventos en vecindades definidas por un **ancho de banda** ($b$ o $h$), el cual determina el nivel de detalle del mapa: un ancho pequeño muestra mucho ruido, mientras que uno grande puede ocultar patrones locales importantes.
+
+2.  **Propiedades de segundo orden (Interacción):** Estudian la dependencia o correlación espacial entre los eventos. Su objetivo es determinar si la ubicación de un evento influye en la aparición de otro (atracción o repulsión). La **Función K de Ripley** es la herramienta fundamental aquí, ya que cuenta cuántos eventos adicionales existen a una distancia determinada ($r$) de un evento típico. Para facilitar la visualización, se utiliza la **Función L**, que transforma la función K para que, bajo una hipótesis de aleatoriedad (CSR), el resultado sea una línea recta, facilitando la detección de agrupamientos (clusters) o regularidad (inhibición).
+
+Para validar estos hallazgos, se recurre a las **Pruebas de Montecarlo**. Dado que a menudo se desconoce la distribución exacta de los estadísticos espaciales, se simulan múltiples patrones bajo Aleatoriedad Espacial Completa (CSR). El valor observado se compara con estos patrones simulados para construir **sobres de simulación** (envelopes). Si la curva observada se sale de estos sobres, se rechaza la hipótesis de aleatoriedad con un nivel de confianza estadístico.
+
+### Fundamentación Matemática
+
+#### Intensidad de Primer Orden y KDE
+La intensidad $\lambda(s)$ es el límite del número esperado de eventos en un área infinitesimal $ds$:
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+El estimador no paramétrico de intensidad (Kernel) se define como:
+$$\hat{f}(u) = \frac{1}{nb} \sum_{i=1}^{n} \kappa\left(\frac{u-s_i}{b}\right)$$
+Donde $\kappa$ es la función kernel (usualmente Gaussiana), $b$ el ancho de banda, $s_i$ las ubicaciones observadas y $u$ cualquier punto en la ventana.
+
+#### Propiedades de Segundo Orden (K y L)
+La función K de Ripley para un proceso estacionario e isotrópico es:
+$$K(r) = \lambda^{-1} E[N_0(r)]$$
+Donde $N_0(r)$ es el número de eventos extra dentro de una distancia $r$ de un evento arbitrario. Su estimador con corrección de borde $e_{ij}(r)$ es:
+$$\hat{K}(r) = \frac{|D_s|}{n(n-1)} \sum_{i=1}^{n} \sum_{j \neq i} 1\{\|s_i - s_j\| \leq r\} e_{ij}(r)$$
+
+La función L de Besag estandarizada permite una interpretación lineal:
+$$L(r) = \sqrt{\frac{K(r)}{\pi}}$$
+
+#### Pruebas de Montecarlo
+El nivel de significancia $\alpha$ en una prueba de Montecarlo de dos colas con $k$ simulaciones se calcula como:
+$$\alpha = \frac{2r}{k}$$
+Donde $r$ es el rango del estadístico observado dentro de la lista ordenada de valores simulados.
+
+### Implementación en R
+
+Para realizar estos análisis desde cero, utilizamos la librería `spatstat`.
+
+```{r}
+# Carga de librerías
+library(spatstat) # Análisis de patrones puntuales
+library(sf)       # Manejo de datos vectoriales
+
+# 1. Preparación de los datos (simulación de un patrón agregado)
+set.seed(123)
+# Creamos un patrón puntual ppp en una ventana de 100x100
+ventana <- owin(c(0, 100), c(0, 100))
+# Simulamos un proceso de Poisson con intensidad baja
+patron <- rpoispp(lambda = 0.005, win = ventana)
+
+# 2. Estimación de la Intensidad (KDE)
+# La función density.ppp genera el mapa de intensidad
+intensidad_kernel <- density.ppp(patron, sigma = 10) 
+plot(intensidad_kernel, main = "Intensidad Estimada (KDE)")
+plot(patron, add = TRUE, cols = "white", pch = 16)
+
+# 1. Comportamiento del Kernel Gaussiano
+#   El mapa de calor suaviza el patrón de puntos usando un ancho de banda (\(\sigma = 10\)).Las zonas amarillas/blancas representan picos de alta densidad de eventos (puntos densamente agrupados).
+#   Las zonas oscuras/azules indican áreas con baja intensidad o ausencia de eventos en ese radio de búsqueda.
+# 2. Relación con el Examen (Ejercicio 8)
+#   Este gráfico ilustra exactamente lo que solicita el Ejercicio 8 de tu examen (el cálculo de la intensidad en un punto específico \((x, y)\) usando un kernel gaussiano bivariado):
+#     La función density.ppp estima la intensidad local \(\hat{\lambda}(u)\) en cualquier coordenada \(u = (x, y)\) mediante la fórmula:\(\^{\lambda }(u)=\sum _{i=1}^{n}e(u_{i})\cdot k(u-u_{i})\)
+#     Donde \(k\) es el kernel gaussiano centrado en cada evento \(u_{i}\), y \(e(u_i)\) es un factor de corrección de borde. Para obtener el valor numérico exacto en el punto \((2.5, 3)\)
+
+
+# 3. Propiedades de Segundo Orden (Función K)
+# Estimamos la función K con correcciones de borde
+k_func <- Kest(patron)
+plot(k_func, main = "Función K de Ripley")
+
+# 1. Interpretación de las Curvas
+#   Línea segmentada azul (\(K_{pois}(r)\)): Representa el modelo teórico de referencia bajo un proceso de Completa Aleatoriedad Espacial (CSR). Su ecuación teórica es \(K(r) = \pi r^2\).
+#   Líneas sólida, roja y verde (\(\hat{K}_{iso}, \hat{K}_{trans}, \hat{K}_{bord}\)): Son las estimaciones empíricas calculadas a partir de tus datos, aplicando diferentes métodos de corrección por efectos de borde (isótropa, traslación y borde). El hecho de que estén prácticamente pegadas indica que la corrección de borde no altera el resultado.
+# 2. Diagnóstico del Patrón Puntual (Propiedades de Segundo Orden)
+#   Comportamiento: La curva observada (\(\hat{K}(r)\)) fluctúa de forma casi idéntica e intercalada sobre la línea teórica de Poisson (\(K_{pois}(r)\)) a lo largo de todas las distancias (\(r\)).
+#   Conclusión estadística: El patrón no presenta agrupamiento (clustering) ni regularidad significativa. Se comporta como un proceso aleatorio homogéneo.
+
+
+# 4. Sobres de Simulación de Montecarlo (Función L)
+# Evaluamos CSR generando 99 simulaciones aleatorias
+# Se usa L(r) - r (estilo Lexp) para visualización lineal
+sobres_l <- envelope(patron, Lest, nsim = 99, correction = "border")
+plot(sobres_l, . - r ~ r, main = "Sobres de Simulación para L(r) - r")
+
+# 1. Interpretación de los Componentes
+#   Área Gris (Sobres \(\hat{L}_{hi}(r) - r\) y \(\hat{L}_{lo}(r) - r\)): Representa la zona de confianza construida a partir de las 99 simulaciones aleatorias de un proceso de Poisson (CSR). Define los límites máximos y mínimos esperados debido al azar.
+#   Línea Segmentada Roja (\(L_{theo}(r) - r = 0\)): Es el valor teórico esperado para un patrón perfectamente aleatorio. Al restar \(r\), se convierte en una línea horizontal fija en el valor 0.
+#   Línea Sólida Negra (\(\hat{L}_{obs}(r) - r\)): Es el comportamiento real observado en tus datos simulados.
+# 2. Diagnóstico del Patrón Puntual (Validación Estadística)
+#   Comportamiento de la curva: La línea negra observada se mantiene de principio a fin estrictamente dentro de la banda gris de simulación. No sobresale en ninguna distancia \(r\).
+#   Conclusión formal: No existe evidencia estadística suficiente para rechazar la hipótesis nula de Completa Aleatoriedad Espacial (CSR). El patrón analizado es estadísticamente indistinguible de un proceso homogéneo de Poisson con un nivel de significancia de \(\alpha = 2 / (99 + 1) = 0.02\) (2%).
+```
+
+### Interpretación
+
+*   **Mapa de Intensidad:** Las zonas de colores más intensos (ej. rojo) indican una mayor "frecuencia relativa" de eventos por unidad de área. Si se observa un pico de intensidad, puede interpretarse como una zona de riesgo o "hot spot".
+
+*   **Gráfico de la Función K:** Bajo CSR, la curva observada debe seguir la curva teórica ($K(r) = \pi r^2$). Si la curva observada está por encima de la teórica, indica **agregación** (clusters); si está por debajo, indica **regularidad** (inhibición).
+
+*   **Sobres de Simulación:** En el gráfico de `envelope`, si la línea negra (observada) se sale del área sombreada gris (sobres de simulación), el patrón no es aleatorio. Si se sale por arriba, el patrón es significativamente agrupado; si se sale por abajo, es significativamente regular.
+
+### Errores Comunes
+
+1.  **Subjetividad en el Ancho de Banda:** Al igual que en un histograma con el número de barras, elegir un ancho de banda ($sigma$) de forma arbitraria puede cambiar drásticamente la interpretación del mapa de intensidad.
+
+2.  **Ignorar los Efectos de Borde:** No aplicar correcciones de borde al calcular la función K puede subestimar el número de vecinos, ya que los puntos fuera de la ventana de observación (que podrían interactuar con los de adentro) no son contabilizados.
+
+3.  **Inferencia en un n Fijo:** Creer que un patrón con un número de puntos fijo ($n$) representa perfectamente el modelo de Poisson. Teóricamente, el modelo CSR requiere que $n$ sea una variable aleatoria de Poisson para garantizar la independencia total entre subregiones.
+
+**Vacío de información:** Las fuentes mencionan el uso de funciones kernel multivariadas mediante el "kernel producto", pero no detallan explícitamente en el código de R cómo implementar kernels no isotrópicos (con diferentes anchos de banda para $x$ y $y$) usando específicamente `density.ppp` de forma manual, aunque indican que `spatstat` permite estas extensiones. Tampoco se detalla en las fuentes la función de R específica para el cálculo automático del ancho de banda "óptimo", a pesar de mencionar que el paquete lo soporta.
+
+
+
+
+
+
+### Análisis de Patrones Puntuales (Intensidad, Interacción y Procesos de Poisson)
+
+Como catedrático con dos décadas de estudio en la modelación de fenómenos geográficos, les presento estas notas sobre el análisis de patrones puntuales. En este campo, a diferencia de la geoestadística clásica donde estudiamos una variable medida en sitios fijos, nuestro objeto de estudio es la **ubicación misma de los eventos**. La pregunta fundamental no es "¿cuánto vale la variable aquí?", sino "¿por qué ocurrió un evento en este lugar y no en otro?".
+
+
+### 1. Intuición y Definición Fundamental (El Fenómeno de la Ubicación)
+
+#### Intuición (Método Feynman)
+Imagine que lanza un puñado de semillas sobre un terreno. Si las semillas caen sin que su posición dependa de las demás y sin preferencia por ningún rincón del terreno, estamos ante la **Aleatoriedad Espacial Completa (CSR)**. Sin embargo, en la naturaleza esto es raro: las semillas pueden agruparse porque el viento las amontona (**agregación o clúster**) o pueden estar muy separadas porque cada planta necesita un radio mínimo de luz para sobrevivir (**inhibición o regularidad**).
+
+#### Definición Técnica
+Un **patrón puntual espacial** es un conjunto de ubicaciones geográficas $S = \{s_1, s_2, \dots, s_k\}$ dentro de una ventana de observación $D_s$ donde han ocurrido eventos de interés. Denominamos **evento** a la ubicación observada, para diferenciarla de cualquier otro **punto** genérico en el espacio donde el evento *podría* haber ocurrido pero no ocurrió.
+
+**Supuestos subyacentes:**
+*   El mecanismo que genera los puntos es estocástico (aleatorio).
+*   El patrón observado es solo una realización de infinitas posibles bajo el mismo proceso.
+
+
+### 2. El Proceso Homogéneo de Poisson (PHP) y la Hipótesis CSR
+
+El Proceso Homogéneo de Poisson es el modelo matemático estándar para representar la aleatoriedad total. Se define por dos propiedades críticas:
+1.  **Homogeneidad:** La intensidad $\lambda$ es constante. El número esperado de eventos en cualquier región es proporcional a su área.
+2.  **Independencia:** Lo que ocurre en una zona $A$ no influye en lo que ocurre en una zona $B$, siempre que no se solapen.
+
+#### Derivación Matemática de la Intensidad ($\lambda$)
+La **intensidad de primer orden** $\lambda(s)$ es el equivalente a la "media" del proceso en un punto. Se define mediante el límite de la esperanza del número de eventos $N$ en un disco infinitesimal $ds$ alrededor de la ubicación $s$, cuando el área de dicho disco tiende a cero:
+
+$$\lambda(s) = \lim_{|ds| \to 0} \frac{E[N(ds)]}{|ds|}$$
+
+Si el proceso es **homogéneo**, la intensidad no depende de $s$ ($\lambda(s) = \lambda$). En este caso, el número de eventos en cualquier región $B$ sigue una distribución de Poisson:
+
+$$P(N(B) = n) = \frac{e^{-\lambda m(B)} (\lambda m(B))^n}{n!}$$
+
+Donde $m(B)$ es la medida (área) de la región $B$.
+
+
+### 3. Análisis de Segundo Orden: Interacción y Función K de Ripley
+
+Mientras que la intensidad nos dice "cuántos" puntos hay, las estadísticas de segundo orden nos dicen "cómo interactúan".
+
+#### La Función K de Ripley
+Para un proceso estacionario e isotrópico (que no cambia con traslaciones ni rotaciones), la función $K(h)$ se define como el número esperado de eventos adicionales dentro de una distancia $h$ de un evento típico, normalizado por la intensidad:
+
+$$K(h) = \lambda^{-1} E[\text{Número de eventos extra a distancia } \leq h]$$
+
+**Bajo CSR (Poisson):** Como los puntos son independientes, el número esperado de vecinos en un radio $h$ es simplemente la intensidad por el área del círculo ($\lambda \pi h^2$). Al normalizar por $\lambda$, la función teórica es:
+$$K_{CSR}(h) = \pi h^2$$
+
+#### De la Función K a la Función L de Besag
+Para facilitar la interpretación visual, Besag propuso la transformación $L(h)$, que linealiza la relación cuadrática de $K$:
+
+$$L(h) = \sqrt{\frac{K(h)}{\pi}}$$
+
+En un escenario de aleatoriedad espacial completa, $L(h) = h$. Esto permite que al graficar $L(h) - h$, la línea de referencia para CSR sea el eje cero:
+*   **$L(h) - h > 0$:** Indica **agregación** (más vecinos de los esperados).
+*   **$L(h) - h < 0$:** Indica **regularidad/inhibición** (menos vecinos de los esperados).
+
+
+### 4. Inferencia vía Simulación de Monte Carlo
+
+En la práctica, rara vez conocemos la distribución exacta de estas funciones debido a la forma irregular de las ventanas de observación y los efectos de borde. Por ello, utilizamos **Pruebas de Monte Carlo**.
+
+**Lógica del proceso:**
+1.  Calculamos el estadístico observado $u_1$ (ej. la función $L$ de nuestros datos).
+2.  Simulamos $k-1$ patrones bajo la hipótesis nula (CSR) usando el mismo número de puntos y la misma ventana.
+3.  Ordenamos los resultados. Para un nivel de significancia $\alpha$, calculamos los rangos críticos. Si el valor observado está fuera de estos "sobres de simulación" (envelopes), rechazamos CSR.
+
+$$\alpha = \frac{2r}{k}$$
+Donde $r$ es el valor extremo (mínimo o máximo) y $k$ el total de simulaciones.
+
+
+### 5. Práctica en R (Reproducibilidad Total)
+
+A continuación, implementamos un análisis completo generando nuestros propios datos sintéticos.
+
+```{r}
+# Carga de librerías esenciales para el análisis espacial
+library(spatstat) # Funciones de patrones puntuales (ppp, Kest, envelope)
+library(sf)       # Manejo de objetos vectoriales (aunque spatstat usa ppp)
+
+# 1. Definición de la Ventana de Observación (owin)
+# Creamos un cuadrado unitario (0,1) x (0,1) como nuestro dominio de estudio
+ventana <- owin(c(0, 1), c(0, 1))
+
+# 2. Generación de Datos Sintéticos (Proceso Poisson Homogéneo)
+# Simulamos un patrón con intensidad lambda = 50 puntos por unidad de área
+set.seed(42) # Para reproducibilidad
+patron_aleatorio <- rpoispp(lambda = 50, win = ventana)
+
+# 3. Creación manual de un objeto ppp (para entender su estructura)
+# Generamos 30 puntos con coordenadas uniformes
+coords_x <- runif(30, 0, 1)
+coords_y <- runif(30, 0, 1)
+# La función ppp() amalgama las coordenadas con la ventana obligatoria
+mi_ppp_manual <- ppp(x = coords_x, y = coords_y, window = ventana)
+
+# 4. Estimación de la Intensidad (Primer Orden)
+# Usamos KDE (Kernel Density Estimation) para ver la densidad local
+# sigma controla el 'ancho de banda' o suavizado del mapa de calor
+densidad <- density.ppp(patron_aleatorio, sigma = 0.1)
+plot(densidad, main = "Intensidad Estimada (KDE)")
+plot(patron_aleatorio, add = TRUE, pch = 16, cex = 0.5, col = "white")
+
+# 5. Análisis de Interacción (Segundo Orden)
+# Calculamos la Función L de Besag con corrección de borde 'iso' (isotrópica)
+L_func <- Lest(patron_aleatorio, correction = "isotropic")
+plot(L_func, . - r ~ r, main = "Función L de Besag (L(r) - r)")
+
+# 6. Prueba de Hipótesis con Sobres de Monte Carlo
+# Generamos 99 simulaciones bajo CSR para construir los límites de confianza
+# Si la línea negra sale del área gris, el patrón no es aleatorio.
+sobres_sim <- envelope(patron_aleatorio, Lest, nsim = 99, correction = "isotropic")
+plot(sobres_sim, . - r ~ r, shade = c("hi", "lo"), 
+     main = "Sobres de Simulación (99 it) para CSR")
+```
+
+
+### 6. Diagnóstico e Interpretación
+
+Para interpretar los resultados, debemos observar la relación entre la curva observada (negra) y la teórica (roja discontinua) dentro de los sobres (zona gris):
+
+1.  **Línea negra dentro de la zona gris:** No hay evidencia suficiente para rechazar la **Aleatoriedad Espacial Completa (CSR)**.
+2.  **Línea negra por encima de la zona gris:** El patrón presenta **agregación** significativa a esas distancias $r$ (proceso de clúster).
+3.  **Línea negra por debajo de la zona gris:** El patrón presenta **regularidad** significativa (proceso de inhibición).
+
+#### Errores Comunes
+*   **Ignorar la ventana de observación:** El cálculo de la intensidad depende críticamente del área. Usar una ventana incorrecta sesga todo el análisis.
+*   **Malinterpretar el ancho de banda ($\sigma$):** Un $\sigma$ muy pequeño en el KDE mostrará picos en cada punto (sobreajuste), mientras que uno muy grande esconderá la estructura real del fenómeno.
+
+
+**Laguna identificada en el corpus:**
+Aunque las fuentes mencionan el uso de **correcciones de borde** (como la de Ripley o la isotrópica) para evitar el sesgo cerca de los límites de la ventana, no se detalla la derivación matemática exacta del factor de ponderación geométrico $e_{ij}(r)$ para ventanas no rectangulares. 
+*Pregunta para investigar:* ¿Cómo se calcula analíticamente la proporción de la circunferencia de un círculo de radio $r$ que queda dentro de un polígono cóncavo complejo?
+
+### Pausa
+:::
+
+
+::: {#seccion-3-guia .content-card}
+
+Como Arquitecto de Sistemas Estadísticos y Consultor Senior, presento la **Guía Maestra de Decisión para el Análisis de Patrones Puntuales Espaciales (PPE)**. Esta guía sigue estrictamente la metodología de la Prof. Bohórquez, integrando la dualidad entre la teoría estocástica y la implementación computacional en `spatstat`.
+
+---
+
+### 🧠 Lógica Estadística: Chain-of-Thought (CoT)
+
+Antes de ejecutar cualquier código, debemos entender la jerarquía del análisis:
+
+1.  **El Soporte Geográfico:** Un punto no existe en el vacío; existe dentro de una ventana de observación $D_S$. Si la ventana está mal definida, la intensidad $\lambda$ será errónea.
+2.  **Propiedades de Primer Orden (La Media):** Antes de buscar si los puntos "se hablan" (interacción), debemos saber si se distribuyen uniformemente. Si hay una tendencia (ej. más sismos en el Pacífico), el proceso es No Homogéneo.
+3.  **Propiedades de Segundo Orden (La Interacción):** Una vez evaluada la media, buscamos la dependencia espacial. ¿La presencia de un evento atrae o repele a otros?.
+4.  **El Desafío al Azar (CSR):** La Aleatoriedad Espacial Completa es nuestra "regla de medir". Solo si el patrón sobrepasa la variabilidad natural del azar (simulada por Monte Carlo), aceptamos la existencia de un proceso estructural.
+
+---
+
+### 🗺️ Diagrama de Flujo de Decisión
+
+**Fase I: Preparación del Objeto `ppp`**
+
+*   Definir coordenadas $(x, y)$ y ventana $D_S$ (`owin`).
+*   ¿Existen puntos duplicados? 
+    *   → **SÍ:** Aplicar `unique()` o `rjitter()` (La teoría de Poisson exige procesos "simples").
+    *   → **NO:** Continuar.
+
+**Fase II: Análisis de Intensidad (Primer Orden)**
+
+*   Estimar $\lambda(s)$ mediante Kernel (KDE).
+*   ¿La intensidad visual o por `quadrat.test` sugiere cambios según la ubicación?
+    *   → **SÍ:** El proceso es **No Homogéneo**. Se debe modelar la tendencia $\lambda(s)$ con coordenadas o covariables.
+    *   → **NO:** El proceso es **Homogéneo**. $\lambda$ es constante.
+
+**Fase III: Contrastes Globales para CSR**
+
+*   Ejecutar `quadrat.test()` y `clarkevans.test()`.
+*   **Decisión (p-valor):**
+    *   ¿$p \ge 0.05$? → **Acepto CSR:** El patrón es aleatorio. **FIN DEL ANÁLISIS**.
+    *   ¿$p < 0.05$? → **Rechazo CSR:** Existe un patrón. Ir a Fase IV.
+
+**Fase IV: Análisis Multi-escala de Interacción**
+
+*   Calcular funciones de distancia ($G, F, K, L$).
+*   *Consideración:* Usar siempre **corrección de bordes** (Ripley o Isotrópica) para evitar el sesgo de "vecinos invisibles" fuera de la ventana.
+*   ¿La función $L(r)-r$ es positiva? → **Agregación (Clúster)**.
+*   ¿La función $L(r)-r$ es negativa? → **Regularidad (Inhibición)**.
+
+**Fase V: Validación vía Monte Carlo**
+
+*   Generar `envelope()` con 99 o 999 simulaciones.
+*   **Veredicto Final:**
+    *   Línea negra fuera de la zona gris (superior) → **Agregación Significativa**.
+    *   Línea negra fuera de la zona gris (inferior) → **Regularidad Significativa**.
+    *   Línea negra dentro de la zona gris → No hay evidencia de interacción, el patrón es compatible con CSR.
+
+---
+
+### 📊 Tabla Resumen: Resultados vs. Acción Sugerida
+
+| Resultado Estadístico | Interpretación Teórica | Acción Sugerida en R |
+| :--- | :--- | :--- |
+| $p-valor(CSR) \ge 0.05$ | Aleatoriedad Espacial Completa | Reportar como Azar; no requiere más modelos. |
+| $ICS > 0$ ó $R < 1$ | Evidencia de Agrupamiento (Clúster) | Analizar Función $K$ o $L$ para ver escala de atracción. |
+| $ICS < 0$ ó $R > 1$ | Evidencia de Regularidad (Inhibición) | Investigar procesos de competencia o repulsión. |
+| Curva $L$ sobre Envolvente | Interacción Atractiva Significativa | Ajustar Proceso Clúster (Thomas o Matérn). |
+| Curva $L$ bajo Envolvente | Interacción Repulsiva Significativa | Ajustar Proceso de Gibbs (Strauss). |
+
+---
+
+### 💻 Implementación en RStudio (spatstat)
+
+#### Fase I & II: Construcción y Visualización
+```r
+library(spatstat)
+# 1. Crear ventana y objeto ppp
+win <- owin(xrange=range(datos$x), yrange=range(datos$y))
+X <- ppp(datos$x, datos$y, window=win)
+
+# 2. Verificación de duplicados y Simplicidad
+X <- unique(X) 
+
+# 3. Intensidad Kernel (Primer Orden)
+plot(density(X, sigma=bw.ppl), main="Intensidad Lambda(s)")
+```
+
+#### Fase III: Contrastes Globales
+```r
+# Prueba de Cuadros (Homogeneidad)
+quadrat.test(X, nx=3, ny=3) 
+
+# Índice de Clark-Evans (Interacción global)
+clarkevans.test(X) 
+```
+
+#### Fase IV & V: Interacción y Envolventes
+```r
+# Función L de Besag con corrección de borde e Isotropía
+# Se usa Lest para linearizar el crecimiento de K(r)
+L_empirica <- Lest(X, correction="Ripley")
+
+# Envolventes de Monte Carlo (99 simulaciones para alpha=0.02)
+env <- envelope(X, fun=Lest, nsim=99, rank=1, global=TRUE)
+
+# Gráfico de decisión final
+# Restamos 'r' para centrar la hipótesis nula en el eje 0
+plot(env, . - r ~ r, main="Validación de Interacción vs CSR")
+```
+
+---
+
+### 📋 Consideraciones de Estacionariedad e Isotropía
+
+*   **Estacionariedad:** Se asume que las propiedades del proceso (media y correlación) no cambian por traslación en $D_S$. Si $\lambda(s)$ varía, se rompe la estacionariedad de primer orden.
+*   **Isotropía:** Se asume que la interacción depende solo de la distancia $h$ y no de la dirección (rotación). Si el patrón se agrupa más en el eje X que en el Y, existe anisotropía.
+
+### Pausa
+:::
+
+::: {#seccion-3-sol-ejercicios .content-card}
+
+### Ejercicio 1: Distribución de Distancias al Vecino más Cercano
+**Objetivo:** Demostrar que para un Proceso Homogéneo de Poisson (HPP) de intensidad $\lambda$, la transformación del cuadrado de la distancia al vecino más cercano sigue una distribución Exponencial y, por ende, una $\chi^2$.
+
+#### 1.1. Planteamiento Teórico
+En un HPP, la probabilidad de que no ocurran eventos en una región $B$ (probabilidad de espacio vacío) es $P(N(B) = 0) = \exp(-\lambda m(B))$, donde $m(B)$ es la medida de Lebesgue (área). Si definimos $Y$ como la distancia desde un evento al vecino más cercano, el evento $\{Y > y\}$ equivale a decir que un círculo de radio $y$ centrado en el punto está vacío.
+
+#### 1.2. Chain-of-Thought y Deducción Algebraica
+
+1.  **Función de Distribución de $Y$:** El área de un círculo de radio $y$ es $\pi y^2$. Por tanto:
+    $$P(Y > y) = P(N(\text{Círculo}) = 0) = \exp(-\lambda \pi y^2)$$
+2.  **Función de Distribución Acumulada (CDF):**
+    $$G(y) = P(Y \leq y) = 1 - \exp(-\lambda \pi y^2), \quad y > 0$$
+3.  **Transformación Variable:** Sea $X = \pi Y^2$. Queremos la distribución de $X$.
+    $$F_X(x) = P(\pi Y^2 \leq x) = P(Y \leq \sqrt{x/\pi}) = G(\sqrt{x/\pi})$$
+    $$F_X(x) = 1 - \exp(-\lambda \pi (\sqrt{x/\pi})^2) = 1 - \exp(-\lambda x)$$
+    Esta es precisamente la CDF de una **Distribución Exponencial** con parámetro $\lambda$.
+4.  **Relación con $\chi^2$:** Existe una propiedad conocida en probabilidad: si $X \sim Exp(\lambda)$, entonces $2\lambda X \sim \chi^2$ con 2 grados de libertad.
+    Sustituyendo $X = \pi y^2$:
+    $$2\pi\lambda y^2 \sim \chi^2_2$$
+
+#### 1.3. Implementación en R
+Utilizaremos el paquete `spatstat` para simular un patrón y verificar esta propiedad empíricamente.
+
+```{r sol ej 1 pp}
+# --- 1. Simulación de un HPP ---
+library(spatstat)
+set.seed(123)
+lambda_teorico <- 50
+# Generamos un proceso de Poisson en una ventana unitaria
+patron <- rpoispp(lambda = lambda_teorico)
+
+# --- 2. Cálculo de distancias al vecino más cercano ---
+# nndist() calcula la distancia de cada punto a su vecino más cercano
+y <- nndist(patron)
+
+# --- 3. Transformación para verificar la prueba ---
+# Creamos la variable W = 2 * pi * lambda * y^2
+w_calculado <- 2 * pi * lambda_teorico * (y^2)
+
+# --- 4. Comparación estadística ---
+# Si la deducción es correcta, la media de w_calculado debería ser 2 (media de chi-sq 2)
+mean(w_calculado) 
+# Realizamos una prueba de Kolmogorov-Smirnov contra la distribución teórica
+ks.test(w_calculado, "pchisq", df = 2)
+```
+
+---
+
+### Ejercicio 2: El Índice de Patrón Puntual (Hopkins-Skellam)
+**Objetivo:** Calcular e interpretar el índice $J = \frac{HS}{HS+1}$ para discriminar entre aleatoriedad, agregación e inhibición.
+
+#### 2.1. Planteamiento Teórico
+El estadístico de Hopkins-Skellam ($HS$) compara distancias evento-evento ($d_i$) con distancias punto-evento ($l_i$). Bajo Aleatoriedad Espacial Completa (CSR), $HS = 1$. Si el patrón es agregado (clusters), las distancias entre eventos son muy pequeñas comparadas con las de los espacios vacíos ($HS < 1$). Si es regular, las distancias entre eventos son grandes y uniformes ($HS > 1$).
+
+#### 2.2. Chain-of-Thought (Regla de Interpretación)
+Analicemos la función $J(HS) = \frac{HS}{HS+1}$:
+
+*   **Caso Aleatorio (CSR):** Si $HS = 1 \implies J = 1/(1+1) = 0.5$.
+*   **Caso Agregado:** Si $HS \to 0$ (clusters densos) $\implies J \to 0$. Por lo tanto, $J < 0.5$ indica **atracción**.
+*   **Caso Regular:** Si $HS \to \infty$ (inhibición extrema) $\implies J \to 1$. Por lo tanto, $J > 0.5$ indica **repulsión**.
+
+#### 2.3. Cálculo Manual Detallado (Dataset de Juguete)
+Supongamos un muestreo de $q=2$ puntos aleatorios y 2 eventos:
+
+- Distancias entre eventos: $d_1 = 0.2, d_2 = 0.3$.
+- Distancias de espacio vacío: $l_1 = 0.8, l_2 = 0.9$.
+- Intensidad estimada $\lambda = 10$.
+
+$$HS = \frac{\sum d_i^2}{\sum l_i^2} = \frac{0.2^2 + 0.3^2}{0.8^2 + 0.9^2} = \frac{0.04 + 0.09}{0.64 + 0.81} = \frac{0.13}{1.45} \approx 0.089$$
+$$J = \frac{0.089}{0.089 + 1} \approx 0.081$$
+**Interpretación:** Como $J = 0.081 \ll 0.5$, el patrón es fuertemente **agregado**.
+
+#### 2.4. Implementación en R
+
+```{r sol ej 2 pp}
+# Función para calcular el índice J basado en Hopkins-Skellam
+calcular_indice_J <- function(patron_puntos) {
+  # Calculamos el estadístico HS usando spatstat
+  # l son distancias de puntos de prueba al evento más cercano
+  # d son distancias de eventos al vecino más cercano
+  hs_val <- hopskel(patron_puntos)
+  j_val <- hs_val / (hs_val + 1)
+  return(j_val)
+}
+
+# Ejemplo con tres tipos de patrones
+# 1. Aleatorio
+p_aleatorio <- rpoispp(100)
+# 2. Agregado (Proceso de Thomas)
+p_agregado <- rThomas(kappa=10, scale=0.05, mu=10)
+# 3. Regular (Inhibición de Matérn)
+p_regular <- rMaternI(kappa=100, r=0.05)
+
+cat("J Aleatorio:", calcular_indice_J(p_aleatorio), "\n")
+cat("J Agregado:", calcular_indice_J(p_agregado), "\n")
+cat("J Regular:", calcular_indice_J(p_regular), "\n")
+```
+
+---
+
+### Ejercicio 3: Estimación de la Intensidad ($\lambda$) por Máxima Verosimilitud
+**Objetivo:** Encontrar el estimador $\hat{\lambda}$ mediante el método de Máxima Verosimilitud (ML) para un proceso homogéneo.
+
+#### 3.1. Planteamiento Teórico
+El supuesto crítico es que para un área fija $|B|$, el número de puntos observados $n$ sigue una distribución de Poisson con media $\mu = \lambda |B|$.
+
+#### 3.2. Chain-of-Thought (Deducción ML)
+
+1.  **Función de Masa de Probabilidad:**
+    $$P(N(B) = n) = \frac{e^{-\lambda |B|} (\lambda |B|)^n}{n!}$$
+2.  **Función de Verosimilitud ($L(\lambda)$):** Es la probabilidad vista como función del parámetro.
+    $$L(\lambda) = \frac{e^{-\lambda |B|} \lambda^n |B|^n}{n!}$$
+3.  **Log-Verosimilitud ($\ln L$):** Se aplica logaritmo para simplificar la derivación.
+    $$\ln L(\lambda) = -\lambda |B| + n \ln(\lambda) + n \ln(|B|) - \ln(n!)$$
+4.  **Condición de Primer Orden:** Derivamos respecto a $\lambda$ e igualamos a cero.
+    $$\frac{d}{d\lambda} \ln L = -|B| + \frac{n}{\lambda} = 0$$
+5.  **Solución:**
+    $$\hat{\lambda}_{ML} = \frac{n}{|B|}$$
+
+#### 3.3. Interpretación y Validación
+El resultado indica que el estimador más verosímil de la intensidad es simplemente el **conteo de puntos dividido por el tamaño del área**. Este es un estimador insesgado. En R, el software realiza este cálculo directamente mediante la función `intensity()`.
+
+#### 3.4. Implementación en R
+
+```{r sol ej 3 pp}
+# Generamos un patrón con intensidad conocida
+lambda_real <- 75
+ventana <- owin(c(0,2), c(0,2)) # Área = 4
+patron_ml <- rpoispp(lambda = lambda_real, win = ventana)
+
+# Cálculo manual basado en la deducción ML
+n_puntos <- npoints(patron_ml) # n
+area_ventana <- spatstat.geom::area(ventana)   # |B|
+lambda_estimada_manual <- n_puntos / area_ventana
+
+
+# Verificación de resultados
+print(paste("Puntos observados (n):", n_puntos))
+print(paste("Área de la ventana (|B|):", area_ventana))
+
+# Verificación con la función de spatstat
+lambda_estimada_software <- intensity(patron_ml)
+
+cat("Estimación ML Manual:", lambda_estimada_manual, "\n")
+cat("Estimación Software:", lambda_estimada_software, "\n")
+# Ambas deben coincidir exactamente pues el software usa la fórmula cerrada derivada.
+```
+
+**Conclusión del Experto:** Las soluciones manuales coinciden con las aproximaciones numéricas del software en el caso homogéneo porque existen soluciones en forma cerrada. Sin embargo, para procesos no homogéneos ($\lambda(s)$), el software recurrirá a métodos de suavizamiento por Kernel o máxima pseudoverosimilitud.
+
+### Pausa
+
+:::

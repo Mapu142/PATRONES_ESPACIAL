@@ -1,0 +1,25 @@
+
+::: {#seccion-5-1 .content-card}
+### 5.1 Regresión Lineal y Diagnósticos de Error
+*   **Teoría:** Impacto de la autocorrelación en los residuos de OLS. Modelos SLX (Spatially Lagged X).
+
+### pause
+:::
+
+::: {#seccion-5-2 .content-card}
+### 5.2 Modelos Autorregresivos (SAR y CAR)
+*   **Teoría:** Modelo de Error Espacial (SEM) y Modelo de Rezagos Espaciales (SAR). Modelos Condicionales Autorregresivos (CAR). El Modelo de Durbin Espacial (SDM).
+*   **Práctica R:** Estimación con `errorsarlm` y `lagsarlm` en `spatialreg`.
+
+
+### pause
+:::
+
+
+::: {#seccion-5-3 .content-card}
+### 5.3 Filtrado Espacial por Vectores Propios (MESF)
+*   **Teoría:** Fundamentos del filtrado de Moran (MESF). Descomposición espectral de la matriz W modificada.
+*   **Fuentes clave:**,.
+
+### pause
+:::
