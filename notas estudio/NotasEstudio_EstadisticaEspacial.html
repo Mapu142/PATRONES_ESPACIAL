@@ -11,7 +11,7 @@
 
 <meta name="author" content="Laura Martinez" />
 
-<meta name="date" content="2026-06-08" />
+<meta name="date" content="2026-06-13" />
 
 <title>Notas de Estadística Espacial</title>
 
@@ -458,7 +458,7 @@ display: none;
 
 <h1 class="title toc-ignore">Notas de Estadística Espacial</h1>
 <h4 class="author">Laura Martinez</h4>
-<h4 class="date">2026-06-08</h4>
+<h4 class="date">2026-06-13</h4>
 
 </div>
 
@@ -1344,229 +1344,627 @@ las coordenadas.</p>
 <h3>📑 Índice rápido</h3>
 <div class="index-box">
 <ul>
-<li><a href="#seccion-2-1">1. El Semivariograma: Corazón de la
-Dependencia.</a></li>
-<li><a href="#seccion-2-2">2. Inferencia y Estimación de
-Parámetros.</a></li>
+<li><a href="#seccion-2-1">1. Fundamentos de los Campos Aleatorios
+Espaciales.</a>
+<ul>
+<li><a href="#seccion-2-1-1">2.1 Fundamentos Matemáticos</a></li>
+<li><a href="#seccion-2-1-2">2.2 Taller de Laboratorio</a></li>
+<li><a href="#seccion-2-1-3">2.3 Implementación en R</a></li>
+<li><a href="#seccion-2-1-4">2.4 Ejercicios del libro</a></li>
+</ul></li>
+<li><a href="#seccion-2-2">2. Inferencia y Estimación de Parámetros.</a>
+<ul>
+<li><a href="#seccion-2-2-1">2.1 Fundamentos Matemáticos</a></li>
+<li><a href="#seccion-2-2-2">2.2 Taller de Laboratorio</a></li>
+<li><a href="#seccion-2-2-3">2.3 Implementación en R</a></li>
+<li><a href="#seccion-2-2-4">2.4 Ejercicios del libro</a></li>
+</ul></li>
 <li><a href="#seccion-2-3">3. Predicción Espacial: Kriging y
-Cokriging.</a></li>
+Cokriging.</a>
+<ul>
+<li><a href="#seccion-2-3-1">2.1 Fundamentos Matemáticos</a></li>
+<li><a href="#seccion-2-3-2">2.2 Taller de Laboratorio</a></li>
+<li><a href="#seccion-2-3-3">2.3 Implementación en R</a></li>
+<li><a href="#seccion-2-2-4">2.4 Ejercicios del libro</a></li>
+</ul></li>
 </ul>
 </div>
 </div>
 <div id="seccion-2-1" class="content-card">
-<div id="el-semivariograma-corazón-de-la-dependencia" class="section level3">
-<h3>2.1 El Semivariograma: Corazón de la Dependencia</h3>
+<div id="conceptos-innegociables-glosario-crítico" class="section level3">
+<h3>2.1. Conceptos Innegociables (Glosario Crítico)</h3>
+<p>Para navegar este tema, existen términos cuya comprensión es
+imperativa:</p>
 <ul>
-<li><strong>Teoría:</strong> Funciones de autocovarianza y semivarianza.
-Parámetros: Pepita (Nugget), Silla (Sill) y Alcance (Range). Modelos
-teóricos (Esférico, Exponencial, Gaussiano, Matérn).</li>
-<li><strong>Práctica en R:</strong> Estimación empírica y ajuste de
-modelos con <code>variog</code> y <code>variofit</code>.</li>
+<li><strong><span class="math inline">\(D_s\)</span> (Dominio
+Espacial):</strong> Conjunto índice continuo que contiene todas las
+ubicaciones posibles <span class="math inline">\(s\)</span> donde el
+fenómeno existe.</li>
+<li><strong>Variable Regionalizada:</strong> Variable que presenta una
+estructura espacial, también llamada proceso estocástico o campo
+aleatorio en estadística.</li>
+<li><strong><span class="math inline">\(h\)</span> (Rezago o
+Lag):</strong> Vector que representa la separación espacial (distancia y
+dirección) entre dos puntos.</li>
+<li><strong>Isotropía:</strong> Propiedad donde la dependencia espacial
+depende solo de la magnitud de la distancia y no de la dirección.</li>
 </ul>
-<p>Entramos ahora en la pieza angular de la geoestadística. Si la
-estadística clásica se apoya en el histograma para entender la
-distribución, la estadística espacial se apoya en el semivariograma para
-entender la <strong>interacción</strong>. Sin una estimación precisa de
-esta función, cualquier intento de predicción espacial carecerá de
-fundamento técnico.</p>
+<hr />
 </div>
-<div id="explicación-teórica-2" class="section level3">
-<h3>Explicación Teórica</h3>
-<p>El <strong>semivariograma</strong> es la herramienta estructural que
-permite cuantificar la variabilidad de un fenómeno regionalizado en
-función de la separación física entre las observaciones,.</p>
+<div id="la-esencia-del-campo-aleatorio-técnica-feynman" class="section level3">
+<h3>2.2. La Esencia del Campo Aleatorio (Técnica Feynman)</h3>
+<div id="explicación-intuitiva" class="section level4">
+<h4>Explicación Intuitiva</h4>
+<p>Imagina que la temperatura de una ciudad es como una sábana invisible
+extendida sobre el terreno. Esta “sábana” existe en cada rincón, incluso
+donde no hay termómetros. Si mides la temperatura en tu jardín, el valor
+que obtienes no es un número aislado; es parte de un patrón mayor. La
+idea fundamental es que los valores de puntos cercanos en esa sábana
+tienden a parecerse más que los de puntos lejanos (la Primera Ley de la
+Geografía). Un <strong>campo aleatorio</strong> es simplemente la
+herramienta matemática que usamos para describir esa sábana, aceptando
+que tiene una parte predecible (tendencia) y una parte de incertidumbre
+que sigue reglas espaciales.</p>
+</div>
+<div id="rigor-estadístico" class="section level4">
+<h4>Rigor Estadístico</h4>
+<p>Formalmente, un proceso geoestadístico espacial se define como un
+fenómeno que ocurre de manera continua en el espacio. Sea <span class="math inline">\(Y\)</span> la variable de interés y <span class="math inline">\(s\)</span> la ubicación espacial, el proceso es
+<span class="math inline">\(\{Y(s) : s \in D_s \subset
+\mathbb{R}^d\}\)</span>. A diferencia de la estadística clásica de
+muestras independientes, aquí cada dato está correlacionado con sus
+vecinos, lo que viola el supuesto de independencia y requiere un marco
+multivariado para una sola variable.</p>
+<hr />
+</div>
+</div>
+<div id="lógica-del-por-qué-chain-of-thought" class="section level3">
+<h3>2.3. Lógica del “Por Qué” (Chain-of-Thought)</h3>
+<div id="por-qué-funciones-finito-dimensionales" class="section level4">
+<h4>¿Por qué funciones finito-dimensionales?</h4>
+<p><strong>El Problema:</strong> Un campo aleatorio ocurre en un dominio
+continuo, lo que implica infinitos puntos y, por tanto, una dimensión
+infinita.</p>
+<p><strong>La Lógica:</strong> Como no podemos manejar infinitas
+variables simultáneamente, recurrimos a las <strong>distribuciones
+finito-dimensionales</strong>.</p>
+<p><strong>La Solución:</strong> Caracterizamos el proceso estudiando
+subconjuntos finitos de variables <span class="math inline">\((Y(s_1),
+\dots, Y(s_n))\)</span>. La ley de probabilidad del campo aleatorio
+queda definida por la familia de todas estas distribuciones conjuntas
+para cualquier número finito de puntos.</p>
+</div>
+<div id="por-qué-la-estacionariedad" class="section level4">
+<h4>¿Por qué la Estacionariedad?</h4>
+<p><strong>El Problema:</strong> En estadística espacial, normalmente
+solo tenemos <strong>una realización</strong> del fenómeno (por ejemplo,
+el mapa de lluvia de hoy). No podemos “repetir el experimento” para
+obtener promedios en un punto fijo.</p>
+<p><strong>La Lógica:</strong> Necesitamos que el proceso se “repita a
+sí mismo” a lo largo del espacio para que las comparaciones entre
+diferentes lugares sean válidas como réplicas estadísticas.</p>
+<p><strong>La Solución:</strong> Asumimos que las propiedades
+estadísticas (como la media o la covarianza) son invariantes ante
+traslaciones.</p>
+<hr />
+</div>
+</div>
+<div id="parámetros-y-funciones-fundamentales" class="section level3">
+<h3>2.4. Parámetros y Funciones Fundamentales</h3>
+<p>El modelo geoestadístico base descompone la realidad de forma
+aditiva: <span class="math display">\[Y(s) = \mu(s) + Z(s)\]</span>
+Donde <span class="math inline">\(\mu(s)\)</span> es la parte
+determinística (media) y <span class="math inline">\(Z(s)\)</span> es el
+proceso estocástico centrado con media cero.</p>
+<div id="ecuaciones-de-los-momentos" class="section level4">
+<h4>Ecuaciones de los Momentos</h4>
 <ol style="list-style-type: decimal">
-<li><p><strong>Intuición del fenómeno:</strong> Basándonos en la Ley de
-Tobler, esperamos que dos mediciones tomadas a 1 metro de distancia sean
-más parecidas que dos tomadas a 1 kilómetro,. El semivariograma mide
-exactamente eso: el promedio del “desacuerdo” (varianza) entre pares de
-puntos según la distancia que los separa (<span class="math inline">\(h\)</span>).</p></li>
-<li><p><strong>Del Estimador Empírico al Modelo Teórico:</strong> El
-proceso comienza con el <strong>semivariograma empírico</strong> (o
-experimental), que es un gráfico de dispersión construido a partir de
-los datos observados,. Sin embargo, los puntos empíricos no pueden
-usarse directamente para predecir porque no garantizan propiedades
-matemáticas necesarias (como varianzas positivas). Por ello, debemos
-ajustar una <strong>función matemática teórica</strong> (como la
-esférica o exponencial) que “atraviese” de la mejor manera posible esos
-puntos experimentales,.</p></li>
-<li><p><strong>Elementos Estructurales:</strong> Un semivariograma bien
-definido posee tres parámetros críticos:</p>
+<li><strong>Función de Media:</strong> Representa el valor esperado en
+cada punto. <span class="math display">\[E[Y(s)] = \mu(s)\]</span>.</li>
+<li><strong>Función de Autocovarianza:</strong> Mide la dependencia
+entre dos puntos. <span class="math display">\[C(s_i, s_j) = Cov[Y(s_i),
+Y(s_j)] = E[(Y(s_i) - \mu(s_i))(Y(s_j) - \mu(s_j))]\]</span>.</li>
+<li><strong>Semivariograma (<span class="math inline">\(\gamma\)</span>):</strong> Herramienta central
+para medir la variabilidad de los incrementos. <span class="math display">\[\gamma(s_i, s_j) = \frac{1}{2} Var[Y(s_i) -
+Y(s_j)]\]</span>.</li>
+</ol>
+<hr />
+</div>
+</div>
+<div id="tipos-de-estacionariedad-un-escalafón-de-flexibilidad" class="section level3">
+<h3>2.5. Tipos de Estacionariedad: Un Escalafón de Flexibilidad</h3>
+<p>La teoría distingue tres niveles de equilibrio estadístico:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Estacionariedad Fuerte:</strong> Es la más restrictiva.
+Exige que toda la ley de probabilidad sea igual sin importar dónde se
+midan los datos (invariante ante traslaciones). Es casi imposible de
+verificar en la práctica con una sola realización.</li>
+<li><strong>Estacionariedad de Segundo Orden (Débil):</strong> Solo
+exige que los dos primeros momentos sean constantes respecto a la
+ubicación absoluta.
 <ul>
-<li><p><strong>Efecto Pepita (Nugget):</strong> El valor de la varianza
-cuando la distancia es casi cero. Representa error de medición o
-variaciones a escalas más pequeñas que el muestreo,.</p></li>
-<li><p><strong>Silla (Sill):</strong> Es la varianza máxima donde el
-gráfico se estabiliza. Indica que a esa distancia la autocorrelación
-espacial ha desaparecido,.</p></li>
-<li><p><strong>Rango o Alcance (Range):</strong> La distancia física a
-la cual se alcanza la silla. Es el límite de la influencia espacial; más
-allá del rango, las observaciones son independientes entre sí.</p></li>
+<li>Media constante: <span class="math inline">\(E[Y(s)] =
+\mu\)</span>.</li>
+<li>La covarianza depende solo del rezago <span class="math inline">\(h\)</span>: <span class="math inline">\(Cov[Y(s),
+Y(s+h)] = C(h)\)</span>.</li>
+</ul></li>
+<li><strong>Estacionariedad Intrínseca:</strong> Es la más usada por su
+flexibilidad. No requiere que la varianza de la variable sea finita,
+solo que la media y la varianza de los <strong>incrementos</strong>
+dependan del rezago.
+<ul>
+<li><span class="math inline">\(E[Y(s+h) - Y(s)] = 0\)</span>.</li>
+<li><span class="math inline">\(Var[Y(s+h) - Y(s)] =
+2\gamma(h)\)</span>.</li>
 </ul></li>
 </ol>
+<hr />
 </div>
-<div id="fundamentación-matemática-2" class="section level3">
-<h3>Fundamentación Matemática</h3>
-<p>La función de semivarianza se define como la mitad de la varianza de
-la variable de incrementos,: <span class="math display">\[\gamma(h) =
-\frac{1}{2} Var[Z(s+h) - Z(s)]\]</span>,</p>
-<p>Bajo el supuesto de estacionariedad de segundo orden, existe una
-relación directa con la función de autocovarianza (<span class="math inline">\(C(h)\)</span>): <span class="math display">\[\gamma(h) = C(0) - C(h)\]</span>,</p>
-<p>Para estimar esto a partir de datos reales, utilizamos el
-<strong>estimador clásico de Matheron</strong>,: <span class="math display">\[\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{N(h)}
-(z(s+h) - z(s))^2\]</span>, Donde <span class="math inline">\(|N(h)|\)</span> es el número de pares de puntos
-separados por una distancia <span class="math inline">\(h\)</span>,.</p>
-<p>Si existen datos atípicos, las fuentes recomiendan el
-<strong>estimador robusto de Cressie-Hawkins</strong>, que utiliza
-raíces cuartas para mitigar el impacto de valores extremos,,: <span class="math display">\[\bar{\gamma}(h) = \frac{\left( \text{media}
-|z(s+h) - z(s)|^{1/2} \right)^4}{2(0.457 + 0.494/|N(h)|)}\]</span>,</p>
-</div>
-<div id="implementación-en-r-2" class="section level3">
-<h3>Implementación en R</h3>
-<p>Para esta práctica utilizaremos el paquete <code>geoR</code>, que es
-el más didáctico para la exploración de semivariogramas según nuestros
-materiales,.</p>
-<pre class="r"><code>library(geoR)
-
-# 1. Carga y conversión de datos (Ejemplo Aquifer de las fuentes)
-# Supongamos &#39;datos_df&#39; con: Este, Norte, Profundidad
-datos_geo &lt;- as.geodata(datos_df, coords.col = 1:2, data.col = 3)
-
-# 2. Estimación del Semivariograma Empírico (Clásico)
-# El parámetro &#39;max.dist&#39; suele limitarse a la mitad de la distancia máxima
-# para evitar el comportamiento errático por falta de pares.
-sv_clasico &lt;- variog(datos_geo, max.dist = 150, trend = &quot;cte&quot;)</code></pre>
-<pre><code>## variog: computing omnidirectional variogram</code></pre>
-<pre class="r"><code># 3. Estimación del Semivariograma Robusto (Cressie-Hawkins)
-# Útil si el boxplot de incrementos muestra valores extremos.
-sv_robusto &lt;- variog(datos_geo, max.dist = 150, estimator.type = &quot;modulus&quot;)</code></pre>
-<pre><code>## variog: computing omnidirectional variogram</code></pre>
-<pre class="r"><code># 4. Visualización comparativa
-plot(sv_clasico, main = &quot;Semivariograma: Clásico vs Robusto&quot;)
-lines(sv_robusto, col = &quot;red&quot;, lty = 2)</code></pre>
-<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
-<pre class="r"><code># A partir de la nueva imagen del semivariograma omnidireccional (Clásico vs. Robusto):
-#   1. Comportamiento Idéntico (Clásico vs. Robusto)
-#     Las estimaciones clásica y robusta están completamente superpuestas.
-#     Esto indica que no existen valores atípicos (outliers) extremos en la variable \(z\) que distorsionen el cálculo.
-#     Con solo 5 datos, cualquier valor anómalo habría causado una separación drástica entre ambas líneas.
-#   2. Evidencia de Tendencia Lineal Fuerte
-#     La semivarianza se incrementa de forma estrictamente lineal a medida que aumenta la distancia.
-#     No existe ningún indicio de estabilización (no hay sill ni range visible en esta escala).
-#     Esto confirma de manera inequívoca que existe una tendencia regional determinística en los datos.
-#   3. Efecto Pepita (Nugget) Cercano a Cero
-#     Al proyectar la línea hacia la distancia cero, intercepta el eje vertical prácticamente en el origen.
-#     Esto sugiere que el error de medición o la variabilidad a microescala es mínima.
-
-# 5. Ajuste de un modelo teórico inicial &quot;a ojo&quot; (eyefit)
-# Esta herramienta interactiva permite tantear Nugget, Sill y Range.
-# eyefit(sv_clasico) # Ejecutar en consola local</code></pre>
-</div>
-<div id="interpretación-de-resultados-2" class="section level3">
-<h3>Interpretación de Resultados</h3>
+<div id="modelado-de-la-media-mus" class="section level3">
+<h3>2.6. Modelado de la Media <span class="math inline">\(\mu(s)\)</span></h3>
+<p>La media no siempre es una constante global. Podemos enfrentar tres
+escenarios:</p>
 <ul>
-<li><p><strong>Forma Creciente:</strong> Si los puntos del
-semivariograma suben a medida que aumenta la distancia, confirmamos la
-presencia de autocorrelación espacial,.</p></li>
-<li><p><strong>Comportamiento en el Origen:</strong> Si al proyectar la
-curva hacia el eje Y esta intercepta en un valor mayor a cero, tenemos
-un <strong>Efecto Pepita</strong> significativo. Si los errores son muy
-altos, la predicción será pobre,.</p></li>
-<li><p><strong>Estabilización (Silla):</strong> Si el semivariograma
-deja de crecer y se vuelve horizontal, el proceso es
-<strong>estacionario de segundo orden</strong>. Si crece indefinidamente
-(como una parábola), probablemente hay una <strong>tendencia</strong> no
-corregida en los datos.</p></li>
-<li><p><strong>Puntos erráticos al final:</strong> Es común ver que los
-últimos puntos del gráfico suben o bajan bruscamente. Esto suele deberse
-a que hay muy pocos pares de datos para esas distancias grandes y deben
-ignorarse al ajustar el modelo.</p></li>
+<li><strong>Media Conocida y Constante:</strong> Se centra el proceso
+restando <span class="math inline">\(\mu\)</span>.</li>
+<li><strong>Media Desconocida y Constante:</strong> Se estima mediante
+<strong>Mínimos Cuadrados Generalizados (MCG)</strong> para considerar
+la autocorrelación. <span class="math display">\[\hat{\mu} =
+\frac{\mathbf{1}&#39; \Sigma^{-1} \mathbf{y}}{\mathbf{1}&#39;
+\Sigma^{-1} \mathbf{1}}\]</span>.</li>
+<li><strong>Media No Constante (Tendencia):</strong> Se utilizan modelos
+de regresión polinómicos donde la media depende de las coordenadas <span class="math inline">\((x, y)\)</span>. Los residuales de estos modelos
+se tratan entonces como el proceso centrado <span class="math inline">\(Z(s)\)</span> para el análisis de dependencia
+espacial.</li>
 </ul>
 </div>
-<div id="errores-comunes-2" class="section level3">
-<h3>Errores Comunes</h3>
-<ol style="list-style-type: decimal">
-<li><p><strong>Confundir Semivariograma con Variograma:</strong> El
-semivariograma es la función <span class="math inline">\(\gamma(h)\)</span>, mientras que el variograma es
-<span class="math inline">\(2\gamma(h)\)</span>. Muchas aplicaciones y
-textos usan los nombres indistintamente, pero omitir el factor de 2
-invalida los cálculos de varianza de predicción.</p></li>
-<li><p><strong>No remover la tendencia antes del cálculo:</strong>
-Calcular un semivariograma sobre datos con tendencia (ej. la
-contaminación siempre aumenta hacia el norte) contamina el estimador. El
-semivariograma debe calcularse sobre los <strong>residuales</strong> de
-una regresión previa para capturar la verdadera autocorrelación
-estocástica.</p></li>
-<li><p><strong>Ajustar modelos “ciegamente”:</strong> Dejar que el
-software ajuste el modelo automáticamente sin inspeccionar el gráfico
-empírico. Las fuentes enfatizan el “ajuste a sentimiento” o “a ojo”
-inicial para dar valores de arranque coherentes a los algoritmos de
-optimización.</p></li>
-</ol>
-<p><strong>Nota:</strong> Recuerde, que el semivariograma no es el fin
-del análisis, sino el medio para obtener los pesos (<span class="math inline">\(\lambda\)</span>) del sistema de Kriging que
-veremos a continuación.</p>
-</div>
-<div id="proceso-estocástico-espacial.-definiciones-básicas.-parámetros." class="section level3">
-<h3>1. Proceso estocástico espacial. Definiciones básicas.
-Parámetros.</h3>
-<!-- Para entender la teoría de la estadística espacial, es fundamental partir de la premisa de que los datos geográficos rompen el supuesto de independencia de la estadística clásica. Esto se resume en la **Primera Ley de la Geografía de Tobler**: "todo está relacionado con todo lo demás, pero las cosas cercanas están más relacionadas que las distantes". -->
-<!-- A continuación, se presentan con detalle los conceptos, definiciones y parámetros esenciales: -->
-<!-- ### 1.1. El Proceso Estocástico Espacial -->
-<!-- Un proceso espacial es una familia de variables aleatorias indexadas por su ubicación en el espacio. -->
-<!-- *   **Definición Matemática:** Sea $Z$ la variable de interés y $s$ la ubicación espacial. El proceso es $\{Z(s) : s \in D_s \subset \mathbb{R}^d\}$. -->
-<!-- *   **Campo Aleatorio:** Cuando la ubicación $s$ es un vector (usualmente en 2 o más dimensiones), al proceso se le denomina campo aleatorio. -->
-<!-- *   **Naturaleza de los Datos:** Aunque observemos una sola variable, el proceso espacial es siempre **multivariado**, ya que todas las ubicaciones en la zona de interés interactúan entre sí. -->
-<!-- ### 1.2. Clasificación de Datos Espaciales -->
-<!-- La teoría se divide según la naturaleza del dominio o conjunto índice $D_s$: -->
-<!-- *   **Geoestadística (Dominio Continuo):** El fenómeno existe en todos los puntos del espacio (ej. temperatura, contaminación). Se busca la interpolación en sitios no observados. -->
-<!-- *   **Datos de Área (Dominio Discreto):** Las observaciones están asociadas a regiones con fronteras fijas, como municipios o departamentos. El interés es analizar la variabilidad y detectar agrupamientos (*clusters*). -->
-<!-- *   **Procesos Puntuales:** No se mide un valor en puntos fijos, sino que el objeto de estudio es la ubicación misma donde ocurre un evento (ej. localización de delitos o epicentros de sismos). -->
-<!-- ### 1.3. Parámetros Fundamentales -->
-<!-- Estos parámetros caracterizan cómo el proceso depende de su ubicación: -->
-<!-- *   **Función de Media ($E[Y(s)] = \mu(s)$):** Es la tendencia o "deriva" del proceso. Representa el valor medio determinístico que depende de las coordenadas. -->
-<!-- *   **Función de Autocovarianza:** Mide la covariación de la misma variable en dos sitios distintos, $s_i$ y $s_j$. Para que el modelo sea válido, esta función debe ser **definida positiva**, garantizando que la varianza del error de predicción no sea negativa. -->
-<!-- *   **Semivarianza ($\gamma(h)$):** Es la mitad de la varianza de la diferencia entre los valores de dos ubicaciones separadas por un vector $h$. Es la herramienta básica de la geoestadística para modelar la dependencia espacial. -->
-<!-- *   **Matriz de Pesos Espaciales ($W$):** Específica para datos de área, es una matriz cuadrada que define la magnitud de las interacciones (vecindad) entre unidades geográficas. -->
-<!-- ### 1.4. Parámetros Complementarios (Estructura del Semivariograma) -->
-<!-- Cuando se analiza la dependencia espacial, se identifican tres componentes clave: -->
-<!-- *   **Silla (*Sill*):** La cota superior de la semivarianza, que representa la varianza total del proceso. -->
-<!-- *   **Rango o Alcance (*Range*):** La distancia a partir de la cual las variables ya no están correlacionadas. -->
-<!-- *   **Efecto Pepita (*Nugget*):** Una discontinuidad en el origen que indica errores de medición o variaciones a escalas más pequeñas que las muestreadas. -->
-<!-- ### 1.5. Propiedades Críticas -->
-<!-- *   **Estacionariedad de Segundo Orden:** Supone que la media es constante y que la covarianza depende solo de la distancia de separación entre puntos, no de su ubicación absoluta. -->
-<!-- *   **Isotropía:** Se da cuando la relación espacial depende solo de la magnitud de la distancia y no de la dirección (ángulo). Si el proceso cambia según la dirección, se llama **anisotropía**. -->
-<!-- ### Ejemplos Manuales e Ilustrativos -->
-<!-- 1.  **Transecto Lineal (1D):** Imagine medir el diámetro de los árboles a lo largo de un solo sendero en un bosque. La ubicación $s$ es un número real sobre el eje del camino. Los datos estarán autocorrelacionados: árboles grandes suelen estar cerca de otros árboles grandes debido a la calidad del suelo en ese tramo. -->
-<!-- 2.  **Reservorio Acuífero (2D):** Se mide la profundidad del agua en pozos con coordenadas (Este, Norte). Aquí $s = (x, y)$. Se usa para verificar la intrusión marina; si un pozo tiene alta salinidad, es muy probable que los pozos vecinos también la tengan. -->
-<!-- 3.  **Salud Pública (Áreas):** Analizar la tasa de mortalidad infantil por departamentos en Colombia. No medimos puntos, sino un valor para todo el polígono del departamento. La matriz $W$ diría que Antioquia y Chocó son vecinos y, por tanto, sus tasas podrían estar relacionadas por factores climáticos o sociales compartidos. -->
-<!-- Basado en las fuentes proporcionadas, a continuación se detallan las definiciones y conceptos solicitados sobre geoestadística: -->
-<!-- ### 1.6. Definición matemática de la semivarianza -->
-<!-- En geoestadística, la **semivarianza** cuantifica la variabilidad de una variable espacial entre dos ubicaciones separadas por un vector de rezago $h$. Matemáticamente, se define como la **mitad de la varianza de los incrementos** del proceso: -->
-<!-- $$\gamma(h;\Theta) = \frac{1}{2} Var[Z(s + h) - Z(s)]$$ -->
-<!-- Para propósitos prácticos, el **estimador empírico o clásico** (basado en el método de momentos) se calcula con la siguiente fórmula: -->
-<!-- $$\hat{\gamma}(h) = \frac{1}{2|N(h)|} \sum_{N(h)} (z(s + h) - z(s))^2$$ -->
-<!-- Donde $|N(h)|$ representa el número de pares de puntos separados por el vector $h$. Para que un modelo de semivariograma sea válido, la función debe ser **condicionalmente definida negativa**, lo que garantiza que las varianzas de las predicciones espaciales resultantes sean positivas. -->
-<!-- ### 1.7. Diferencia entre estacionariedad de primer y segundo orden -->
-<!-- La estacionariedad es una propiedad de equilibrio en el proceso estocástico que permite realizar inferencias a partir de las observaciones. -->
-<!-- *   **Estacionariedad fuerte (o de primer orden):** Se define estrictamente en términos de las **funciones de distribución**. Un campo es estacionario fuerte si su distribución de probabilidad es **invariante ante traslaciones** ($h$), lo que significa que las relaciones entre cualquier subconjunto de puntos son idénticas sin importar su ubicación absoluta en el espacio. Es un supuesto muy difícil de probar con una sola realización del proceso. -->
-<!-- *   **Estacionariedad débil (o de segundo orden):** Es más flexible y se enfoca solo en los **dos primeros momentos** del proceso. Requiere que: -->
-<!--     1.  La **media sea constante** en todo el dominio ($\mu$). -->
-<!--     2.  La **autocovarianza exista** y dependa únicamente del vector de separación $h$, no de las coordenadas absolutas. -->
-<!--     3.  La **varianza sea finita**. -->
-<!-- **Diferencia clave:** Mientras la estacionariedad fuerte exige que toda la estructura probabilística sea constante, la de segundo orden solo requiere que la **media y la correlación** dependan de la distancia relativa, lo cual es suficiente para métodos de predicción como el **kriging**. -->
-<!-- ### 1.8. El efecto pepita y su impacto en el semivariograma -->
-<!-- El **efecto pepita** ($c_0$) es una discontinuidad puntual en el origen del semivariograma. Teóricamente, cuando la distancia $h=0$, la semivarianza debería ser cero; sin embargo, en la práctica, la función suele saltar a un valor $c_0$ cuando $h$ se aproxima a cero. -->
-<!-- *   **Causas principales:** -->
-<!--     1.  **Error de medida:** Variabilidad intrínseca al no poder repetir una medición en el mismo sitio sin errores (dispositivos mal calibrados o fallas en el registro). -->
-<!--     2.  **Efecto de microescala:** Variaciones espaciales que ocurren a distancias mucho más cortas que las consideradas en el diseño del muestreo original. -->
-<!-- *   **Impacto en el semivariograma:** -->
-<!--     *   **Desplazamiento vertical:** El modelo de semivarianza se desplaza hacia arriba, dividiendo la **silla total** ($C(0)$) en dos componentes: el efecto pepita ($c_0$) y la **silla parcial** ($\sigma^2_p$), que representa la varianza atribuible puramente al proceso espacial. -->
-<!--     *   **Falta de continuidad:** Indica que el proceso **no es continuo en media cuadrática**, lo que implica que incluso puntos muy cercanos pueden tener valores significativamente diferentes. -->
-<!--     *   **Ruido Blanco:** En el caso extremo donde la semivarianza es constante para cualquier $h>0$ (efecto pepita puro), significa que no existe ninguna autocorrelación espacial y el mapa se comporta como ruido aleatorio. -->
-<!--     *   **Calidad de predicción:** Si el efecto pepita es muy alto respecto a la silla total, la calidad de las predicciones espaciales disminuye notoriamente debido a la alta incertidumbre en distancias cortas. -->
-</div>
 <div id="pause-1" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-1-1" class="content-card">
+<div id="el-objeto-de-estudio-el-proceso-geoestadístico" class="section level3">
+<h3>2.1. El Objeto de Estudio: El Proceso Geoestadístico</h3>
+<p>El punto de partida es la definición del fenómeno como una
+continuidad en el espacio.</p>
+<div id="definición-matemática" class="section level4">
+<h4>Definición Matemática</h4>
+<p>Un campo aleatorio espacial se denota como: <span class="math display">\[\{Y(s) : s \in D_s \subset
+\mathbb{R}^d\}\]</span></p>
+<p>Donde:</p>
+<ul>
+<li><strong><span class="math inline">\(Y\)</span></strong>: Es la
+variable de interés (ej. profundidad piezométrica o temperatura).</li>
+<li><strong><span class="math inline">\(s\)</span></strong>: Es la
+ubicación espacial, un vector que usualmente pertenece a <span class="math inline">\(\mathbb{R}^2\)</span> (plano este-norte).</li>
+<li><strong><span class="math inline">\(D_s\)</span></strong>: Es el
+<strong>conjunto índice</strong>. A diferencia de la estadística
+clásica, aquí el índice no es un conteo (<span class="math inline">\(1,
+2, \dots, n\)</span>) sino un dominio continuo. Esto implica que entre
+cualquier par de puntos observados existen infinitos puntos
+potenciales.</li>
+<li><strong><span class="math inline">\(d\)</span></strong>: Dimensión
+del espacio (usualmente <span class="math inline">\(d=2\)</span>). Si
+incluimos altitud o tiempo, aumenta la dimensión.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="funciones-de-distribución-finito-dimensionales" class="section level3">
+<h3>2.2. Funciones de Distribución Finito-Dimensionales</h3>
+<p>Debido a que el dominio <span class="math inline">\(D_s\)</span> es
+infinito, no es posible modelar simultáneamente todos los puntos. La ley
+de probabilidad del proceso se define mediante subconjuntos finitos de
+ubicaciones.</p>
+<div id="ecuación-de-la-distribución-conjunta" class="section level4">
+<h4>Ecuación de la Distribución Conjunta</h4>
+<p>Para un vector aleatorio <span class="math inline">\(\mathbb{Y} =
+(Y(s_1), Y(s_2), \dots, Y(s_n))\)</span>, la función de distribución
+<span class="math inline">\(n\)</span>-variada es: <span class="math display">\[F_{s_1, s_2, \dots, s_n}(y_1, y_2, \dots, y_n) =
+P[Y(s_1) \leq y_1, Y(s_2) \leq y_2, \dots, Y(s_n) \leq y_n]\]</span></p>
+<p><strong>Lógica de la Agregación Espacial:</strong> Aquí, la
+“agregación” no es una suma simple, sino la <strong>interacción
+multivariada</strong>. El supuesto crítico es que todas las ubicaciones
+de la zona de interés interactúan entre sí. Si se viola la consistencia
+de estas distribuciones, el campo aleatorio no está bien definido
+matemáticamente.</p>
+<hr />
+</div>
+</div>
+<div id="parámetros-fundamentales-del-campo-aleatorio" class="section level3">
+<h3>2.3. Parámetros Fundamentales del Campo Aleatorio</h3>
+<div id="función-de-media-primer-momento" class="section level4">
+<h4>2.3.1. Función de Media (Primer Momento)</h4>
+<p><span class="math display">\[\mu(s) = E[Y(s)]\]</span> Representa el
+valor esperado en cada punto <span class="math inline">\(s\)</span>. Si
+la media depende de las coordenadas (ej. <span class="math inline">\(\mu(s) = \beta_0 + \beta_1 x + \beta_2
+y\)</span>), decimos que hay <strong>tendencia o deriva</strong>.</p>
+</div>
+<div id="función-de-autocovarianza" class="section level4">
+<h4>2.3.2. Función de Autocovarianza</h4>
+<p><span class="math display">\[C(s_i, s_j) = Cov[Y(s_i), Y(s_j)] =
+E[(Y(s_i) - \mu(s_i))(Y(s_j) - \mu(s_j))]\]</span></p>
+<ul>
+<li>Mide la dependencia lineal entre dos puntos.</li>
+<li><strong>Supuesto Crítico</strong>: Para ser válida, <span class="math inline">\(C\)</span> debe ser una <strong>función definida
+positiva</strong>.</li>
+<li><strong>Consecuencia de Violación</strong>: Si no es definida
+positiva, la varianza del error de predicción (Kriging) podría resultar
+negativa, lo cual es físicamente imposible.</li>
+</ul>
+</div>
+<div id="semivariograma-gamma-y-varianza-de-los-incrementos" class="section level4">
+<h4>2.3.3. Semivariograma (<span class="math inline">\(\gamma\)</span>)
+y Varianza de los Incrementos</h4>
+<p>A menudo es más útil trabajar con la diferencia entre valores que con
+los valores absolutos: <span class="math display">\[2\gamma(h) =
+Var[Y(s+h) - Y(s)]\]</span> Donde <span class="math inline">\(h\)</span>
+es el vector de rezago o separación espacial (<span class="math inline">\(h = s_i - s_j\)</span>).</p>
+<p><strong>Dualidad Teórica:</strong> Bajo estacionariedad de segundo
+orden, existe una relación directa: <span class="math display">\[\gamma(h) = C(0) - C(h)\]</span> Donde <span class="math inline">\(C(0)\)</span> es la varianza global del proceso
+(<span class="math inline">\(\sigma^2\)</span>).</p>
+<hr />
+</div>
+</div>
+<div id="niveles-de-estacionariedad-jerarquía-de-supuestos" class="section level3">
+<h3>2.4. Niveles de Estacionariedad (Jerarquía de Supuestos)</h3>
+<p>La estadística espacial requiere que el proceso esté en “equilibrio”
+para poder hacer inferencia a partir de una única realización.</p>
+<ol style="list-style-type: decimal">
+<li><strong>Estacionariedad Fuerte</strong>: La distribución conjunta es
+invariante ante cualquier traslación <span class="math inline">\(h\)</span>. Es un supuesto teórico casi imposible
+de probar con datos reales.</li>
+<li><strong>Estacionariedad de Segundo Orden (Débil)</strong>:
+<ul>
+<li><span class="math inline">\(E[Y(s)] = \mu\)</span> (Constante).</li>
+<li><span class="math inline">\(Cov[Y(s), Y(s+h)] = C(h)\)</span>
+(Depende solo de la separación, no de la ubicación absoluta).</li>
+</ul></li>
+<li><strong>Estacionariedad Intrínseca</strong>: Es la más flexible.
+Solo exige que los incrementos sean estacionarios:
+<ul>
+<li><span class="math inline">\(E[Y(s+h) - Y(s)] = 0\)</span>.</li>
+<li><span class="math inline">\(Var[Y(s+h) - Y(s)] =
+2\gamma(h)\)</span>.</li>
+</ul></li>
+</ol>
+<p><strong>¿Qué ocurre si se violan?</strong> Si el proceso no es
+estacionario (ej. tiene tendencia), los estimadores del semivariograma
+estarán sesgados y la predicción espacial será errónea al no capturar la
+estructura de dependencia correctamente.</p>
+<hr />
+</div>
+<div id="modelado-y-estimación-de-la-media-mus" class="section level3">
+<h3>2.5. Modelado y Estimación de la Media <span class="math inline">\(\mu(s)\)</span></h3>
+<p>Cuando la media no es constante, el modelo geoestadístico se
+descompone aditivamente: <span class="math display">\[Y(s) = \mu(s) +
+Z(s)\]</span> Donde <span class="math inline">\(Z(s)\)</span> es el
+proceso residual centrado y autocorrelacionado.</p>
+<div id="estimación-por-mínimos-cuadrados-generalizados-mcg" class="section level4">
+<h4>Estimación por Mínimos Cuadrados Generalizados (MCG)</h4>
+<p>Si la media es constante pero desconocida, el estimador óptimo es:
+<span class="math display">\[\hat{\mu} = \frac{\mathbf{1}&#39;
+\Sigma^{-1} \mathbf{y}}{\mathbf{1}&#39; \Sigma^{-1}
+\mathbf{1}}\]</span></p>
+<p><strong>Explicación de la Sumatoria/Álgebra de Matrices:</strong></p>
+<ul>
+<li><span class="math inline">\(\mathbf{y}\)</span> es el vector de
+datos observados.</li>
+<li><span class="math inline">\(\Sigma^{-1}\)</span> es la inversa de la
+matriz de covarianza.</li>
+<li><strong>Lógica</strong>: Esta fórmula “pesa” cada dato según su
+información redundante. Si dos puntos están muy cerca (alta correlación
+en <span class="math inline">\(\Sigma\)</span>), el MCG les asigna menos
+peso individual que si estuvieran aislados, evitando la
+sobre-representación de zonas densamente muestreadas.</li>
+</ul>
+<hr />
+</div>
+</div>
+<div id="contrastes-de-hipótesis-y-validación" class="section level3">
+<h3>2.6. Contrastes de Hipótesis y Validación</h3>
+<p>En este capítulo, el contraste fundamental se realiza sobre los
+<strong>residuales</strong> de la tendencia para verificar la ausencia
+de autocorrelación.</p>
+<ul>
+<li><strong><span class="math inline">\(H_0\)</span> (Hipótesis
+Nula)</strong>: No existe autocorrelación espacial (Efecto Pepita puro).
+Los residuales son ruido blanco independiente.</li>
+<li><strong><span class="math inline">\(H_1\)</span> (Hipótesis
+Alterna)</strong>: Existe una estructura de dependencia espacial
+(descrita por un modelo como el esférico o exponencial).</li>
+</ul>
+<p><strong>Interpretación del p-valor:</strong></p>
+<p>En pruebas como el <strong>Índice de Morán</strong> (para datos de
+área/transición) o la validación de residuales:</p>
+<ul>
+<li>Si el <strong>p-valor &lt; <span class="math inline">\(\alpha\)</span></strong>: Se rechaza <span class="math inline">\(H_0\)</span>. Concluimos que la ubicación importa
+y debemos modelar la dependencia mediante un semivariograma teórico
+antes de proceder al Kriging.</li>
+<li>Si se observa una <strong>discontinuidad en el origen</strong>
+(<span class="math inline">\(h \to 0\)</span>) en el semivariograma
+empírico que no tiende a cero, estamos ante un <strong>Efecto Pepita
+(<span class="math inline">\(c_0\)</span>)</strong>, que representa
+error de medición o variabilidad a microescala.</li>
+</ul>
+</div>
+<div id="pause-2" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-1-2" class="content-card">
+<p>En estadística espacial, no podemos simplemente sumar y dividir entre
+<span class="math inline">\(n\)</span>, porque la ubicación de los datos
+importa: puntos muy cercanos entre sí nos dan información
+redundante.</p>
+<p>A continuación, aplicaremos la técnica de Mínimos Cuadrados
+Generalizados (MCG) para estimar la media constante pero desconocida de
+un proceso estacionario.</p>
+<hr />
+<div id="el-problema" class="section level3">
+<h3>2.1. El Problema</h3>
+<p>Se requiere estimar el nivel medio de nitrógeno (<span class="math inline">\(\mu\)</span>) en una parcela agrícola. A
+diferencia de un muestreo aleatorio simple, sabemos que el nitrógeno
+presenta <strong>dependencia espacial</strong>. Debemos calcular la
+media del campo aleatorio considerando que el proceso es estacionario de
+segundo orden con una estructura de covarianza conocida.</p>
+</div>
+<div id="dataset-de-juguete-parcela-la-estancia" class="section level3">
+<h3>2.2. Dataset de Juguete (Parcela “La Estancia”)</h3>
+<p>Contamos con tres puntos de muestreo georreferenciados en un plano
+euclidiano (<span class="math inline">\(x, y\)</span>):</p>
+<ul>
+<li><strong>Punto <span class="math inline">\(s_1\)</span>:</strong>
+Coordenadas (0, 0) | Valor observado <span class="math inline">\(y_1 =
+15\)</span> mg/kg</li>
+<li><strong>Punto <span class="math inline">\(s_2\)</span>:</strong>
+Coordenadas (1, 0) | Valor observado <span class="math inline">\(y_2 =
+17\)</span> mg/kg</li>
+<li><strong>Punto <span class="math inline">\(s_3\)</span>:</strong>
+Coordenadas (0, 1) | Valor observado <span class="math inline">\(y_3 =
+16\)</span> mg/kg</li>
+</ul>
+<p><strong>Supuestos del Modelo:</strong> * Varianza del proceso (<span class="math inline">\(\sigma^2\)</span>) o C(0) = 10. * Modelo de
+covarianza exponencial: <span class="math inline">\(C(h) = \sigma^2
+\exp(-h)\)</span>, donde <span class="math inline">\(h\)</span> es la
+distancia.</p>
+<hr />
+</div>
+<div id="procedimiento-detallado-chain-of-thought" class="section level3">
+<h3>2.3. Procedimiento Detallado (Chain-of-Thought)</h3>
+<div id="paso-a-calcular-la-matriz-de-distancias-h" class="section level4">
+<h4>Paso A: Calcular la matriz de distancias (<span class="math inline">\(H\)</span>)</h4>
+<p>Primero, determinamos qué tan lejos está cada punto de los demás para
+saber cuánta “información nueva” aporta cada uno.</p>
+<ul>
+<li><span class="math inline">\(d(s_1, s_2) = \sqrt{(1-0)^2 + (0-0)^2} =
+1\)</span></li>
+<li><span class="math inline">\(d(s_1, s_3) = \sqrt{(0-0)^2 + (1-0)^2} =
+1\)</span></li>
+<li><span class="math inline">\(d(s_2, s_3) = \sqrt{(0-1)^2 + (1-0)^2} =
+\sqrt{2} \approx 1.41\)</span></li>
+</ul>
+</div>
+<div id="paso-b-construir-la-matriz-de-covarianza-sigma" class="section level4">
+<h4>Paso B: Construir la Matriz de Covarianza (<span class="math inline">\(\Sigma\)</span>)</h4>
+<p>Traducimos las distancias en niveles de dependencia usando la función
+<span class="math inline">\(C(h) = 10 \cdot \exp(-h)\)</span>. *
+<strong>Diagonales (<span class="math inline">\(\Sigma_{ii}\)</span>):</strong> <span class="math inline">\(C(0) = 10 \cdot \exp(0) = 10\)</span>. (La
+varianza en el punto es constante). * <strong><span class="math inline">\(\Sigma_{12}\)</span> y <span class="math inline">\(\Sigma_{13}\)</span>:</strong> <span class="math inline">\(10 \cdot \exp(-1) \approx 3.68\)</span>. *
+<strong><span class="math inline">\(\Sigma_{23}\)</span>:</strong> <span class="math inline">\(10 \cdot \exp(-1.41) \approx 2.44\)</span>.</p>
+<p>Nuestra matriz <span class="math inline">\(\Sigma\)</span> queda:
+<span class="math display">\[\Sigma = \begin{pmatrix} 10 &amp; 3.68
+&amp; 3.68 \\ 3.68 &amp; 10 &amp; 2.44 \\ 3.68 &amp; 2.44 &amp; 10
+\end{pmatrix}\]</span></p>
+</div>
+<div id="paso-c-invertir-la-matriz-sigma-1-y-calcular-pesos" class="section level4">
+<h4>Paso C: Invertir la Matriz (<span class="math inline">\(\Sigma^{-1}\)</span>) y calcular Pesos</h4>
+<p>Para efectos de este cálculo manual simplificado, supongamos que la
+inversa <span class="math inline">\(\Sigma^{-1}\)</span> arroja los
+siguientes coeficientes de ponderación tras sumar sus columnas (este
+paso representa “des-correlacionar” los datos): * Suma de fila 1 de
+<span class="math inline">\(\Sigma^{-1} = 0.08\)</span> * Suma de fila 2
+de <span class="math inline">\(\Sigma^{-1} = 0.07\)</span> * Suma de
+fila 3 de <span class="math inline">\(\Sigma^{-1} = 0.07\)</span> * Suma
+total de todos los elementos de <span class="math inline">\(\Sigma^{-1}
+= 0.22\)</span></p>
+</div>
+<div id="paso-d-aplicar-el-estimador-de-mcg-hatmu" class="section level4">
+<h4>Paso D: Aplicar el estimador de MCG (<span class="math inline">\(\hat{\mu}\)</span>)</h4>
+<p>La teoría nos dice que: <span class="math inline">\(\hat{\mu} =
+\frac{\mathbf{1}&#39; \Sigma^{-1} \mathbf{y}}{\mathbf{1}&#39;
+\Sigma^{-1} \mathbf{1}}\)</span>. Aritméticamente, multiplicamos los
+valores observados por los pesos de la inversa:</p>
+<ol style="list-style-type: decimal">
+<li>Numerador: <span class="math inline">\((15 \times 0.08) + (17 \times
+0.07) + (16 \times 0.07) = 1.2 + 1.19 + 1.12 = 3.51\)</span></li>
+<li>Denominador (Suma total de la inversa): <span class="math inline">\(0.22\)</span></li>
+<li>Cálculo final: <span class="math inline">\(\hat{\mu} = 3.51 / 0.22
+\approx 15.95\)</span></li>
+</ol>
+<hr />
+</div>
+</div>
+<div id="resultado-interpretado" class="section level3">
+<h3>2.4. Resultado Interpretado</h3>
+<p>La media estimada mediante MCG es <strong>15.95 mg/kg</strong>.
+<strong>¿Por qué no es 16 (el promedio simple)?</strong> Si observas los
+datos, el punto <span class="math inline">\(s_1\)</span> está a la misma
+distancia de <span class="math inline">\(s_2\)</span> y <span class="math inline">\(s_3\)</span>, actuando como un “puente”. La
+estadística espacial detecta que los puntos <span class="math inline">\(s_2\)</span> y <span class="math inline">\(s_3\)</span> están algo influenciados por su
+cercanía a <span class="math inline">\(s_1\)</span>, por lo que el
+estimador de MCG ajusta los pesos para no sobreestimar la importancia de
+zonas agrupadas, proporcionando un valor que representa mejor a toda la
+parcela y no solo a los puntos medidos.</p>
+<hr />
+</div>
+<div id="guía-de-autoevaluación-errores-comunes" class="section level3">
+<h3>2.5. Guía de Autoevaluación (Errores Comunes)</h3>
+<ol style="list-style-type: decimal">
+<li><strong>Error de Independencia:</strong> Calcular el promedio
+aritmético <span class="math inline">\((15+17+16)/3\)</span> ignorando
+que los datos están autocorrelacionados.</li>
+<li><strong>Confusión en <span class="math inline">\(C(0)\)</span>:</strong> Olvidar que la diagonal de
+la matriz <span class="math inline">\(\Sigma\)</span> siempre debe ser
+la varianza total (<span class="math inline">\(C_0 + \sigma^2\)</span>),
+no cero.</li>
+<li><strong>Falla en la Distancia:</strong> Usar distancias de “pasos”
+(1, 2, 3) en lugar de distancias euclidianas reales basadas en
+coordenadas <span class="math inline">\((x, y)\)</span>.</li>
+<li><strong>No Invertir la Matriz:</strong> Intentar usar <span class="math inline">\(\Sigma\)</span> directamente en lugar de su
+inversa <span class="math inline">\(\Sigma^{-1}\)</span>. La inversa es
+lo que permite “penalizar” la redundancia espacial.</li>
+<li><strong>Supuesto de Estacionariedad:</strong> Aplicar este cálculo
+en un dataset que tiene una tendencia clara (ej. el nitrógeno aumenta
+linealmente hacia el Norte). Si hay tendencia, primero se debe modelar
+<span class="math inline">\(\mu(s)\)</span> con una regresión y luego
+aplicar esto a los residuales.</li>
+</ol>
+</div>
+<div id="pause-3" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-1-3" class="content-card">
+<p>Este bloque de código integra las librerías <code>geoR</code>,
+<code>gstat</code> y <code>sf</code>, siguiendo las mejores prácticas de
+trazabilidad y rigor matemático extraídas de las fuentes de la Profesora
+Bohórquez.</p>
+<p>El objetivo técnico es descomponer el modelo geoestadístico base:
+<span class="math inline">\(Y(s) = \mu(s) + Z(s)\)</span>, donde <span class="math inline">\(\mu(s)\)</span> es la tendencia determinística y
+<span class="math inline">\(Z(s)\)</span> es el proceso estocástico
+centrado y autocorrelacionado.</p>
+<pre class="r"><code># ==============================================================================
+# PROTOCOLO GEOESTADÍSTICO: CAMPOS ALEATORIOS Y MODELADO DE LA MEDIA
+# Arquitectura: geoR + sf (Estandarización según RPubs Bohórquez)
+# ==============================================================================
+
+# 1. CARGA DE LIBRERÍAS Y LIMPIEZA DE ENTORNO
+# Se cargan paquetes para manejo de geodata (geoR), kriging (gstat) y 
+# objetos de rasgos simples (sf).
+library(geoR)   # Core para modelado de campos aleatorios
+library(gstat)  # Validación multivariada y variogramas
+library(sf)     # Manejo moderno de geometrías espaciales
+library(ggplot2)# Visualización de alta precisión
+
+# 2. CARGA Y CURACIÓN DE DATOS (Dataset: aquifer)
+# El proceso geoestadístico requiere un dominio continuo Ds.
+# Los datos deben ser numéricos para evitar errores de coacción.
+aquifer &lt;- read.table(&quot;aquifer.txt&quot;, header = TRUE, dec = &quot;,&quot;)
+df_aquifer &lt;- as.data.frame(aquifer)
+
+# LIMPIEZA: Eliminación de NAs y verificación de duplicados.
+# Supuesto crítico: Un campo aleatorio no puede tener dos valores distintos 
+# en la misma ubicación exacta (nugget effect vs error de réplica).
+df_aquifer &lt;- na.omit(df_aquifer) 
+df_aquifer &lt;- df_aquifer[!duplicated(df_aquifer[, c(&quot;head&quot;, &quot;easting&quot;)]), ]
+
+# 3. CONVERSIÓN A OBJETO &#39;GEODATA&#39;
+# La función as.geodata encapsula el vector aleatorio Y(s) observado en n lugares.
+# Parámetros manipulados: coords (s) y data (Y).
+aquifer_g &lt;- as.geodata(df_aquifer, coords.col = 1:2, data.col = 3)
+
+# 4. ANÁLISIS EXPLORATORIO: EVALUACIÓN DE ESTACIONARIEDAD
+# Un proceso es estacionario de segundo orden si la media es constante y 
+# la covarianza depende solo del rezago h.
+# plot.geodata genera 4 paneles críticos para evaluar tendencia.
+
+plot(aquifer_g, qt.col = &quot;red&quot;, scatter3d = TRUE)</code></pre>
+<p><img role="img" src="data:image/png;base64,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" width="672" /></p>
+<pre class="r"><code># 5. MODELADO DE LA MEDIA (TENDENCIA)
+# Si la media mu(s) no es constante, se estima mediante regresión polinomial.
+# Escenario A: Tendencia Lineal (1er Grado)
+# mu(s) = beta0 + beta1*x + beta2*y
+modelo_lin &lt;- lm(aquifer_g$data ~ aquifer_g$coords[,1] + aquifer_g$coords[,2])
+
+# Escenario B: Tendencia Cuadrática (2do Grado)
+# mu(s) = beta0 + beta1*x + beta2*y + beta3*x^2 + beta4*xy + beta5*y^2
+# La función &#39;trend.spatial&#39; de geoR automatiza la creación de la matriz de diseño X.
+trend_2do &lt;- trend.spatial(&quot;2nd&quot;, aquifer_g) 
+
+# 6. EXTRACCIÓN DE RESIDUALES (PROCESO CENTRADO Z(s))
+# El proceso geoestadístico continúa sobre los residuales, que deben tener 
+# media constante cero.
+residuos_centrados &lt;- resid(modelo_lin)
+
+# 7. ESTIMACIÓN DE LA MEDIA MEDIANTE MCG (Mínimos Cuadrados Generalizados)
+# Si mu es constante pero desconocida, el estimador óptimo usa la matriz de 
+# covarianza Sigma.
+# Formula: mu_hat = (1&#39; Sigma^-1 Y) / (1&#39; Sigma^-1 1)
+# Aquí se usa un modelo inicial para Sigma (ej. exponencial).
+# Parámetros: ini.cov.pars = c(Silla Parcial, Rango)
+media_mcg &lt;- likfit(aquifer_g, ini.cov.pars = c(15000, 50), trend = &quot;1st&quot;) </code></pre>
+<pre><code>## ---------------------------------------------------------------
+## likfit: likelihood maximisation using the function optim.
+## likfit: Use control() to pass additional
+##          arguments for the maximisation function.
+##         For further details see documentation for optim.
+## likfit: It is highly advisable to run this function several
+##         times with different initial values for the parameters.
+## likfit: WARNING: This step can be time demanding!
+## ---------------------------------------------------------------
+## likfit: end of numerical maximisation.</code></pre>
+<div id="explicación-teórica-y-de-cálculo-de-trasfondo" class="section level3">
+<h3>Explicación Teórica y de Cálculo de Trasfondo</h3>
+<div id="lógica-de-las-funciones-finito-dimensionales" class="section level4">
+<h4>1. Lógica de las Funciones Finito-Dimensionales</h4>
+<p>Dado que un campo aleatorio ocurre en un dominio continuo (infinitos
+puntos), no es posible modelar la distribución de probabilidad total. La
+implementación en R se basa en la <strong>caracterización
+finito-dimensional</strong>: estudiamos la distribución conjunta del
+vector <span class="math inline">\(\mathbb{Y} = (Y(s_1), \dots,
+Y(s_n))\)</span>. El código utiliza estos <span class="math inline">\(n\)</span> puntos para inferir las propiedades del
+proceso global.</p>
+</div>
+<div id="modelado-de-la-tendencia-media-mus" class="section level4">
+<h4>2. Modelado de la Tendencia (Media <span class="math inline">\(\mu(s)\)</span>)</h4>
+<p>El cálculo de trasfondo para la tendencia utiliza el método de
+<strong>Mínimos Cuadrados Ordinarios (MCO)</strong> en la fase
+exploratoria para remover la deriva determinística. Sin embargo, para la
+inferencia final, se utiliza <strong>Máxima Verosimilitud (ML)</strong>
+o <strong>REML</strong> mediante la función <code>likfit</code>, que
+estima simultáneamente la tendencia y los parámetros de autocorrelación
+espacial (<span class="math inline">\(\sigma^2, \phi\)</span>),
+optimizando la función de log-verosimilitud multivariada.</p>
+</div>
+<div id="interpretación-de-gráficos-críticos" class="section level4">
+<h4>3. Interpretación de Gráficos Críticos:</h4>
+<ul>
+<li><strong>Top-Left (Mapa de Cuartiles):</strong> Si los puntos rojos
+(valores altos) están agrupados en un extremo y los verdes (bajos) en
+otro, existe <strong>tendencia clara</strong>. Esto viola la
+estacionariedad en media.</li>
+<li><strong>Top-Right y Bottom-Left (Gráficos de Perfil):</strong>
+Muestran la variable <span class="math inline">\(Y\)</span> contra las
+coordenadas <span class="math inline">\(X\)</span> e <span class="math inline">\(Y\)</span>. Si se observa una pendiente o
+curvatura, se requiere un modelo polinomial de 1er o 2do grado para la
+media.</li>
+<li><strong>Bottom-Right (Histograma):</strong> Ayuda a verificar el
+supuesto de <strong>normalidad multivariada</strong>. Si hay asimetría
+extrema, se sugiere una transformación Box-Cox antes de modelar la
+media.</li>
+</ul>
+</div>
+<div id="verificación-de-estacionariedad-intrínseca" class="section level4">
+<h4>4. Verificación de Estacionariedad Intrínseca</h4>
+<p>Si después de remover la tendencia, el semivariograma de los
+residuales <span class="math inline">\(\hat{\gamma}(h)\)</span> se
+estabiliza en una “silla” (sill), el proceso es <strong>estacionario de
+segundo orden</strong>. El cálculo de <span class="math inline">\(\hat{\gamma}(h)\)</span> se basa en la fórmula de
+Matheron: <span class="math display">\[\hat{\gamma}(h) =
+\frac{1}{2|N(h)|} \sum_{i,j \in N(h)} (Z(s_i) - Z(s_j))^2\]</span> donde
+<span class="math inline">\(|N(h)|\)</span> es el número de pares a una
+distancia <span class="math inline">\(h\)</span>. El código asegura que
+esta variabilidad dependa solo de la distancia y no de la ubicación
+absoluta.</p>
+</div>
+</div>
+<div id="pause-4" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-1-4" class="content-card">
+<div id="pause-5" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -1589,7 +1987,7 @@ continuidad espacial de nuestro fenómeno? No basta con una curva que
 garanticen que nuestra matriz de covarianza sea definida positiva para
 permitir la predicción posterior.</p>
 </div>
-<div id="explicación-teórica-3" class="section level3">
+<div id="explicación-teórica-2" class="section level3">
 <h3>Explicación Teórica</h3>
 <p>La estimación de parámetros es el proceso de ajustar un modelo
 matemático teórico a la nube de puntos del semivariograma experimental.
@@ -1619,7 +2017,7 @@ varianza causado por la estimación simultánea de la media
 </ul></li>
 </ol>
 </div>
-<div id="fundamentación-matemática-3" class="section level3">
+<div id="fundamentación-matemática-2" class="section level3">
 <h3>Fundamentación Matemática</h3>
 <div id="mínimos-cuadrados-ponderados-wls" class="section level4">
 <h4>1. Mínimos Cuadrados Ponderados (WLS)</h4>
@@ -1639,7 +2037,7 @@ vector de parámetros <span class="math inline">\(\theta\)</span>
 (covarianza) y <span class="math inline">\(\beta\)</span> (media).</p>
 </div>
 </div>
-<div id="implementación-en-r-3" class="section level3">
+<div id="implementación-en-r-2" class="section level3">
 <h3>Implementación en R</h3>
 <p>Utilizaremos el paquete <code>geoR</code> para comparar el ajuste por
 mínimos cuadrados (<code>variofit</code>) y por máxima verosimilitud
@@ -1696,7 +2094,7 @@ lines(fit_reml, col = &quot;red&quot;)</code></pre>
 #   * Efecto Pepita (Nugget): Ambos modelos detectan un nugget positivo (intercepto con el eje Y entre 20 y 30). Esto refleja la existencia de variabilidad a microescala o error de medición en los datos de calcio de ca20.
 #   * Rango (Range): Ninguna de las dos curvas ha alcanzado su meseta definitiva dentro de la distancia máxima grafiada (140), lo que sugiere que la dependencia espacial se extiende más allá de ese límite.</code></pre>
 </div>
-<div id="interpretación-de-resultados-3" class="section level3">
+<div id="interpretación-de-resultados-2" class="section level3">
 <h3>Interpretación de Resultados</h3>
 <ul>
 <li><p><strong>Parámetros Estimados:</strong> Al imprimir
@@ -1795,7 +2193,7 @@ summary(fit_wls)</code></pre>
 ## likfit(geodata = ca20, ini.cov.pars = c(70, 60), fix.nugget = FALSE, 
 ##     lik.method = &quot;REML&quot;)</code></pre>
 </div>
-<div id="errores-comunes-3" class="section level3">
+<div id="errores-comunes-2" class="section level3">
 <h3>Errores Comunes</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Omitir los valores iniciales
@@ -1974,7 +2372,22 @@ estacionariedad.</h3>
 <!-- *   **Rango o Alcance ($a$):** La distancia en el eje horizontal a partir de la cual la curva se vuelve plana; indica el límite de la autocorrelación espacial. -->
 <!-- Si el semivariograma es una línea constante (horizontal) desde el origen, se denomina **efecto pepita puro** o ruido blanco, lo que significa que no existe ninguna correlación espacial entre los puntos, sin importar qué tan cerca estén. -->
 </div>
-<div id="pause-2" class="section level3">
+<div id="pause-6" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-2-1" class="content-card">
+<div id="pause-7" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-2-2" class="content-card">
+<div id="pause-8" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-2-3" class="content-card">
+<div id="pause-9" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -1995,7 +2408,7 @@ fundamental aquí es estimar el valor de nuestro atributo en lugares
 donde no fue medido, basándonos en la información de los puntos vecinos
 y su configuración espacial,,.</p>
 </div>
-<div id="explicación-teórica-4" class="section level3">
+<div id="explicación-teórica-3" class="section level3">
 <h3>Explicación Teórica</h3>
 <p>El término <strong>Kriging</strong> fue acuñado por Georges Matheron
 en honor a Daniel Krige, un ingeniero de minas sudafricano que sentó las
@@ -2022,7 +2435,7 @@ variables (covariables) que están correlacionadas espacialmente con
 ella,,.</p></li>
 </ol>
 </div>
-<div id="fundamentación-matemática-4" class="section level3">
+<div id="fundamentación-matemática-3" class="section level3">
 <h3>Fundamentación Matemática</h3>
 <p>El predictor Kriging se define formalmente como: <span class="math display">\[Y^*(s_0) = \sum_{i=1}^n \lambda_i
 Y(s_i)\]</span>,,,</p>
@@ -2040,7 +2453,7 @@ los puntos observados y el punto a predecir,.</p>
 <span class="math display">\[\sigma^2_{sk}(s_0) = C(0) - \sigma_0&#39;
 \Sigma^{-1} \sigma_0\]</span>,,</p>
 </div>
-<div id="implementación-en-r-4" class="section level3">
+<div id="implementación-en-r-3" class="section level3">
 <h3>Implementación en R</h3>
 <p>Para la predicción espacial utilizaremos el paquete
 <code>gstat</code>, que es el estándar para Kriging univariado y
@@ -2078,7 +2491,7 @@ plot(krig_ord[&quot;var1.pred&quot;], main = &quot;Mapa de Predicción Kriging&q
 <pre class="r"><code>plot(krig_ord[&quot;var1.var&quot;], main = &quot;Varianza del Error (Incertidumbre)&quot;)</code></pre>
 <p><img role="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAA7VBMVEUAAAAAADoAAGYAALMAAPwAOjoAOmYAOpAAZrY4AP86AAA6OgA6Ojo6OmY6ZmY6ZpA6ZrY6kNtmAABmOgBmOjpmZjpmZmZmZpBmkJBmkLZmkNtmtttmtv9yAP+QOgCQZgCQZjqQZmaQkGaQkLaQtraQttuQtv+Q29uQ2/+rF+i2ZgC2Zjq2kDq2kGa2kLa2tma2tpC2tra2ttu229u22/+2/7a2///bkDrbkGbbtmbbtpDbtrbb25Db27bb29vb2//b/7bb///lPMP/YZ7/hnn/q1T/tmb/0C//25D/27b/29v/9Qr//7b//9v///9l/PxkAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO29baPcxpGlSTbVtiWrX9T2asZrqcez294x6fHsyNK2/DK2V6JM2mYT///nDO+tKiCz4qB4biCBStR9zgcTCkdEBhJZ5yIzIxJPBgAAACk8uXYAAACwV0CgAACQBAQKAABJQKAAAJAEBAoAAElAoAAAkAQECgAASUCgAACQBAQKAABJQKAAAJAEBOrg7b8+eYe/+/dC9B//cif6/jeW/b3y01+sE9wsXtxF+IPZ/1sHdbivGvM+lkd4H8BfPlq3f377fx7+nXsO7+kpC1+nfdxFtVoXg3UBgVq4/3U8+ayQvLqXfOKZQ6ASr06+1yXQ3/3o9Jz6JND75j97vxroEBCohftfePXzuP/Nub95CFTh7r3+0P6aBPrXn01/6Dol0LvbN+cyoDNAoBbCHP7AM+7vBQJV+HpcA1mTQF8UM4VOCfR+dJmTGdAXIFAP53P4V2FO3x/yBLoJ19+3dKCNrQj0os71CPR+NFUr7GAvgEA9nM/hXzzpf8x3TqAFazx2Ai3+loB9AQL1cDaHf9gM/krom0Dve/QY3WMn0PsAWAXdIyBQE/Ucvp7B/+1XH99vKf3DT74ptT8ZfvPDJ0/+/p2wZqWo/ur4I//Dz94xydN/+upeeODsCccfWLQ+w+9+/O7//vuffnNGC/e+n3z8kz+dBA8k0LNbOvvPYxM/vGv6n34+Z1TiVdGDBYHKrjjg7eHOi1tQt1U1+dui/z4LNyd66uuipw8P4D7EFwe7QwT/8PPJ+uP6kf/gKP6Hn8twvtEh150B9gQI1EQ9h69m8L/5aPyRPj0mHB5+Nr88/XKrH65QP7DGX390kt+/MGkCFdYVRiff+6ok0L9Ozv75+JNPEeh4S2f/eddDY/hPvvdzbVTiRdFOINCzrrjvjl9Nd366BXVbVZOfFv13TqCypy4S6Nj37xRG65O7A4FOTn8hwvlMh3wMrPMJDVCAQF2UnHmYwR9/218/KfHJJPv4IHlnU/5wlfo9a/zjR7VYEqiyLvGXgl9/ONJCKR75IUOg0y2d/edMZEGrbuc0az0n0POuCL1xNFS3VTX5/xb//xmB6p66RKAfF239r8n6eF/3lt+bchjKx130gAr52FTnS+pAAQJ1Uc7aXxW/kOoXcfoVlGzySfXDleqvnpzhTqwIVFoXOLc50sJZbtKBVO00poP62S2d/We4hU+UUYH7O/lB+R8FgYp7fCHcy9uqmiy91QQ601MXCHQW8VaLwNVIOA/5qLZ5nhtYDgjURblv9KL4md1ff++r05Tw8CsofjZ3guKHK9WPv/O7me/vPjr92ke8GAlAWxf4evRzmin+YPTw9KffDG9/OXnPE+idkbrDJ0/vVvl++9FsP5xHeuLUSKDnXXEQf/+rk/SeneRtnTc5kwc601OXCfSf/zS8/e9H59/78nSrB/Vju3cP5w+HefwnIhwZ8jAt/YKdAQK1Mc3hyxl8eLksf8VxuVGrH+nhm+m6INCjr09mrSdUuQIvRloIKwjTa+mDCbRaapz+syzMKo4JONM6781T+IFAQ1cUf7IOd/7J3G2dN6kJdKanLhPoJ4V2wZrlq+ZBXHivw9EhD2cv5GA/gEBtTD/ncgY/vP39f/24mBOXBDoucZVTR6Vekma1vjqMs/bjL1NZD2e65db2/Y/yVfFTvbeb/gw8lEDHW6r/sw566p8zown3FDM2Hgj0vCuqWF98/J/+7Y+zt3XepCbQmZ66SKDlYme5llMQ6CnEuR7QIZ9CIJFpf4BAbUxz+Jm0wUCgn1X/zzlXnRPo8f8//Gw/qbXiaqck0Fel6sHRGG+5GXP+Mnzud3YTaWpQpHWNMU63EA9hKZsZDc4JNHTFK9UH+rbOm9QEOtNTFwm03KWKFQClZfF06nB0yKE/wG4Agfo4vYZI7nr7h//rh9NvpXodUaxUq5c/55pAj3sdZ4xWW0+ofsQjz8f9knu7DIFO/0f9n3XD01+YM6OzZmYJNHTFq9p/2TXnt3XepCZQ3VOXCfT4J7OM8JxAT39Vz/6EjLMVHXLoD7AbQKA+TrPL8Dr011/9+KP6F/F1rVKzUlSvPFalM19XPzNtPaGmhdNPWvxsw7R4xGUCnW6p/s+zMpzxP8+Mzpp5H4FOXXFG0PeYua3zJh0CPVtBNQi0zKMSBHoWef2qG0Iezpc0wG4Agfo4zeHPZvC/rVOLJgKdfvAlKyn16gWr/MUf96QvNzZhdQKdbmmOger/VMQ3NTNLoKErHkqghWoPBHpqCAK9OUCgD8BhDv//1TP4Y5HJx//p1///2RqoJFCpPkeg1QbSrPWEeqZbT+FDjkxzAp2bwjcg0PkpfLgtj0B1T9XWxVKNS6A1U84QqMpWIpN+p4BAH4DD++Cn1W/vsOlxX7p4vomkCFSrzxDo8YVl+l1p67MAL28iTWhJoGoT6bNodNbMAwn0pP7q6T/+319+M3dbDyDQ92wiJQj05PFsE6lmakWgrIHuFBDoA1Ck+Iw/guIn4RCoVp8h0EPGod4QkQRaCafkHE1jLQn0YhqTItD6jeu9BFrd2GlLXDv3CHSmpypiPU9DNQg0no5y8U19QlXZCvYDCPQhGMtKRoYpJ2XFT2iOQGfULyz8lSQ5Yz2cKRx+/8fX17tf/Zh6Pty/vv3ky2+qoCrkCFQk0ocXuhjpbB7ozN+S709x30n1bXkEOtNTJWkexQ8j0NLjVEowhqNDHsgD3S0g0IdgLEWvT4F48vSnw/C38syhywQa1CVrHBsrJnwz1gUOv//7AsXjsUA/GF3eVcO8/c1UfNiUQA/B6lJOyQsXK5EigR5v7Mth+F9TEau8LUmg3/9q+MOfqpub6anjffx8rMd8IIGWHqdSzrM/NOchn5xSyrk/QKAPwbiLOg31otb5yezP5mz3N6hL1jhXfWevrVWAIwpamPCwWng5Gz/nqfPQPpNaEyrGeD+BysNE5G3NBlYXf870VBQ/kEAnfF+9EMuQT045EHR/gEAfhK8LRjmgJJyPx4LmWQLV6i6BausS/zEdynk4FO6g8ar63YYq/tJBkkDPwv1kRmvExdOYBIHK4+zUbZ03OVLWWfX8XE8Vt/1/3P3vgwi0OH+0LPwswlEhD/XpqGBHgEAfhOOvseSt8Rzhpz89K8iWaUxS3SVQbV3h7c/GH2fJUdMJxfdLAGdBFUgT6N3n1084nSZ8gUDvCfH0/xgEOnOgcryt0ORxteOuJ6pbnumpMdP2e7+4d/UgAv1ssv5qJhwR8llvgB0BAn0Qyo2FUfbbu/Ny77/XMJf4Xf5wlbpNoNL6DH+4/1DFT/50dsLP4XsbT//h59XOeUMCfccN//XwSY8vh0taxf9VHaXxHgKd/aTH2W0JZr/vkH/8ebhl3VN/++UPjw4TBFp/9UP3QAj5GBhLoDsEBAqug3vuYdXvgFfqbxnYASBQcB2UX+V89HjBDH6ngEDBlVB8F/6x4/6PCTP4PQICBVfCPWswh78Df0t2CwgUXAuvmMMf8YIX0L0CAgXXwt0rKDsnw2EPnhfQfQICBVfDK1687vE1axm7BQQKrocXvHkNhxdQljJ2CggUAACSgEABACAJCBQAAJKAQAEAIAkIFAAAkoBAAQAgCQgUAACSgEABACAJCBQAAJKAQAEAIAkIFAAAkoBAAQAgCQgUAACSgEABACAJCBQAAJKAQAEAIAkIFAAAkoBAAQAgCQgUAACSgEABACAJCBQAAJKAQAEAIAkIFAAAkoBAAQAgCQgUAACS6I1A3xxxSeKJurR7fcTwQJFQ+vMRF0UvjyiUnh9RiD4/4qLdd0dcbC97M/u163KYrWsHCnRGoG/enD+wKPFEXdq9fh1+gZZIKP35z4G+oujly8CEz58HBv3883MGFXbffRcYNLaXvZn92nU5zNa1AyX6ItDxOV248ERd2o0/vOkXaImE0shaE31F0UiAExOOxDkx6Eic44WwG4lzYtDYXvZm9mvX5TBb1w5U6IpAq798MxJP1KVd9XYz+CKhVLz1RSY9iYoXyNNV8eJ5uipePI9Xwq548TxdxfayN7Nfuy6H2bp2oEZnBHp+HSWeqEu7en1tsEVCqVx3PF5HUbmEebwulz6P1+XS5+Fa2JVLn8fr2F72ZvZr1+UwW9cO1IBAt7ODQF2lvdh1Ocwg0C0BgW5nB4G6Snux63KYQaBbAgLdzg4CdZX2YtflMINAtwQEup0dBOoq7cWuy2EGgW4JCHQ7OwjUVdqLXZfDDALdEp0R6Jvpckbiibq0I43JVdqLXZfDbF07UKMrAp0eWE+ZwyTSDyTSz4i6HGbr2oEKfRHo3XM6Yl7iibq0s6oDhUgoUcrZhV2Xw2xdO1CiMwId4uMSD9ASdWkXfpKmSChxmEgXdl0Os3XtQIHeCBQAAHYDCBQAAJKAQAEAIIneCLTLRZ+sXXY5Lq4tWgueYpny2yMKJbEGGrWya6BWnF2uZWbtPOddDs+sHSjQGYG+eXP+wKJkN9uVr1+f/5SixNtgt7bcxUb5t98GbhS78FEruwtvxel1QrbzNrbznHc5PLN2oERfBDo+pwsXu0mYG39BFy68FM94oUQxVXOkxIkbRR5o1MrmgVpxep2Q7byN7TznXQ7PrB2o0BWBVn/5ZiSeqAO76jVlRqJE1QvdjESJYrFQ8Up5uhKVSFErW4lkxel1QrbzNrbznHc5PLN2oEZnBHp+HSWeqAO7eqFMS5Qo1phbhe+iXL1c1Dxei1r4qJWthbfi9Doh23kb23nOuxyeWTtQAwJdyw4ClaIuiRACte1ADQh0LTsIVIq6JEII1LYDNSDQtewgUCnqkgghUNsO1IBA17KDQKWoSyKEQG07UAMCXcsOApWiLokQArXtQI3OCPTNdDkj8UQd2JHGJEVdpiNl7UhjevToikCnB9ZT5jCJ9NI5ifS28y6HJ4n0TdAXgd49pyPmJZ6oA7ts4R+lnAs6b2M7z3mXwzNrB0p0RqBDfFziAVqiDuzCD0lIlCiwkJAoEYeJbG/nOe9yeGbtQIHeCBQAAHYDCBQAAJLojUC7nLNk7dpN4cX8Wcyyo0jM1z88YrikJeys9rLz/OtPxdedwlt2exnWoEBnBPrmzfkDi5LdrLa/fn3+K4kSbxNJ7OCIfZ4oEjtGH34YGDRqCTurvexOk9UvXudtbNfQ+V6GNSjRF4GOz+nCxW7yPcYfx4ULL41J5BCJTKMoEjlLI3FODBq1hJ3VXjbXyeoXr/M2tmvofC/DGlToikCrv3wzEk/UgV31ujEjUaLqXe3+H5HFLnLdo0hkzRcvnqerqCXsrPay2fZWv3idt7FdQ+d7GdagRmcEen4dJZ6oA7t6wUtLlChWP4o6SlFtGUWibrNc+jxeRy1hZ7WXrfe0+sXrvI3tGjrfy7AGNSDQtewgUHkzEKhW2suwBjUg0LXsIFB5MxCoVtrLsAY1INC17CBQeTMQqFbay7AGNSDQtewgUHkzEKhW2suwBjUg0LXsIFB5MxCoVtrLsAY1OiPQN9PljMQTdWBHGpO8GdKYtNJehjWo0RWBTg+sp8xhEund9kikX2C3l2ENKvRFoEOsHIsST9SBnVXAJ0SUci7ovI3tGjrfy7AGJToj0CE+LvEALVEHduE3IiRKxGEiUuR13sZ2DZ3vZViDAr0RKAAA7AYQKAAAJAGBAgBAEr0RaJeLPpYou/JlfdtIrEla3zbyvokURc+OaNBecqG04XKj9aGmHX/giTXQK6IzAn3z5vyBRUmf25WvX4ehHUVCSexJx71ssSsuRPHrmt5XOaPo2bPAoNn2klv1DTe8hXNLZCllg2pot/XPAZToi0DH53Thos+EuXFET0M7ioTSn2NWZMymFHmZQhS/7+59Fz6KRuKcGDTbXjJZtGHKpXBuiSylbFAN7bb+OYAKXRFo9ZdvRuKJtrar3hGGGZFQql54Dv/Gep4qQXOYE1UvgjMSz1Xx4nm6yraXLFfyOs8SCeeWyFLKBtXQbuufA6jRGYGeX0eJJ9rarl6lGrRIKInK8FhRLmrThaheitQSz1W59Hm8zraXLJj3Os8SCeeWyFLKBtXQbuufA6gBgTaxg0B1exBo05uBQLsDBNrEDgLV7UGgTW8GAu0OEGgTOwhUtweBNr0ZCLQ7QKBN7CBQ3R4E2vRmINDuAIE2sYNAdXsQaNObgUC7Q2cE+ma6nJF4ItKYpIQ0JltEGpNWAjW6ItDpgZFIX16QSC8vPBGJ9K6SZwcq9EWgg1VLZom2tssW4lHKqTvB6jxLRCmnq+TZgRKdEegQH5d4gJZoa7swsJVIKIVfKYeJ3MPqPEsknFsiSykbVEO7rX8OoEBvBAoAALsBBAoAAEn0RqDXn4p3MIWPs97PjxguiqKd+JCRNav3lgzi55VEUNY835rVe7PeaJf9oJSwiyJr8WHdKfzWU39QoDMCffPm/IFFyc1vIsV9l88/D8wkRNFOfErT2lfyNq3iBz5FUNZOk7WvZPWwsMt+0lTYRZF4fNmRsLVd9ucASvRFoONzunBx82lMMfNnJKSJmYQo2sULL7PJS5uKn5gXQVm5TlZmk9XDwk44F/1ipVtFkXh82ZGwtV325wAqdEWg1V++GUk6A3hVu+pv/TAjEkpV1szh35h7XrzQRYYaRdEuSrzc+ihRouLF83glgrKy7a3cequHhZ1wLvrFSviPIvH4siNha7vszwHU6IxAz6+jxBNtbVevNg1aJJREwWCsfiyXFI/XQhTtosSr7vRKR8ulz8O1CMqq97SqO60eFnbCuegXq+Q0iqwiVG8kbG2X/TmAGhBoEzsIVAcFgUoRBHozgECb2EGgOigIVIog0JsBBNrEDgLVQUGgUgSB3gwg0CZ2EKgOCgKVIgj0ZgCBNrGDQHVQEKgUQaA3g84I9M10OSPxRKQxSQlpTHcgjWnI/xxAja4IdLAyeUmk1yIS6aUdifRaiUT6JuiLQAerlixbg7aqXbagjlLOgVLOq9hlfw6gRGcEOsTHJR6gJdraLgxQJRJKHCYycJjIVeyyPwdQoDcCBQCA3QACBQCAJCBQAABIojcCvf5a5qproGLFTKy0xUVC64NE6TXQuHLptZdcO/3giIuRN1wDFc6tNWWrh63V2z6/pWSJWAO9jM4I9M2b8wcWJTvehRd7tmKvN25Tiy1wsZed3YWPe+dee8nd+w8+CAwq4my3Cy+cW1kNVg9b+QN9fs3TEomxD0r0RaDjc7pwseM8UJE1KLINY6KkSMIU2ZQvk3mgMXvTay+ZPzoS58SgIs7YVVYPCzvh3MqrtXrYymBN30wUbW0nxj6o0BWBVi+CM5IdVyIVLyAhy3uqd6kyJu//qV7x5pTSlUixfshrL2oJuygqXjxPVyLO2FVWDws74dyq7LJ62KqhSt9MFG1tJ8Y+qNEZgZ5fR4kn2tquXm0atEhUTouK61gsLgrRRUV5thY+VrB77SVr6Mulz+O1iLNdLbxwbp0tYPWwVcWfvpko2tpOjH1QAwJtYgeBajsIdMHNQKA7AATaxA4C1XYQ6IKbgUB3AAi0iR0Equ0g0AU3A4HuABBoEzsIVNtBoAtuBgLdASDQJnYQqLaDQBfcDAS6A3RGoG+myxmJJyKNSUpIY9J3TBqTFpHG9F50RaBDu8R2EunlBYn0+o5JpNciEunfh74IdGhXWrm1nVUYRynnQCnnA24mira2E2MflOiMQIf4uMQDtERb24XRqETinAkOE9FxZs/fiHbCOYeJuCL48zJ6I1AAANgNIFAAAEiiNwK9/lS8gyl8nPVaH0ASrqz1AfFtIzEVF+0llww856tO4a2lBqEUe8p6DCIoa57v2W099QcFOiPQN2/OmSlKbn4TKe67iE0PsTUSXVk7VOLrmmIzSLSX3LTynK+6iWRtdgml2FPWYxBBWTtNnp3VL17nWXagRF8EOhLShYubT2N6HjJ/RNrNy5icE11ZOVLi++4xAtVeFAklKydL2MWusnrYS2MSIUSRUIo9ZT0GEZQYCZZIKFn94nWeZQcqdEWg1YvgjOTmE+mrd6D7f0Tid/XWN+fKytIfitep41WMQLUXRULJqgoQdrGrrB72EulFCFEklGJPWY9BBCVGgiUSSla/eJ1n2YEanRHo+XWUeKKt7epVo0GLvFLOWP0oSg9FgWJ0ZdWJDuWC3uFalGSK9pKlo57zVUs5rZJToRR7ynoMIiir3tOzs/rF6zzLDtSAQJvYQaBaCQKVQUGgNwMItIkdBKqVIFAZFAR6M4BAm9hBoFoJApVBQaA3Awi0iR0EqpUgUBkUBHozgECb2EGgWgkClUFBoDeDzgi0VVoRaUzaOWlMOgTSmFw7UKMrAh3aJbaTSK+dk0ivQyCR3rUDFfoi0OH6JZlZO6swjlJO2zmlnK5dtiQzawdKdEagQ6AqIfFEW9uJgRZFYfRzmMicXewqq4eFnXAuQogiocRhIqBGbwQKAAC7AQQKAABJQKAAAJBEbwR6/bXMLtdAvWXD6MpakxTevZU9a801qdRwDVQ4z67VxrXobE9ZS8pe5229dgoKdEagcXc7Sh7hLry3cR1dWbviwru3txxF7ZQa7sIL51a/iE6P2RDZnhJ2liurp9bdvQcl+iLQkZAuXDzCPNB44SUgCiWRBxq9W869vNOkUsM8UOHc6hfR6TEfN9tTws5yZfXUuvmjoEJXBFq9CM5IHmElUpR4JTBCSVQiRe+Wc6/yKanUsBJJOLf6RXR6rAjL9pSws1xZPbVuBROo0RmBnl9na9O3tlu1Ft4rH4+urNp04d2r8LZq75NKDWvhhfNszX48kyDbU9bRAl7nbV1DD2pAoE3sINCmShCotoNAuwME2sQOAm2qBIFqOwi0O0CgTewg0KZKEKi2g0C7AwTaxA4CbaoEgWo7CLQ7QKBN7CDQpkoQqLaDQLtDZwTaKq2INCatRBqTvj/SmKSINKb3oisCHdoltpNIr5VIpNf3RyK9FJFI/z70RaDD9Usys3aUcjZVopTT7jxKOa+Jzgh0CFQlJJ5oazsx0KIojOLpJ1GIOExkUF1l9bCwE86tfuEwEa0ECvRGoAAAsBtAoAAAkERvBHr9qfiqU3hryinmcg0nivGzPh1M4a1ZaHYK762bWFP4qORNxaPIWh8Q7YkVGOthWT3sdToo0BmBxs2ZKNnxJpK16SF2ExpuVcQPS3awiWTtg1g97O2fiBCsTaSoJHrKElk7VKI9sQdoPSyrh71OByX6ItCRkC5c7DiNSSj9OeaXvAz5LPEinSwTP23eQRqT6IQosnrYy+ARIVhpTFFJ9JQlsnKkRHsiC816WFYPe50OKnRFoNWL4Ixkx4n0Qql6UTr8W714zkjS6drFi+fp6vqJ9KITosjqYS+HXIRgJdJHJdFTlsjK0hftiToI62FZPex1OqjRGYGeX2dLK7e2yxbGiRq7WNPXsGCwXPo8Xl+/lNOqRsyWcnr1s1YpZ1TySjKjyKoTFe2JSlzrYVk97HU6qAGBNrGDQBcoQaADBLpXQKBN7CDQBUoQ6ACB7hUQaBM7CHSBEgQ6QKB7BQTaxA4CXaAEgQ4Q6F4BgTaxg0AXKEGgAwS6BE8egOZtt3a4BNdPRyKNaUF7pDG5ItKYGuIh9HnjBDq0S2wnkV7bkUivQyCRXor2kEj/5MkbG7dOoEMskbTqKDuwo5RzgRKlnAOlnFlAoCUCVQmJJ9raTgy0KBJKYRRPP4lLkiFQgBIJOw4T0SFwmIgUdc+fECgAAGQBgQIAQBIQKAAAJAGBljjd6SXJza+BRpG3bGitgVore9ZapvBurdBl10Czy3jeGmjslw+OuKhkdWf2g0tCJJawrfayq9qi8zoDBFpgutV5yc3vwkeRt3EdtcQGrbW3LNoToujd2iP2biaKLKX0Lnzslw8+CAwalazuzH7yU4hEEoXVnrVV7+3e9wYIdMJISBcubj4PNIrGAT2NbGEXtV7GFEEru1G0J0TRe/QklLybiSJLKZ0HGvtlJM6JQaOS1Z3Zj84LkUjjtdoTI8F6yKLzugMEOqJ6EZyR3HwlUhQVLwQXinei1ssykfTwb/XudPj32zLJcK49IYreoyeh5N1MFFlK6Uqk2C/Fi+fpKipZ3emVOYlKpCgShWRWe2IkWA9ZdF5/gEBHtKtN39quYS18FHnl41YtvFXhbdW0C+9WpXa2Fj5bzm31lOiXcunzeB2VrO70Cu1FLXwUiaMMrPaypxuIzusPEOiI6xMhBKrbg0ClEgTaASDQEdcnQghUtweBSiUItANAoCOuT4QQqG4PApVKEGgHgEBHXJ8IIVDdHgQqlSDQDgCBjrg+EUKguj0IVCpBoB0AAh3xplla0dZ2pDFJT6QxaRFpTA0BgU54EygqXniire1IpJeeSKTXIhLp2wECLTDd6rzEE21tRymn9EQppxZRytkMEGiJQFVC4om2tuMwEemJw0S0SNhxmEgKECgAACQBgQIAQBIQaIk4NY6SRziFz85erXm30PKm8HGiKGa92fUBK6iGU/jYL2KWnZzne1N4SyTm+cIuRuUtNVjrLZ0BAi0w3eq85BFuIllK3uaTtZsg7IQoblWIfZfsDpUVVLbzrH4R+zzJnSZvE8kSiZ0mYRejsoLydvx6AwQ6YSSkCxePMI3JUvLSn6x8FmEnRN+GZBmR+ROVPOdWUNnOs/rlecw0iiIr18lLY7JEItdJ2MWorKC8nLPuAIGOqF4EZySPMJHeUvIS8K2MamEnRMWby/FK5J5HJc+5FVS286x+Kd7VIvk8KNveS6S3RCLbXtjFqKygvKqH/gCBjmhXWrm13aqlnNkqRqv+Umh5pZyxYFBUP2brRK2gGpZyxn4R1ZbJek+vlNMSiXpPYRej8kpOrbrb/gCBjrg+EUKg2g4ClSIItANAoCOuT4QQqLaDQKUIAu0AEOiI6xMhBKrtIFApgkA7AAQ64vpECIFqOwhUiiDQDgCBjrg+EUKg2g4ClSIItANAoGjewBgAACAASURBVCPeNEsr2tqONKaBNKY5O9KYVgUEOuFNoKh44Ym2tiORfiCRfs6ORPo1AYEWmG51XuKJtrajlHOglHPOjlLOFQGBlghUJSSeaGs7DhMZOExkzo7DRNYDBAoAAElAoAAAkAQECgAASUCgJU53ekly82ug2TXJ7PJfFHl21sqetQYqFmajnbVml+68KBLOrYVSEWd27TSueArnQhTthHPxeSWrvc4AgRaYbnVecvO78N99d/5jjhJvT9rbgI4iz87aW7Z24UVqQLSzdo3TnRdFwrm1VS/ijFre7n3ccxfOhSjaCefiA59We70BAp0wEtKFi5vPAx1/wxcuvKxIy7kQeXbfOtmNUUl4Esmp0S5etExqjSLh3EoWFXFGLS9/NGZ9CudCFO2Ec/GJeau97gCBjqheBGckN1+JVL07zUi8uhzLuRB5dtW74f0/xevNfL2L8CTKo6JdlLQsq4oi4dwqVxJxRi2vginWHQnnQhTthPPixfN0ZbXXHyDQEe1q07e2a1gLH+uPo0SJsmXgUeTZWRXeVi28KNCPdlbtdrrzokg4twrmRZzZGvpY+S6cC1G0E87Lpc/jtdVef4BAR1yfCCFQ2w4ChUC7AAQ64vpECIHadhAoBNoFINAR1ydCCNS2g0Ah0C4AgY64PhFCoLYdBAqBdoGHEajAstYb3UUTXJ8IIVDbDgKFQLvAkyevbdw8gbZKK9rajjSmgTSmuThJY1oVDyPQ5q23drgIbwJFxQtPtLUdifQDifRzcZJIvyYg0ALTasW8xBNtbTc9pGFeJJQo5Rwo5ZxzRSmnAQi0RKAqIfFEW9sFauQwkRkl4YnDRLQrDhN5PyBQAABIAgIFAIAkIFAAAEgCAi1x/bXMDtZArZU2a/lPOLeWN7Nrp9ayoaUkluPE99SsFUGrp7Jrp97NWKvF4v7iSqm3EGwtIFvfpxNKnQECLRB3t6Pk5nfhrb1eawNaOLc22LO799bGtaUkNoSjxNuTtnoqu3vv3UwMytpyF3v14o6t9oSdaC9GJZR6AwQ6YSSkCxc3nwf60sk2jEpePqeV4pnNHxVBRZGlJFIS44WXFWn1VDZ/1LuZGJSV9CmyRcUdW+0JO9FejEoodQcIdET1IjgjuflKpOpd7f6f4oXgdBWVvIoiIbLsolK2eMdSEkUxUeLV5Vg9la1g8m4mBiWeqLi/WK8k7thqT9iJ9mJUQqk/QKAj2tWmb23XsBbeqri2ysCFc6vMPVtDb5WPW0qiLDtKvMpwq6eEqN0de6cGiPuLFfPegQDWQQKivRiVUOoPEOiI6xMhBOoqQaD2zUCgqwICHXF9IoRAXSUI1L4ZCHRVQKAjrk+EEKirBIHaNwOBrgoIdMT1iRACdZUgUPtmINBVAYGOuD4RQqCuEgRq3wwEuiog0BHXT0cijclVIo3JvhnSmFYFBDrh+gnxJNK7SkJEIr0WkUi/JiDQAtcvyczaTQ9pmBcJJUo5tYhSzoFSTgsQaIlAVULiiba2C9TIYSIzIkuJw0TuwGEi7wcECgAASUCgAACQBARa4vpT8Q6m8HG69eyIi0rZWWhDu+xsUojibNKb9cYv/XjtWUsN2Z6ynGfXIyyR6Dwhiu0xhX9P660dLkPcnImSm99Eigv+z54FBhW7AnGLI0oa7p94WyrWfoYQxf0Mb98lfmvSay+GLm4m21OWcytOYWeJROcJUWyPTaT3td7a4SKMhHTh4ubTmMbhO16MxDkxaFTKZuI0tBt/sNMvN8YpIheimFHjZf7Er5177cXQxc1ke8pybsUp7CyR6Dwhiu2RxvTe1ls7XILqRXBGcvOJ9NW72v0/xYvn6SoqZXPBG9pVL1hzcYrIhSjmdHu558WL5/HKay+GLm4m21OWcytOYWeJROcJUWyPRPr3t97a4RK0K63c2q5hKWcsuyuXPo/XojYvWY3Y0C5bVShEsarQq34slz4P1157Vslptqcs59m6VEskOk+IYnuUcr6/9dYOl+D6RAiBLrCDQLUIAl0VEOiI6xMhBLrADgLVIgh0VUCgI65PhBDoAjsIVIsg0FUBgY64PhFCoAvsIFAtgkBXBQQ64vpECIEusINAtQgCXRUQ6IjrpyORxrTAjjQmLSKNaVVAoBOunxBPIv0COxLptYhE+jUBgRa4fklm1m56SMO8SChRyqlFlHJKEaWcARBoiUBVQuKJtrYL1MhhIjNxisiFiMNEpEjYWSIOE3kcBAoAAA8ABAoAAElAoAAAkAQEWuL6a5kdrIHGFSxrzc5bobOWGy3nQiScx8/6eMtxUWRF7q2dxqC89rJrktaTsVx5C7pRFJeGvW8iic7rDBBogbi7HSU3vwsf91Dj7mh6j1i4ituxlnMhEs7jhyW9DeEosiL3du9jUF57USR6KvtkLFdWUEIUkxO8r3KKzusNEOiEkZAuXNx8HujLkMU3/hCmX0RU8rIUhavnISHQci5Ewnn8tHlszhNZkXv5ozEor70oEj2VfTKWKysoIYrpsd534UXndQcIdET1IjgjuflKpOJ1Y6zyMypnvDoZ4ap63fCdC5FwXrzjHa9ic57IityrYIpBee1Fkeip7JOxXFlBCVEs0FJFRlbn9QcIdES72vSt7RrWwsdKZqt226vUtsrOLedCJJyXq4yHa68sO4qsyL0a+hiU1162Nt16MpYrKyghikcEqDJ3q/P6AwQ64vpECIG6ziHQAQLtAhDoiOsTIQTqOodABwi0C0CgI65PhBCo6xwCHSDQLgCBjrg+EUKgrnMIdIBAu8CTJ3+2AYFCoDNKEKgWQaADBPp4CLRVWhFpTFJCGpMOymuPNKYuAYFOuH5CPIn0rnMS6QcS6XsABFrg+iWZWbtpoXqYFwml6eGOIko5pYhSTjcoIbrpUk4IdEKgKiHxRFvbBWrkMJF7cJjIYD4Zy5UVlBDd8mEiECgAAKQAgQIAQBIQaInrT8U7mMJbEz5LJGaFYk4Wp3cNp/BxoigiELPJKPJmy9as15r6W7Neb0odg/JuJrqy5t3Czls3id5FJ3QGCLRA3JyJkpvfRLK2HCyR2JcQuwJxg8HaB/E2keJWhYhA7GdEkbXJ4u27iBCiyNp3sXZwRFDezURX1s6PsLPuWHgXndAbINAJIyFduLj5NKbvnKQXS/QypMGovJSY4iLsrPa+DekzIllGRCAyaqJIBGWJRFAihCiyMn+EcyGKQXk3E11ZuUfCzrpj4V10QneAQEdUL4IzkptPpK9ePGcknqh64Tn8W7xuBKIYk6yFndVe8cITfvBFuUuIQOR0R5EIyhKJoEQIUWTlngvnQhSD8m4murKy34WddcfCu+iE/gCBjmhXWrm1XcNSTqvwzxKJ6kBRmxfL/BqWcsaCQRGBqCqMIq9q0qp+tEpArepHr7QyBuXdTHRl1V8KO+uOhXfRCf0BAh1xfSKEQLUdBCqDgkA7AAQ64vpECIFqOwhUBgWBdgAIdMT1iRAC1XYQqAwKAu0AEOiI6xMhBKrtIFAZFATaASDQEdcnQghU20GgMigItANAoCOun45EGpO2I41JBkUaUweAQCdcPyGeRHptRyK9DIpE+usDAi1w/ZLMrB2lnAOlnHMiSjlXBARaIlCVkHiire04TGSYfrmFUvjBqwiikhCJoCyRCEqEEEUcJqI7oTNsQKBv//j7L7744td//Ea0vjB6AAC4ItYm0D/87MmEf/ryvPUm9wAAAFfBugT61x89qfG9X9StN7sPAADYHKsS6KuP7kjz408P+OHdfzz9rGq94Z20wPXXMj07a3kzuwYaRdk1UKFkrbR5a6BRy1ppy65JZhdms8uNVlBiTVIsG0Y7a+EyvQYatYSd9RyE886wJoH+x7+8I8yfF4LfvSPUv/v3svUWt9AOcXc7SnrYhbc22LO78FGU3YUXStZer1CyXFl7vdldcS+oKBJ2VidYQYldcbFxHe2Ec9Ev2V34qCXsrOcgnPeGNQn06zO6PFDqJ2Xry2+gIUaOunDRQx6oleKZzQONou+cJEwvf/Slk20olCxX489s+r1FUWzOs/OCiiJhZ3WCFdTnMS9TpE5GO+Fc9EsUifaEq6gl7KznIJx3hxUJ9O2/Pnny2Zns1ZMn3y9247si0OpFcEbSQyWSVWSUrUSKouqVcvBFQql455qvdxFKlqvqxWWYEcXmPDsvqCgSdlYnWEFVr3iHf0XxTrQTzkW/RJFoT7iKWsLOeg7CeX9YkUDfvW6evYAGWWcEen69dU27Z2eVuWdr4aMoWwsvlKyKa68WPmpZFdfZ2vRsgX627NwKStSmi/LxaGcVsKdr4aOWsLOeg3DeHyDQERCoFEGgdlAQqNSCQNNT+Ke/OJP1PYU/v4ZABwgUAoVAL2DNTaQXNVsOh2XRH5StL7+BdoBApQgCtYOCQKUWBJok0L989I5BvyoEf33Hn9VLKQSasINApRYEOkCg22PVRPqv71PnP/23L+7wPw+Z9GUWEwSasYNApRYEOkCg22PdUs7ffnRWyvn0p3Xrze6jAUhjkiLSmOygSGOSWqQxpQl0ePurkkKf/uTsRKauCHTYOiGeRPqBRPqZqEik1867w/rH2b39wxe/+vTTT3/yxZfxPLu+CHSglFOKKOW0g6KUU2pRyrmAQC+23trhQgSqEhJPtK4dh4lILfFri6LYnGfnBRVFws7qBCsoDhO5NiBQAABIghPpAQAgCU6kL8EUfsjPQq0pfHbqL0RxDmh9RsiacnrrCtlOEHbJWbY1zxeiZ0c81M5rz5rCW3Zint8ZOJG+QNyvETs4lmhdu1U3kbL7INHO2mRJ28VdCOtDls+fh1+utcXRsBOEXYxKxJncaRKiZ88Cg1p2XnvWJpJlJ3aaegMn0k8YOerCxc2nMY2/9PHipZWJE+3iRTr9SYi+DXkw1qfUxx/s9MuNSl5uVbYThF2MSsQZgxJKlmgkzolBLTuvvdifooctu3jH/YET6UdUL4IzkptPpK/ene7/KV6ULuSCR7soSSfgC1HxkzpeiRzy6h3o/p/qbWpOycvuz3aCsItRiThjUELJEhUvnqcry85rL/an6GHLLt5xh+BE+hGUcg75akSrlDNbAipEsRZQVDHGGsJ6PW9GyasvzXaCsItRiTiT9Z5CVC59Hq8tO689q5TTshP1nv2BE+lHQKADBDrjHAK124NAWxEoByqvYweBDhDojBIEujUg0BEQ6ACBzjiHQO32INCGU3hOpIdAi2sIVNtBoFJrJwT6nQ1OpIdAhxkRBOreDATq2j16At3difSkMZHGpJ2TxmS39+jSmNYj0J2dSD9snRBPIv0COxLppRKJ9BtjVQLd14n09xxFKef0vE8SSjnbdgKlnK7dLko51yTQfZ1IP5HVJYknWteOw0QGDhOZUbJEHCbSCisT6LCrE+kBAOAhWJ9AL7be2iEAAGwHCBQAAJLYgEB3dCJ9l2ug2eXNKBILntYaqFiJyi4bRufpZcPkiqCI3PqMkHXHIk4rchGCtWxoLZSm106TQXlxWs9BdF5nWJtAd3UifXZXfFW77AZ7FIktd2sXXuyFZjeuo/P0xnVyT1pEbn3I0rpjEacVuQjB2rgWdyycJ3sqG5QXp/UcROf1hnUJdF8n0o+0deFi8zzQbIpnFImkTysP9NuYjfd5MnUyOk+nTsb2xp/n9DuNIhG59Sl1645FnFbkIgTRXgxK3LFwnuypbFBenNZzEJ3XHVYl0H2dSF+9CM5INq9Eqt4y50SWkig7siqRiheX09XnZYbfMKNVvYXNOU8X78T2qheeYUYkIhcVTJad6JcYpxW5CEG0F4MSdyycJ3sqG5QXp/UcROf1hzUJdHcn0p9fd1ALny1zjyJR+G7VwouK5Gz5eLYWXrhKVoaLyEUNvWUn+iXGaUUuQrDKx8UdC+fZGvpkUF6c1nMQndcf1iRQTqRfbgeBalcQKATaBVYkUE6kb2AHgWpXECgE2gVWJFAOVG5gB4FqVxAoBNoFINAREOgAgfp2EKjrCgJNT+E5kR4CLa4hUG0Hgcr2HjuB7u9EetKYSGOy7Uhjcl2RxpQk0J2dSD+QSD+QSO/bkUjvuiKRPkegezuRfqCUc6CU07ejlNN1JZQo5XSwsxPph8BeQuKJGtpxmIh2FdsLv1IlEpFzmIgWcZjI+8GJ9AAAkAQn0gMAQBIPI1CBZa03uotWuP4U3pqKZz93JKbGQhSnTdbszpu4iTmZNesVojgHzM56LdEHR1y2iyFY8/zsrNd6DEJkzfMbTsW9To8hiOHZGSDQAtamjiXK2lmbQdkPbk5Pcrggigv3z5+HwW7tuwg7sStg7bsIUdyFyO67WKIPPggMKuxiCNZOU3bfxXoMQmTtNDXcDPI6PYYghmdv4ET6CW9CElG8WDeNyUpHyn7y/Tsnh0ikjoxjfBrsVuaPsIvOvcwfIfo85MHECy8oSzQS58Sgwi6G8K2T65TN/LEegxCJoIQoGZSIyuv0GIIYnt2BE+lHVC+QM5J1E+mrV8rBFwmlmCP/XUxQF6LqRfD+n+oF5PCvlXsu7KJzL/dciKoXzxmJF5QlKl48T1fCLoZQvE3NZ9tnc8+txyBEIighSgYlovI6PYYghmd/4ET6Edcv5bRKMr1SzliladVRivK5egns/h+r+lHYido8q/pRiGItYLb60RKVS5/Ha2EXQ7DqPb04o3PrMQiRVe+ZDUpE5XV6DEEMz/7AifQjINABAp0RQaBuUBBoOwLlRPoH2kGgrhIEOkCgXYAT6UdAoAMEOiOCQN2gINBmBMqJ9A+1g0BdJQh0gEC7AAcqj4BABwh0RgSBukFBoI+YQEljIo1Ji0hjcoMijanlFH5XJ9KTSH8HEumliER6NygS6VsR6N5OpL8nMko5KeWUIko53aAo5WxFoHs7kX5itEsST5S14zARV4nDRAYOE7k+OJEeAACS4ER6AABIghPpAQAgCU6kL7H1Gqi1lmmJst82slbositmz464qJReoYuLb5bz7LKht4xnLf9Za7zZNUkhis/Bs7OeTLbzxHNgDfTBrbd2uAztdtM9O2s33RJlv65p7RFn92yfPQu/3KiU3iOO27+W8+zGtaXkbUBbWQZWD3tBxefg2VlPJtt54jlE73EMdwcIdMKbkJcZL1rmgVr5nJYo+313IYpZip7d+OMYL8Yf7PTLjUrpLMWYgGg5z6ZOWkpeCmTsYa/Ts0HF5+DZWU8m23niOUTvcQz3h60I9O3vv/j1n2LrCyJvjuoFckbSshKpevGckXiiWHYkqjiKP+wX6k+qdMwH2FWvG/f/FC884Yc7KgmR114sgbGcZ4t3LCWvCCf2sNfp2aDic/DsrCeT7TzxHKL3OIY7xJoE+rc/nijzd4eDlZ/+c8+bSFvXwls17ZYoFr6LOmKvAjpWamcrp8slt/GXe64kRF57sQjbcp4tH7eUvDJwq9Y/W5suRPE5eHbWk8l2nngO1MKfY6x7f/vLaR++Pp4JAj0CAh0u/Ewh0AVBQaCrYgsCfXHHnP/46ac/vqNQTqSHQItrCFSKINABAj0R6Kt3tHmYu9+VcnIiPQRaXEOgUgSBDhDoiUBfTAeI3B0mwon0EOjwsJ8pBLogKAh0VTx58tJGjkCrg+l7Ps4OAh0g0BkRBOoGBYG2JtDqDGUOVCaNqVQSItKY9B2TxtQlINAJJNIPJNLPiEikd4Py4ryhRPq1CXR4UZwB+pePOiZQSjnvMD3vh9nFcj1KObVS7GFKObX3OIa7w7oE+vS/DffrnuPGUc9roMNEcpcknsiz4zARKfLa4zARNygOE1kP6xLoO/z9f/7yv4yvoF1/Fx4AAB6G1Qn0gPt5+9vffPSk4zxQAAB4GFYk0LujQH/1448mAr1j1Po7nb0R6KpTeGsq7k3hrc8dxVnhul/QiSJvohg/NuTNemN71gTT+nBS+rM+VueJm4ki4Ty5aJGeUmfbs0aCeA6xE8TKVGdYlUDvcc+iJwL93lfV/9cZga66iWRtBnmbSNYHN6fndpJk90/E1oElspyLz10KpXgzoj0RVHRlfboz/WFJq/PEzUSRcJ7cNktv6mTbs0aCeA6xE8TeaG9Yn0AnvP0fX51J+iLQN8l0JMvOSkfy0pisT76/DJkx2Qye8Ycw/SIskeVcfHBdKMWbEe2JoKKrmP2UTkfKdp64mSgSzpOJW+m0omx71kgQzyF2gsjO6w5bEqhovbXDJaheIGck6UT66i1zTmQpibR5kXFc/Bk/XmVzyKtXvMEXWc6H4sXzeCWU4s2I9kRQ0VXMv1ftWQnx2c4TNxNFwnmydECIrDtOt2eNBPEcYieI+pD+AIGOWLWU0yrJ9Eo5Y+GmqHmL1YHZKkavtDKKLOdDufR5uBZKovoxtmcVGsYKUNWeVZKZ7TyrlFM4TxavCpF1x+n2rJEgnkPsBFGh3B8g0BEQqBRBoPbNQKADBAqBTtcQ6ACBQqAQ6AVAoCMgUCmCQO2bgUAHCBQCna4h0AEChUAh0AuAQEdAoFIEgdo3A4EOEGg7Ai1LOZ+cVXWeWm98N4tAGpMUkcZk3wxpTPKWSWN6HARKIr0WkUhv3wyJ9PKWSaRPEejw1x/ti0Ap5dQiSjntm7E6T9xMFAnnlHJ2iHUPEzn7hlxsfUHka8A6FMQSCSUOE9EiDhORIuGcw0T6w7qbSNUH5VTrCyIHAIArY+Vd+LNvIIXWF0QOAABXxtppTK8uTuIhUADAjrE2gb6bxF94Be2NQNutgXprmdYaqFgHstZA40pUdvnPs8uunbZbNrSce8t41vKftWzYcAHZWpi1HpbVU94CsvVtI+vxiUH82NdA3+Evn376/8y3ng98DbTbhfd2061deLETae3Cx73Q7Aa0ZxdFYgNaiCy7aRBeEFnOrci9DWhr49rrhCiy2rMi93rY6hfhXHRC9G49PjGIH/su/Ptbb+1wEWL2ZrzwRF4+p5UHKnLhrDzQcfiOF58nUyA9uyiKEXipmkLppZM6aTm3IvdSIK3USa8Toshqz4rc62GrX4Rz0QnRu/X4xCB+7HmgRuutHS5B9eI5I/FE1Svl4IuEkqjGsCqRij//x6viteFBRTieXRTFCLxiIaFUvKbMF+9Yzq3IvSIcq3jH64QostqzIvd62OoX4Vx0QvRuPT4xiB97JZLTemuHS9CuFt6rabdq4UU9sFULHyuSs2Xgnl0UeTX0lp1VPm45tyL3ysCt8vGGBwlYBfrWw7J6SoiEc9EJ0bv1+MQgfuy18E7rrR0uAQQ6QKD3/0CgUgSBCkCgIyDQAQK9/wcClSIIVAACHQGBDhDo/T8QqBRBoAIQ6AgIdIBA7/+BQKUIAhWAQEdAoAMEev8PBCpFEKgABDqCNKaBNKaZWyaNSTsnjQkCnUAi/UAi/cwtk0ivnZNID4FOoJRzoJRz5patnqKUU3u3Hh+lnInWWztcCA4TGThMZOaWrZ4Sdl4nRJHVnhW518NWvwjnHCYCgQIAQAYQKAAAJAGBAgBAEhBoiewaqLWWaYnEoo9Y3oyi0zMqlKzlv4bLhs+OeKhdDCG7BiqcW1+ss0TZ5UahJETWGqgVlFiTjFpWd2aDEq6sMSwGv/jNdAYItEB2F97aTbdEYttRbLBH0fSQRqXnz8+HdpS03Lh+9uycQT27GIIIStxfFAnn1jeTLZFQsja8hZIQxVvOBiV2xaOW1Z3ZoIQrawyLwS9+M70BAp2QzQON2ZvxwhOJxDeR4hlFL2NW3TiiL1y0TJ0ciXO88OxiCCIocX9RJJyPxDleeEFZnSCyIqOWUBKieMvZoEReZtSyujMblHBljWEx+MVvpjtAoCOylUjVi+eMxBOJ0gtRZBRFxd/6wCZ3lzOSlsU7xYvn8cqziyGIoMT9RZFwXrx4Hq+8oKxOKF4g54t+hJIQxVvOBiUqg6KW1Z3ZoIQrawyLwS9+M/0BAh2RrYW3atotkSj+FWXuUSQqi+uFMi1pWT5eLn0erj27GEK2Fl44L5c+D9deUFYnWGXnQkmIrFp4KyhRmx61vNr0ZFDClTWGxeAXv5n+AIGOgEBdOwh0gEBnnEOgEOgAgV62g0AHCHTGOQQKgQ4Q6GU7CHSAQGecPz4C/dYGBAqBzihBoFoLAh0gUAi0uIZAtQgClVoQ6ACBPh4CJY3JsyONaSCNaU4UXd14GhMEegKJ9K4difQDifRzoujqthPpIdARlHK6dkJEKafUopRzuPFSTgh0AoeJuHZCxGEiUovDRIbbPkwEAgUAgBQgUAAASAICLWFN4a2puDeFt75tZE234mwr/W0j67M+2QlmnFKnlxqiyIpTOI+LD+l1jBhCdupvTcWzQXlT+OjKWnzw2mMK36L11g6XwdpEsjaDvE0k6+ua1oL/9JBGpezXNaOWcC7sokgoxU2d9GZXFFlxCudx+yu9kxZDsHpYaFmbQdmgvE2k6Mra/vLaYxOpSeutHS6Clcb02klHspS877u/dFJOvg0ZJ+nvu0ct4VzYRZFQimlF6XSrKLLiFM5jAlY6lyuGYPWw0LLSkbJBWWPKy8mynoxwThpTm9ZbO1wCK5G+esucE1lKInNYpBcXf7Tnk56/Ld/CDv/GjGor8VtoCefCLoqEUkxs9+xECFFkxSmcxxIAz86K0+phoWUlxGeDssaUcGWVAHjtkUjfqPXWDpfAKuW0SjK9Us5YuyYK3KyyO1H9GGv6rNJDoWXVewqRUIqllZ6dCMEqAbWcxyJUz86K0+phoWWVZGaD8ko5oyurCNVrj1LORq23drgEEKjUgkC1HQQqnUOgEOgAgRbXEKi2g0ClcwgUAh0g0OIaAtV2EKh0DoFCoAMEWlxDoNoOApXOIVAIdIBAi2sIVNtBoNI5BPqICZQ0JtKYbDvSmKRz0pgeLYGSSK+1hHMS6d04SaTXzkmkb9N6a4fLQCmn1BLOhV0UCSVKOWUPCy1KOQdKOd/femuHC8FhIlJLOBd2USSUOExka3dOAQAAIABJREFU4DCRe3CYSIvWWzsEAIDtAIECAEASECgAACQBgZaIK57eWqa1Bmp97ujU14WStRgm7KwVM7GoFdvLLuM1XP7Lthf7xeqpdYOyRO0WSr1OsPrFa89aRWcNtEXrrR0uQ9xz93bTrV1464ObU2ePStZ2rLCLSlGitlVje55dtr2oJe44217sF6un1g3KErXbqvc6weoXr70YunDOLnyT1ls7XISY9fnayueMIqFkffJ9HGHTULMSAoVdVIoXKrEvtufZZduLWuKOs+3FfrF6at2gLFG2p7KdYPWL114MXTgnD7RN660dLkGsO6peKQdfJJRinYWoxqjeEQ7/Fn/s50tShF1UihJVWhLb8+yy7UUtccfZ9mK/WD21blCWKNtT2U6w+sVrL4YunFOJ1Kj11g6XIFa+ezXtVi18rPQV9cBWTfswjdnTdbYMXBQ3x/Y8u2x7UUvccba9ZMH8ukFZonYF814nWP3itWedpkAtfKPWWztcAghUtgeBtg0KAh0g0Gatt3a4BBCobA8CbRsUBDpAoM1ab+1wCSBQ2R4E2jYoCHSAQJu13trhEkCgsj0ItG1QEOgAgTZrvbXDJYBAZXsQaNugINABAm3WemuHS0Aak2yPNKa2QZHGNJDG1Kz11g4XgUR62R6J9G2DIpF+IJG+VeutHS4DpZyyPc8u217UopRzQU9lO8HqF0o5AyDQEhwmItvz7LLtRS1xx9n2Yr9YPbVuUJYo21PZTrD6xWsvhi6cc5hIi9ZbOwQAgO0AgQIAQBIQaAlrKm6JxHw9O4W35nJCKYqys0mhZM3lrMgbznqzH1yyZr2eXbxlK6hsnF4PRy1hJ0ZetvPi4BDOxRTe+vl1Bgi0gLUZZInEjlF2E8naTRBKURTNPJFQsnYTrMgb7rtkP/kpRPE5eHbxlq2gsnF6PRy1hJ0YednOi4NDOBebSNbPrzdAoBNeO+lIlkjkLGXTmD4PSSFe0ksURTNPJJSsfBYr8oaZP9mPzgtRfA6eXbxlK6hsnF4PRy1hJ0ZetvPi4BDORRqT9fPrDhDoiOov34zEE4ms+WwiffXacPi3eiOYU4qiaOaJhFLxbjGfUW1F7rVniYp3vNNV1nl8Dp5dvGUrqGycXg9HLWEnRl628+LgEM5FIr318+sPEOgIqyTTEom6zWwpp1XTJ5SiKJp5IqFk1fRZkXvtWaJylfF4nXUen4NnF2/ZCiobp9fDUUvYZYuBrcHhlXJaP7/+AIGOgEClCAK17SDQAQKFQKdrCFQrQaBaBIEOEOhFAhVY1nqju2gCCFSKIFDbDgIdHiGBPrcBgUKg9/9AoFoEgQ4Q6EUCbd56a4dLAIFKEQRq20GgAwT6mAmUNCYhsjJVvKCy7Vki0pjcoEhjaggIdAKJ9FIklEik1yIS6YfHl0gPgY6glFOKhBKlnFpEKefw6Eo5n9u4eQId4uMSD9AScZiIG7nXniXiMBE3KGEnRl628x7XYSLPbdw+gQIAwAMAgQIAQBIQKAAAJAGBlsiugcblTWvBc3h5xCQ59fXwQFF2odRay8wG5X1GaOMVumdHPPRmhFLDZcMYVcOgrB4WruLyrXAex7DQEkriF8Ia6INbb+1wGbK78HGD3dpyH4fVNLCmzh4eJLK2Y4WStZueDUo4FyFEkVBqt0f87FngKstOKDXcuI5RNQzK6mHhKiYQCOdxDAstoSR+IezCP7z11g4X4bWTiCZEMcXTSvocxvE0XozDdxrHlujzmNhnKVn5nNmghHMRQhQJJZFImIxzpKiJqyw7odQuKBFVw6CsHhauYgqrcB7HsNASSuIXYv38ugMEOqL6yzcjUaJYZGSVHRWjaTheFX/+43i+IKreLR6gZFUUZYMSzkUIUSSUineZhXUyxSteoKpLdkKpXVAiqoZBWT0sXMUiKuE8jmGhJZTEL8T6+fUHCHREthY+lrlbhe9DuSJ0uK5XtwZblC2Yt2ras0EJ51bN/qqV2uUi48hVhp1Qalg+HqNqGJTVw8JVLOMXzuMYFlpCSfxCqIXPtN7a4RJAoNIOAtVKEOgAgUKgBSBQaQeBaiUIdIBAIdACEKi0g0C1EgQ6QKAQaAEIVNpBoFoJAh0gUAi0AAQq7SBQrQSBDhAoBFqANCZplw2KNCbXOWlMdyCNKdN6a4eLQCK9tMsGRSK965xE+juQSJ9ovbXDZaCUU9plg6KU0+48SjkHSjkzrbd2uBDWaQZCxGEiUsRhIq5zDhO5g/Xz6wwQKAAAJAGBAgBAEhBoCWsOYc3OxZzFmuuIL+hY060o8T7rYzlf9bM+6Qlm1GoYVFx98IKKIjHrzU792wWVfTLeFD7+HLxPhDGFf3DrrR0ug7WKbe0PiVVza7VdfMPRWvCPEuFcKFnOV/2wZHqLI2o1DCruf3lBRZHYd8luPrULKvtkvE2k+HMQvxk2kZq03trhIsSsiXjhZSiJvA0r30N8RfxzJ+UkXgjnQslyvuqnzdNJNlGrYVAxA8sLKoriY0inP7ULKvtkRORiWMefg/jNkMbUpvXWDpeg+ss3I/Fy5EXmsJVxHHOXvaTnKBHOhZLlXAQlXFlBWSFYQQmthkHFGgAvqCiKjyGdgN8uqOyTEZGLYR1/DuI3QyJ9o9ZbO1wCq5bMqtIUtWtWzVusnvPK7qJEOBdKlnMRlHBlBWWF4BUaRq2GQcUqVC+oKBLVj9kS0HZBZZ+MV8oZfw7iN0MpZ6PWWztcAghUakGgdlAQ6ACBQqDTNQSqg4JAXVcQ6ACBQqDFNQSqXUGgUgSBDhAoBFpcQ6DaFQQqRRDoAIFCoMU1BKpdQaBSBIEOEOjjIVDSmIQWaUx2UFFEGtNAGtNjIVAS6bUWifR2UFFEIv1AIv1jIVBKObUWpZx2UFFEKedAKecRN0+gHCaitThMxA4qisT5G0JkxclhIv0BAgUAgCQgUAAASAICBQCAJCDQEnHJxfu2UVwaEotT1mLYqa+Hi6LkYpjwZC3HeSttW6/QxfaEkrVQml2TFPdnBWWF0EFQUdRwDVQsb7IG+uDWWztchrjpZ225i81JsT1qbcdOnT1cECW3Y4Una0PY2+vdeo84tieUYgjZTrCce0FZIXQQVBSJoLK78GKDnV34h7fe2uEixLQzK+lTpMd9HlLovITAcaxOg1aIkgmBwpMIKmpZzjfPUoztCaUYQrYTLOdeUFYIHQQVRSKobB6oSPEkDzTRemuHS1D95bv/xyo7EgUaxZ//kIN8qSSl+Fsfx/MoSpakCE8iqKhlOd+8Tia2J5RiCNlOsJx7QVkhdBBUFImgspVI8bdGJVKq9dYOlyCW3lqF76JEWBQpW0XR9erWMCNKFkULT1ZZtldxvXWldmxPKFkF89nadHF/VlBWCB0EFUUNa+FFmTu18JnWWztcAghUakGgrnMI9A4QKAQKgRbXEKjrHAK9w6Mj0M9tQKAQaOOgIFAdQgdBQaAWINAREKjUgkBd5xDoHSBQCBQCLa4hUNc5BHoHCPTxEihpTELLck4akx2UFUIHQUURaUwCEOgEEumlluWcRHo7KCuEDoKKIhLpIyDQApRySi3LOaWcdlBWCB0EFUWUcgZAoCU4TERqWc45TMQOygqhg6CiSAT16A8TgUABACAFCBQAAJKAQEu0m8LHWdPmE8woavhtIxGUdTNRqeEEUygl5/ne7DUb1LMjHmrXZVAiBKbwj5RA220ixXX7zbc4oqjh1zVFUNbNRKWGWxxCKbnT5O2fZIN69iyQVfKJdhCUCIFNpEdKoO3SmGLmyOZJNlHU8PvuIijrZqJSwyQboZTMdfIyeLJBjRw1kVXyiXYQlAiBNKZHSqDVX777f7KJ9MULT/jh3l0e/i3eeNqneUdR8eJ5urLsvKCsm4lKDdO8hZLlXAQVtazH4AVVvOOdrpJPtIOgRAgk0j9eAj2/zpZyxuq5YRp74/WqhYZRVC59Hq8tOy8o62ZWLTQUSsl6T6FlPQYvqHKV8XidfKIdBCVCoJQTAoVALzuHQBcEBYEOEGiz1ls7XAII1HUOgS4ICgIdINBmrbd2uAQQqOscAl0QFAQ6QKDNWm/tcAkgUNc5BLogKAh0gECbtd7a4RJAoK5zCHRBUBDoAIE2a721wyUgjcl1ThrTgqBIYxpIY2rWemuHi0AiveucRPoFQZFIP5BI36r11g6XgVJO1zmlnAuCopRzoJSzUeutHS4Eh4m4zkVQ1s1EJQ4Tse26DEqEwGEij5VAAQDgAYBAAQAgCQgUAACSgEBLWGug4iMwyRWs9GeEolZ25UuI4kqpZ5ddobNuxlq+zXaC6HQrKOthZTtPrKInH7t4Dtm1U29pnzXQR0qg1i68+Azh8+fnoyhKvD3iqbMv2UUtqz0vqLhX79lFkbdHbN2MlUCQ7QTR6VZQ1sPKdp7I40g+dvEcsrv3XnIJu/CPlECtPFDxIexx8Fy4UKKYpfi5k5LopVxmg4rZop5dFIkUwezNWCms2U4QnW4FZT2sbOeJTOLkYxfPwXsyVlDCjjzQR0qg1V+++39ECUXx4nm6ql43ZiRKFOtkineL+aIYr+gnG1SsV/Lsoqh64Vl2M1YRVbYTRKdbQVkPK9t5opYt+djFc/CejBWUsKMSqTWBvv3j77/44otf//Eb0frC6JvCqoUvlz6P18Xk5XgdJUoUK7Wtsmyv7DwbVKyY9+yiyKvUtm7GKuPPdoLo9Gxhf7bTo0icppB87OI5ZGvovSMeqIVvSqB/+NmTCf/05XnrTe6hESDQAQL1g4JAtR0E2pBA//qjJzW+94u69Wb30QAQ6ACB+kFBoNoOAm1HoK8+uiPNjz894Id3//H0s6r1hneyGBDoAIH6QUGg2g4CbUag//Ev7wjz54Xgd+8I9e/+vWy9xS20AgQ6QKB+UBCotoNAmxHo12d0eaDUT8rWl99AO0CgAwTqBwWBajsItBWBvv3XJ08+O5O9evLk+8VufGcEShoTaUx2UNbDIo1pII0pS6DvXjfPXkCDrCsCJZH+DiTSu0FZD4tE+oFE+sdCoJRy3oFSTjco62FlO49STq3UG9adwj/9xZms5yn8wGEi9+AwETco62FlO4/DRLRSZ1hzE+lFzZbDYVn0B2Xry28AAACuhTUJ9C8fvWPQrwrBX9/xZ/VSCoECAHaMVRPpv75Pnf/03764w/88ZNKXWUzdEWicaVgfQGo46/UmitaXfjb+1tC6s17LruGsN9sJUcuKPDv1t8aG51wM6yjy7NpN4d8cMXSLdUs5f/vRWSnn05/WrTe7jyaIa93WJzgb7rsIpan/R1Fcyxd2llI2qOwWh7iZbCdErYb7LtlOiFpW5NnNJ2tseM7FsI4iz67dJtKbN90z6MqHibz9VUmhT39ydiJTXwQasy2sj8A3zPwRSp/HZJmYTSLsLKVsUNH5upk/ll02qIadELWsyL32LOdWUMK5GNZR5Nm1S2MaibNjBl3/OLu3f/jiV59++ulPvvgynmfXFYHGfN+YE6ySkNvlngul4uXidFW8XIz1IMHOUsoGFZ2vm3tu2WWDatgJUcuK3GvPcm4FJZyLYR1Fnl27RPqCNh8zgV5svbXDJYgVZ7EqTZXBtat+FEqiYDBW1Ak7SykbVLbQMFv9aNk1rH7MdkLU8opzrfYs51ZQwrkY1lHk2bUr5SxZs1sGhUBHQKBuUBCobg8CHSDQ9gS6lxPpIVA3KAhUtweBDo+QQD+0ceMn0kOgblAQqG4PAh0g0KYEuqsT6SFQNygIVLcHgQ4QaEsC3deJ9BCoGxQEqtuDQAcItCGB7uxEetKY3KCic9KYtBZpTMPNpzGtR6A7O5GeRHo7qOicRHqtZUXutUcifY9YkUD3diI9pZx+UNG5iNO7mWwnRK1sUA07IWpZkXvtWc6toIRzSjlzWJFA93egMoeJ2EFF5yJO72aynRC1skE17ISoZUXutWc5t4ISzjlMJAUIFAAAklh3Cr+3E+kBAOABWHMTiRPpAQA3jTUJdH8n0mfXQK2VtlM3PtSu3QpdwzXJ7Aqd9W2j7LKhZSeUVu0E8dit5yCCstYkLdGzIx5qJ5TEJ8Liz8ha8GQN9Bx7O5E+uwtv7fVO/fgwO0tktSeUxDau5dwSCefW1zWtoLJ2QmnVThCP3XoOIihrV9wSPXsWGNSyE0riI7XxZ2RtubMLH7GvE+mzeaDjIB8vxhE2DbUPr56lKJRiBNmURC9L0fq+uxVU1k4ordoJ4rFbz0EEZeVlWqKROCcGzQ6zkTgnBo0/IyvpkzxQhT2dSJ+tRKpeG+7/qf5mH/4t3kCuVCcjlGIEnnNLJJzHmi3PLtuepbRqJ4jHbj0HEZRVGWSJihfP01V2mBUvnqer+DOyyo6oRJrDjk6kP7/2auGtiuvrV2oLpWxtuiUSzuOpAZ5dtj1LadVOsGrTRQgiKKs23RKVS5/H6+wwK5c+j9fxZ2QVvlMLn2q9tcMlgEBd5xCoK4JABwgUAi2uIVBXBIEOECgE2oBAb/1EeghUiiDQAQKFQJcS6CM4kR4ClSIIdIBAIdBlBPooTqSHQKUIAh0gUAh0EYHu7UR60pg856QxuSLx2EljckWPPo1pZyfSk0hvOyeR3hWJx04ivSt67In0ezuRnlJO27klEs4p5dR2MQQRFKWcHYIT6UtwmIjr3BIJ5xwmou1iCCIoDhPpDw8jUIF51xyoDAC4bUCgAACQBCfSAwBAEpxIXyIu3ogVHmuxyFoo9VboTt1/0S67gmU595YN263QWQul3v1ZQVlPpmFQVgjZ4dIwqDg4hJLYJWANtA2B7u5E+rh9KPYYnz8PoyiKrK16b4946v8LdlZQQslyLoISonZ7xNZWvXd/VlDWk2kYlBVCdrg0DCoODqEk8lTYhW9EoHs7kT4msIkst3HwTKMoiqxkUWEnlD50EgmtoISS5VwEJUTtshStZFHv/qygrCfTMCgrhOxwaRhUHBxCSWRKkwfajED3dSJ9LKEQdRbVn/E5kVWuJOyE0odOKYsVlFCynIughKhdnYxVruTdnxWU9WQaBmWFkB0uDYOKg0MoiVo9KpEaEujOTqQ/vxaVvsXkZRqP5yKrYF7YCSWrmNoKSihZzr3y8XaV2lbBvHd/VlDWk2kYlBVCdrg0DMo6TUGcFkEtfEsCHXZ9Ij0EqoOCQBcEBYG6Igj0/a23drgEEKgbFAS6ICgI1BVBoO9vvbXDJYBA3aAg0AVBQaCuCAI9YL8n0kOgOigIdEFQEKgrgkCHnZ9ID4HqoCDQBUFBoK4IAt3bifSkMXlBkca0ICjSmFwRaUz7OpGeRHo7KBLpFwRFIr0reuyJ9Hs7kZ5STjsoSjkXBGWFQCnn8OhLOXd3Ij2HidhBCRGHibhBWSFkh0vDoOLgEEocJrIWge7wRHoAAHgAViRQDlQGANw2INAScToipuLWXM6bI208wfSCsiaKXU4wVw3Ks0sGle2E2Fx6Km6JxM+h4RQ+Ttgf+xR+ZyfSxwVxsRlk7SZESQdbHF5QUSQi6HKLY9WgPLtkUNlOiM2lN4Mskfg5NNxEiltGj3wTaW8n0seUDJGOZOWzxAsl2jjJxgsqikQEVlCWUjrOD0OSzapBeXbJoLKdEJvzgsqOBPFzaJjGFJOWHnsa085OpI9JwSIh3sqojhIl2jjN2wsqikQEVlCWUjrOD0Oa96pBeXbJoLKdEJvzgsqOBPFzaJhIH9PmSaTf14n0sSxNlGRaNX1RokQbFxp6QUWRV8pp2VnteXHGQsNVg/LskkFlO8GqxPVKMi2R+Dk0LOWMhZuUcu7rRHoIVIogUNsOAh0eIYF+YOPGT6SHQKUIArXtINABAm1LoMOOTqSHQKUIArXtINABAm1OoBdbb+1wCSBQKYJAbTsIdIBAIdDpGgLVEUCgTYOCQO8AgV7E299/8es/xdYXRN4cpDFJEWlMth1pTMMjTGNaj0D/9scTZf7ucLDy03/ueROJRHotIpHetksGle2E2JwXFIn07bAigY51729/Oe3D18cz9UWglHJqEaWctl0yqGwnxOa8oLwejiJKOQO2INAXd8z5j59++uM7Cu34RHoOE5kRiQisoCyldJyBO9YNyrNLBpXthNicF1R2JHCYyDk2INBX72jzMHe/K+Xs+UR6AAB4CDYg0BfTASJ3h4n0fCI9AAA8AOsTaHUwfd/H2QEAwEOwPoFWZyjfwoHK2cUpazEsuzhlOd86qK1X6IRSvD8vqGjnBWXZiU5PdoIXlOXcWugWnwiLC55ieZM10EdBoNYu/PPnYfRFkdgetbZjLefZPeKtg9p6j1goxfvzgop2XlCWnej0ZCd4QVnORVBRJD5SG7fcxQY7u/ALCHR4UZwB+pePOiZQKw90HHTT6IuiD2OC3jgMp/EY7SznQmQ53zoo0Z6wi1rZ9oRSvD8vqGjnBWXZiU5PdoIXlOVcBBVFI3FODBqTPkWKJ3mgWQJ9+t+G+3XPceOo5zVQqxKp+vM/Jyr+1oeE6kslKZZzIbKcbx2UaE/YRa1se0Ip3p8XVLTzgrLsRKcnO8ELynIugoqi4sXzdBXLjkSREZVIaQJ9h7//z1/+l/EVtOvvwlu18OWy0TiOz0WiSNkqiracC5HlfOugtq7UFkrx/rygop0XlGUnOj3ZCV5QlnMRVBSVS5/H61j4LsrcqYVfQqAH3M/b3/7mo57zQCHQpkFBoK4SBHoHCDTi7R9+9eOPJgK9Y9T6O50QaGUHgS5oDwLVIgh0VWxxoPI7Fj0R6Pe+qv4/CLSyg0AXtAeBahEEuiq2PA/07f/46kwCgVZ2EOiC9iBQLYJAVwUHKo+AQJsGBYG6ShDoHSDQTOutHS4BaUxNgyKNyVUijekOpDFlWm/tcBFIpG8aFIn0rhKJ9HcgkT7RemuHy0ApZ9OgKOV0lbKd4AVFKeeKgEBLcJhI06BEe8IuamXbE0rx/rygop0XlGUnOj3ZCV5QlnMRVBRxmMg5IFAAAEgCAgUAgCQg0BJxhmJNcdNzq+j91NcPtRNK1geXGs5623VCdoLZMKhnRzzULoqyi0BCKQ6OhkFZI936ABJT+MdKoHGNXCytP38exlUUWUrC+9TZD7MTStYnPy3n3r5Lu06wlLL7PF5Qz56dM6hnF0XZbUihFAdHw6CskW59gpNNpMdKoDFLYxxO07gah9M0rqLIUhLeP3C+7+4ly1gfnbece5k/7TrBUspmGnlBjcQ5Xnh2UZRNhBNKcXA0DMoa6dZH4EljeqwEGvOEiz/H84nmQmQpCe/Fu0X4jVyyE0qxBiAbVPHieSH3vF0nWErZXHcvqOLF83jl2UVRthRDKMXB0TAoa6THShMS6SHQCbFSzSp1FCJLSXgvV7fGH4lhJ5RiFWo2KK/6sV0nWErZaksvqHLp83Dt2UVRthhYKMXB0TAoa6THWmdKOSHQCRCodA6B2nYQ6ACBQqDTNQQ6QKAQKAR6ARDoCAhUOodAbTsIdIBAIdDpGgIdIFAIFAK9AAh0BAQqnUOgth0EOkCgj5lASWMijekOpDFJO9KYBCDQCSTSS+ck0tt2JNIPJNI/XgKllFM7p5TTtosiSjmlhFLONq23drgQHCYinXOYiG0XRRwmIiUcJtKk9dYOAQBgO0CgAACQBAQKAABJQKAl4tKQtwYatdZdOz09keXOrRU672aSQaVX6Kw10FU/uGR9Y8prz1qwtpzHx5AeZnFLgDXQc0CgBeLmpLU3KbQ8uyiylLLbsULJ2iP2biYZVHqPOIqE81U/+SmyE6ygrOcglCzn8TGkh1lMSmEXPgACnRDT48axOg3acYRNQy1qeXZRZCllEwKFkpWl6N1MMigh8rIUo0g4jyms2aAs59nkVC9p13IeH0N6mMW0aPJAIyDQEbFAo3qlPPxb/RkfZrQ8uyiylLIlKULJqpPxbiYZlBB5dTJRJJzHIqpsUJbzbHmUVzZmOY+PIT3MYmEelUgCEOiIWCLs1cJHrXVr6JNF0ULJqtT2bmbrSm2rFj6W8WeDspxnC/S9gwss59ZpCl5Q8WgIauEFINAREKjUgkBd5xDoHR4dgT6zAYFCoI2DgkDvAIEOEGiu9dYOlwAClVoQqOscAr0DBAqBQqDFNQTqOodA7wCBQqAQaHENgbrOIdA7QKCPl0BJYxJapDG5zkljusOjS2OCQE8gkV5qkUjvOveCIpFei/aaSA+BjqCUU2pRyuk694KynoNQopSzQ0CgJThMRGp5N5MMSog4TEQrWc7jY0gPMw4TeT8gUAAASAICBQCAJCDQEtZEyppgerPejSeY2fUIL6jklDrdntUJlnOrX7JBCefWN6aEXRx51gqM51yI4hTemq97U3gxO2cK/+DWWztcBmsp39riiJIOtji8oKKWF5Rl13DfxeoEy7nVL9mghHPRCZZdHHnWHqDnXIjiJpK1Y+RtIon9ITaRHt56a4eLYCWTWEk28aKDJBsvqKjlBWXZNcz8sTrBcm71SzYo4Vx0gmUXR56VheY5F6KYxmTlLHlpTCJDiTSmROutHS5B9Zf9/p/qBWROKZ1Iv3GatxdU1PKCsuwa5p5bnWA5t/olG5RwLjrBsosjT4zFbFBCFBPprax5L5Fe5MiTSJ9pvbXDJbAK6qxCwyhRrjYuNPSCsgoGs3YNqx+tTrCcW/2SDUo4F51g2cWRZ1Xies6FKJZyWnWbXimnqNKklDPTemuHSwCBSi0IdEFQEKhWgkAbtd7a4RJAoFILAl0QFASqlSDQRq23drgEEKjUgkAXBAWBaiUItFHrrR0uAQQqtSDQBUFBoFoJAm3UemuHSwCBSi0IdEFQEKhWgkAbtd7a4RKQxiS1SGNaEBRpTFqJNKZGrbd2uAgk0kstEukXBEUivVYikb5N660dLgOlnFLLC8qyo5RTd4JlRylnh4BAS3CYiNTygrLsOExEd4Jlx2Ei/QECBQCAJCBQAABIAgIFAIAkINAS2WXDKPIWp6w1UGuhtzSaAAAUA0lEQVTFLLtGmA3K6peGK3SrdkJ2TdJapvQ6PYqsbxvFVUolygYVv4DEGug5INAC2Y3rKPK2R61deGvP1grKUvKCsvql4R7xqp2Q3RUXIiuPwxJZX9eM++RKlA0qfoOTXfgACHTCh8nUySjyEvRie5ZSNkvRUvKCsvqlYZbiqp1gORdBCZGVSWyJrO+7x0xNJcoGFb8CTx5oBAQ6ongDeVDxThRVmXqzdrE9S0loWUFZSl5QVr94nRBFwvmqnWA5F0EJUbxlr9OjqHjxPF1FpVgrpETZoIoXz+MVlUgCEOiIbPl4FHlFylYtvFU5bQVlKXlBWf3SsFJ71U7I1qZb5epep0dRufR5vI5KsVpdibJBlUufh2tq4QUg0BEQqBsUBKpFEKgUQaAQKARaKkGgWgSBShEECoFCoKUSBKpFEKgUQaAQKARaKkGgWgSBShEECoFCoKUSBKpFEKgUQaCPhUA/nC7v/yGNSSuRxqRFpDFJEWlMj4NASaS3gyKRXotIpJciEukfB4FSymkHRSmnFlHKKUWUcj4OAh3CD4nDRGaUrH7hMBE3KCHiMBGt1BkgUAAASAICBQCAJCDQEtaEz5pgZiduYtZrzZatCaZwbolE5GKCGe28CWYUZaf+p4F6USn7ZLwpfLSz1ge8OLM9bN2M6PR2U3hrvs4U/uGtt3a4DM+fnw+1KPG2OISdJRL7LtZ+jbXFIZxbIhG52OKIdt4WRxSJoKzOm0bqBaXsk/E2kaKdtUPlxZntYetmRKe320SydozYREq03trhIowj7MKFl2Qj7CzRtzHzR7QX7YRSFAnnlkhELpJsop2XZBNFIiir80binBjUeqKWyOphYWflSHlxZnvYuhnR6e3SmKycJdKYMq23drgE1Z//GYmX5i3sLFHx5/90JdqLdkIpioRzSyQiF2ne0c5L844iEZTVecWL5+nKeqKWyOphYRfHhteeUMr2sHUzotPbJdJbWfMk0qdab+1wCeoFKC3xCg2FnSUS1Y9W1aRVaCicWyIRuSg0jHZeoWEUZUtAy6XP47X1RC2RV8oZ7aw6US/ObA9bNyM6vV0pp1W3ud9SzoegeeutHS4BBCpFEOgAgUKgc4BAR0CgUgSBDhAoBNonINBKBIHqoCDQAQIdQAQEWokgUB0UBDpAoAOIgEArEQSqg4JABwh0ABGdEejz6XJGQhrTHUhj0iLSmKToptOYrouuCHQaaiTSlxck0g8k0t+DRPre0BeBDrHmLUoGSjkHSjnnRNGOUs7hpks5r4vOCHQIY1ZIhjD2OExkxs476iKKRFBW5wX+NJ+oJbJ6WNhxmMhwy4eJXBe9ESgAAOwGECgAACQBgQIAQBK9EWh22dBawRIrdNlFLWuZMoqEp7jMJURWBEJLOBeLaFFL2LXrBLEmaa1lWmuS3nKjcGWtosf2ssNTdILo4fiwrAVP1kA3Q2cEmt24fv78fIhGidojjq68bdVoJ9qLIuEpbrQKkRWB0BLOxTZu1BJ27TpB7Ipbu+nCuTUSLOdeHkdsLzs8RSeIHo4Py9pyZxd+O/RFoJ8nUyfHkXnhQmUpRlcvrcS+aCfaiyLhKab6CZEVgdASzkUiYdQSdu06QeRlxseezcv0Ui6FKyuTOLaXHZ6iE0QPx4dlJX2SB7ohuiLQ4iXhQcU71WvKjETVyURXxZ//C6Ul0U60F0XCUyw2ESIrAqElnItSlqgl7Np1gqgMio/de6LWSLCce7Vssb3s8BSdIHo4Piyr7IhKpC3RGYGeX3vl4/VCmZaoSu1scbNVrh5FwlMsdxYiKwKhJZyLYuqoJezadYKoTbdq2oVzayRYzr3TFGJ72eEpOkH0cHxYVuE7tfBbAgKtXEGg2g4Cle1BoI8eEGjlCgLVdhCobA8CffSAQCtXEKi2g0BlexDoowcEWrmCQLUdBCrbg0AfPSDQyhUEqu0gUNkeBPro0RmBksZEGpO2I41pII2pQ3RFoCTSaxGJ9No5ifSuiET6tdAXgVLKqUWUcmrn1kiglHOglHM1dEagHCaiRVYEQks45zAR7YrDRKQI/ryM3ggUAAB2AwgUAACS6I1A43TLm1JHkTWR8ma92Vl2dkodRda827PLttdu6m/N88VIELNeax3DGwnWFD4G5X3bKLoSStYTZQrfFzoj0LjgL5bWLZG1lO/tu2T3eSznYlMniqydH88u254VgggqdoJ4DEIUR4LYdxEPOTsSrE2kGJTYobLaE0rWE2UTqTP0RaAx5eRlTO6wRN86ySRe5o8lsoISnv4c04qiSChZriznabsYgggqdoJ4DEIUR4LI/BEPOTsSrDSmGJTIkbLaE0rWEyWNqTd0RaAx6bl4kbiQ2B5FxV/2+XRmL/fcEllBCU/VW9+cSChZriznabsYgggqdoJ4DEIUR4LIPRcPOTsSrET6GJTI0rfaE0rWEyWRvjt0RqDn115pZRRZBXVe9WO22jJbWhlFVv2lZ5dtr10JqFXvKUaCqH606lm9kWCVcsagRJ2o1Z5Qsp4opZzdAQKt7CBQ2w4ChUABBFrbQaC2HQQKgQIItLaDQG07CBQCBRBobQeB2nYQKAQKINDaDgK17SBQCBT0RqCkMQkRaUwDaUz3/5DG1B26IlAS6bWIRPqBRPp7kEjfG/oiUEo5tciqo/Tssu1ZIVDK6bZHKeeNoDMC5TARLRJKlivLedouhiCCip0gHoMQcZjIoDqdw0T6Qm8ECgAAuwEECgAASUCgAACQRG8E2m7ZMLuWueqyoVCyVrCEkuUqu2Lm2SXXaq2FUu/zQ8LOWp22lmGza6BCFBdY110DtdYyWQNtgM4ItN3GtbCzRJbz7Ma1ULL2UIWS5cpynraz7i/2sHgMIoUhblNbW+5efoSVCJDdhReiuMW/7i68tZvOLnwL9EWgL5ulTgo7S2Q5z6ZOCqXXThafULJcWc7Tdtb9xR4WjyE+dpEoaSV9ehm6MS9TiISSlQcqRDHJdN080Ji9GS/IA22Drgi0eElYWLwj7CyR5TxbvCOUqre+OZFQslxZztN21v3FHhaPIT52UaoTJcouehdK1VvmnEgoWZVIQhTLnMTNWCPdezLVC+SMhEqkRuiMQM+vs+Xj2Zp2y7kQZZWsSmahZLnKVk57dtb9JQvmRbG4VfjunVJgleNna+GFKBbar1sLb9W0UwvfBhBoJYJAbTsIFAIFEGgtgkBtOwgUAgUQaC2CQG07CBQCBRBoLYJAbTsIFAIFEGgtgkBtOwgUAgW9EShpTEJEGpOUkMY0IyKNaUN0RaAk0msRifTygkT6GRGJ9NuhLwKllFOLrDpKzy7bnhWCCIpSzoFSzhtGZwTKYSJaJJQsV5bztJ11f7GHxWPgMBEZuehP78lYh4JYIvjzMnojUAAA2A0gUAAASKI3Ak1OjRvarTrrXXdK3aVd9slYU39LJGbLHxxRiOLEOzvPt6b+Yl2h4aIMU/it0BmB/vnP56MoShpu6qRX6aOondJt2WWfjLX5ZInEfs0HHwQGjVs/2Z0ma/NJ7GyJTsg+GTaRNkNfBDoOngsXDdOK0nkiUdRO6bbssk/mOyf9yRKJjKGROCcGjclH2VwnK/1J5FaJTsg+mTekMW2Grgi0ek2ZkTRMbE9nKkdRO6Xbsss+merFc0biiUTOevHiebqK6e/ZbHsrAV9k94tOyD6Z6gVyRkIifSN0RqDn11HiibJ29WrTYIvaKd2WXfbJWCWglkhUTZZLn8frWICZrfe0SkBFfanohOyToZRzQ0CglQgCbWsHgUrnEOjNAAKtRBBoWzsIVDqHQG8GEGglgkDb2kGg0jkEejOAQCsRBNrWDgKVziHQmwEEWokg0LZ2EKh0DoHeDDoj0D9PlzMST0QaUx92pDFJ56Qx3Qy6ItAhm3ZNIn2vdiTSS+ck0t8K+iLQIVv4187u9YjhQaJ2Srdll30ylHK6PSxElHJuhs4IdAhjSEg8UdYujEZT1E7ptuyyT4bDRIb8k7EOBbFE8Odl9EagAACwG0CgAACQBAQKAABJ9EagXS7jtbPrMqgOOmHVVe3sN5Gsbxt5a6BxGVas3rIGukN0RqCvX5+PhijZzQb0ToLqoBOsjXlLSYiyX+W0vq7p7cLHRACRPyBuJvtk2IXfDH0R6DgILlxsnsrYzq7LoDrohJEzJvKIIktJiLLfhbe+7+7lgcZUVJHBKm4m+2TekAe6Gboi0Oov7YzEE3Vp12VQHXRC9ZY5J7KUhEgU/VRpnHOiWD40FC+exyvLkyiGEjVU4mayT6Z6gZyRUInUCJ0R6Pl1lHiiLu26DKqDTlj1dANRdm5VsMcC9qFc+jxce7XwsRxfVPFTC79PQKDb2XUZVAedAIHqm4FAdwAIdDu7LoPqoBMgUH0zEOgOAIFuZ9dlUB10AgSqbwYC3QEg0O3sugyqg06AQPXNQKA7AAS6nV2XQXXQCRCovhkIdAfojEBfT5czEk/UpV2XQXXQCaQx6ZshjWkH6IpAp9HQdy541q7LoDroBBLp9c2QSN8/+iLQu0FwxLzEE3Vp12VQHXQCpZz6ZrJPhlLOzdAZgQ5hLAiJJ+rSrsugOuiEQB1KZCkJEYeJSAmHibRAbwQKAAC7AQQKAABJQKAAAJBEbwS6k2W8rddAG65gZe2u3wmenbV2KlYg40qp+BhdXN4UC57ii3WrroFuPRJAgc4I9PXr8wESJR1sJG+9Cy/2Qi1RQ7vrd4JnZ+3eiz3wuFcvPoccN9jFlrv4ZvKqu/BbjwRQoi8CHcfFhYt0tuH17bLOx+E7jWNL1NDu+p3g2cVsynihsjBjtmhM3hQpniLpcyTOiUFXzQPdeiSACl0RaPWXdkbiibq0yzqvXggGX9TQ7vqd4NlVL54zElUHFOuVYvmQKDISZUfFi+fpatVKpK1HAqjRGYGeX0eJJ+rSLuu8YSVz1u76neDZWTX0ohI9VszHAnZR5i4K38ulz+P1qrXwW48EUAMC3c4OAnWVIFB9fxBod4BAt7ODQF0lCFTfHwTaHSDQ7ewgUFcJAtX3B4F2Bwh0OzsI1FWCQPX9QaDdAQLdzg4CdZUgUH1/EGh36IxAX0+XMxJP1KUdaUyuUtqONCYpIo1pNXRFoNMA6TshPmtHIv2CTiCRXt8xifRXRV8EejcujpiXeKIu7bLOGxbiZe2u3wmeHaWcUtRwJIASnRHoEIaHkHiiLu2yzsUotkQN7a7fCZ4dh4lIUcORAAr0RqAAALAbQKAAAJBEbwS69YRv49lyB1Pxre2u/0S9bynFObX4llKcinvfRIqurPk6U/ju0RmBvn59PkCiZMf7Nas679Pu+k9UbM5Y+0ria55xM8j7Kmd0Ze0YsYnUP/oi0HFcXLjYccbQqs77tLv+ExXpQVZmk/iefExHEmlMQhRdWTlLpDHtAF0RaPWXdkbiibJ21d/ewRe1U7otu+s/UZGgbuXWx9R6kRAvEumFKLqysua9Ttj6iYIanRHo+XWUeKKsXb36M9iidkq3ZXf9JypKJK3qzljcKUoyRSmnEEVXVt2m1wlbP1FQAwKtRBBoW7vrP1EI1FWCQDOAQCsRBNrW7vpPFAJ1lSDQDCDQSgSBtrW7/hOFQF0lCDQDCLQSQaBt7a7/RCFQVwkCzQACrUQQaFu76z9RCNRVgkAz6IxAX0+XMxJPRBpTH3bXf6KkMblKnh2o0RWBTgOERPobsbv+EyWR3lXy7ECFvgh0sGrXLFHW7s2I4UGidkq3ZXf9J0opp6vk2YESnRHoEIaHkHiirJ0YMJaondJt2V3/iXKYiKvk2YECvREoAADsBhAoAAAkAYECAEASvRFol8t47ey6DKqDTlh1DdSzi4uS4rNFcQ30wyMuKglXrIHeBjoj0Ddvzh9YlOxmA3onQXXQCa9fB16IIkspbRe3xcWHM+Mu/IcfBgYVX/OMrtiFvxH0RaDjc7pwkU5gu75dl0F10AkjHUy8EEWWUtouJmaKT7fHPNCROCcGFd+Tj67IA70VdEWg1V++GYkn6tKuy6A66ITqBWtOZCml7WJpUKxNEpVIxYvn6SoqCVdUIt0MOiPQ8+so8URd2nUZVAedUC/xzYgspbRdLE6P1fGiFr5c+jxeRyXhilr4mwEEup1dl0F10AkQ6IKbgUCvCwh0O7sug+qgEyDQBTcDgV4XEOh2dl0G1UEnQKALbgYCvS4g0O3sugyqg06AQBfcDAR6XUCg29l1GVQHnQCBLrgZCPS66IxA30yXMxJP1KVdl0F10AmkMS24GdKYrouuCHR6YH3ngmftugyqg04gkX7BzWz9REGFvgj07jkdMS/xRF3adRlUB53QsCQza0cpp2sHSnRGoEN8XOIBWqIu7boMqoNOCKygRJZS2o7DRFw7UKA3AgUAgN0AAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJCBQAABIAgIFAIAkIFAAAEgCAgUAgCQgUAAASAICBQCAJP43ztkoZwRruEcAAAAASUVORK5CYII=" width="672" /></p>
 </div>
-<div id="interpretación-de-resultados-4" class="section level3">
+<div id="interpretación-de-resultados-3" class="section level3">
 <h3>Interpretación de Resultados</h3>
 <ul>
 <li><p><strong>Mapa de Predicciones (<code>var1.pred</code>):</strong>
@@ -2093,7 +2506,7 @@ alejamos de los datos hacia zonas sin información, la varianza aumenta,
 advirtiéndonos que la predicción es menos confiable,,.</p></li>
 </ul>
 </div>
-<div id="errores-comunes-4" class="section level3">
+<div id="errores-comunes-3" class="section level3">
 <h3>Errores Comunes</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Confundir Kriging con un suavizador (smoother):</strong>
@@ -2122,7 +2535,22 @@ requiere que el usuario defina manualmente las matrices de
 corregionalización para garantizar que sean definidas positivas, un
 proceso que no siempre es automático,,,.</p>
 </div>
-<div id="pause-3" class="section level3">
+<div id="pause-10" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-3-1" class="content-card">
+<div id="pause-11" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-3-2" class="content-card">
+<div id="pause-12" class="section level3">
+<h3>pause</h3>
+</div>
+</div>
+<div id="seccion-2-3-3" class="content-card">
+<div id="pause-13" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -2335,7 +2763,7 @@ tu ventana de observación inicial, pues de ella emanan todos los
 cálculos de intensidad y densidad. ¡Adelante con su investigación,
 colega!</p>
 </div>
-<div id="pause-4" class="section level3">
+<div id="pause-14" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -2479,7 +2907,7 @@ ese patrón, por lo que <strong>rechazamos <span class="math inline">\(H_0\)</sp
 proceso de interacción o una tendencia no constante en los datos.</p>
 </div>
 </div>
-<div id="pause-5" class="section level3">
+<div id="pause-15" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -2578,7 +3006,7 @@ dividimos la ventana en 4 cuadrantes disjuntos de <span class="math inline">\(5 
 </ol>
 </div>
 </div>
-<div id="resultado-interpretado" class="section level3">
+<div id="resultado-interpretado-1" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <p>A nivel global, la intensidad es de <span class="math inline">\(0.05\)</span>. Sin embargo, al observar los
 cuadrantes, vemos que la intensidad local fluctúa entre
@@ -2598,7 +3026,7 @@ ajuste</strong> para comparar estos conteos (3, 1, 1, 0) contra lo
 esperado bajo una distribución de Poisson.</p></li>
 </ul>
 </div>
-<div id="guía-de-autoevaluación-errores-comunes" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-1" class="section level3">
 <h3>Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Confundir “Punto” con “Evento”:</strong> Un error común
@@ -2621,7 +3049,7 @@ en una muestra pequeña (<span class="math inline">\(n=5\)</span>); la
 variabilidad en los cuadrantes es una señal de alerta.</p></li>
 </ol>
 </div>
-<div id="pause-6" class="section level3">
+<div id="pause-16" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -2749,7 +3177,7 @@ la ubicación <span class="math inline">\(s\)</span> o de covariables
 ambientales.</p></li>
 </ol>
 </div>
-<div id="pause-7" class="section level3">
+<div id="pause-17" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -2892,7 +3320,7 @@ indicando que el proceso depende de la ubicación o de variables
 externas.</p></li>
 </ul>
 </div>
-<div id="pause-8" class="section level3">
+<div id="pause-18" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3062,7 +3490,7 @@ estimación de un <strong>Proceso de Poisson No Homogéneo
 (IPP)</strong>.</p>
 </div>
 </div>
-<div id="pause-9" class="section level3">
+<div id="pause-19" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3093,7 +3521,7 @@ Un plano bidimensional acotado por <span class="math inline">\(x
 <li><p><span class="math inline">\(s_4 = (1, 9)\)</span></p></li>
 </ul>
 </div>
-<div id="procedimiento-detallado-chain-of-thought" class="section level3">
+<div id="procedimiento-detallado-chain-of-thought-1" class="section level3">
 <h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
 <div id="paso-1-estimación-de-la-intensidad-global-hatlambda" class="section level4">
 <h4>Paso 1: Estimación de la Intensidad Global (<span class="math inline">\(\hat{\lambda}\)</span>)</h4>
@@ -3146,7 +3574,7 @@ a la varianza.</p>
 </ul>
 </div>
 </div>
-<div id="resultado-interpretado-1" class="section level3">
+<div id="resultado-interpretado-2" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <p>A nivel global, la intensidad es de <span class="math inline">\(0.04\)</span> eventos por unidad de área. Sin
 embargo, el análisis local mediante cuadros muestra que la intensidad no
@@ -3166,7 +3594,7 @@ con <code>quadrat.test</code>) no permite rechazar la hipótesis nula de
 homogeneidad.</p></li>
 </ul>
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-1" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-2" class="section level3">
 <h3>Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Error de Denominador:</strong> Calcular la intensidad
@@ -3191,7 +3619,7 @@ pocos puntos, lo que resultará en demasiados cuadros con valor cero,
 invalidando la potencia de la prueba de cuadros.</p></li>
 </ol>
 </div>
-<div id="pause-10" class="section level3">
+<div id="pause-20" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3332,7 +3760,7 @@ o influencia constante, facilitando la toma de decisiones
 geográficas.</p></li>
 </ol>
 </div>
-<div id="pause-11" class="section level3">
+<div id="pause-21" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3461,7 +3889,7 @@ el patrón observado con múltiples simulaciones de un HPP para verificar
 si la desviación del azar es significativa.</li>
 </ul>
 </div>
-<div id="pause-12" class="section level3">
+<div id="pause-22" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3615,7 +4043,7 @@ calculamos el estadístico para cada una y determinamos la posición
 (rango) del valor real en esa lista para hallar un p-valor exacto.</p>
 </div>
 </div>
-<div id="pause-13" class="section level3">
+<div id="pause-23" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3731,7 +4159,7 @@ de este valor pone en duda la homogeneidad del proceso.</p></li>
 <hr />
 </div>
 </div>
-<div id="resultado-interpretado-2" class="section level3">
+<div id="resultado-interpretado-3" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Análisis de Homogeneidad e Independencia:</strong> El
@@ -3755,7 +4183,7 @@ Homogéneo de Poisson</strong>.</li>
 </ol>
 <hr />
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-2" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-3" class="section level3">
 <h3>Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Error en la Hipótesis Nula:</strong> Pensar que “rechazar
@@ -3779,7 +4207,7 @@ grados de libertad dependen de la partición del espacio, no del número
 de puntos observados.</li>
 </ol>
 </div>
-<div id="pause-14" class="section level3">
+<div id="pause-24" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -3938,7 +4366,7 @@ sesgaría las estimaciones hacia abajo. <code>spatstat</code> aplica
 estas correcciones automáticamente en los ejes de los gráficos
 (<code>iso</code>, <code>trans</code>, etc.).</p>
 </div>
-<div id="pause-15" class="section level3">
+<div id="pause-25" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4115,7 +4543,7 @@ ver eventos fuera de la ventana de estudio; requiere corrección en R
 por simulaciones para determinar la significancia de un patrón.</li>
 </ul>
 </div>
-<div id="pause-16" class="section level3">
+<div id="pause-26" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4296,7 +4724,7 @@ patrón no es aleatorio.</p></li>
 </ul>
 </div>
 </div>
-<div id="pause-17" class="section level3">
+<div id="pause-27" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4328,7 +4756,7 @@ manuales si se puede rechazar la <strong>Aleatoriedad Espacial Completa
 </ul>
 <hr />
 </div>
-<div id="procedimiento-detallado-chain-of-thought-1" class="section level3">
+<div id="procedimiento-detallado-chain-of-thought-2" class="section level3">
 <h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
 <div id="paso-1-caracterización-de-la-intensidad-lambda" class="section level4">
 <h4>Paso 1: Caracterización de la Intensidad (<span class="math inline">\(\lambda\)</span>)</h4>
@@ -4401,7 +4829,7 @@ la interacción.</p>
 <hr />
 </div>
 </div>
-<div id="resultado-interpretado-3" class="section level3">
+<div id="resultado-interpretado-4" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Diagnóstico de Agregación:</strong> El índice de
@@ -4425,7 +4853,7 @@ agrupamiento espacial significativo.</p></li>
 </ol>
 <hr />
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-3" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-4" class="section level3">
 <h3>📝 Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Subjetividad de los Cuadros:</strong> Un error común es
@@ -4446,7 +4874,7 @@ cerca del límite parecen no tener vecinos, sesgando el análisis hacia la
 “inhibición” falsamente.</li>
 </ol>
 </div>
-<div id="pause-18" class="section level3">
+<div id="pause-28" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4629,7 +5057,7 @@ pueden dar valores menores a 1 falsamente. En ese caso, se recomienda
 transitar hacia modelos de intensidad variable antes de concluir sobre
 la interacción.</p>
 </div>
-<div id="pause-19" class="section level3">
+<div id="pause-29" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4796,7 +5224,7 @@ para evaluar si la interacción observada es significativamente distinta
 del azar.</li>
 </ul>
 </div>
-<div id="pause-20" class="section level3">
+<div id="pause-30" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -4964,7 +5392,7 @@ real y no fruto de una fluctuación aleatoria.</p></li>
 </ol>
 </div>
 </div>
-<div id="pause-21" class="section level3">
+<div id="pause-31" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5003,7 +5431,7 @@ aunque en la práctica real y en R es obligatorio usarlo.</li>
 </ul>
 <hr />
 </div>
-<div id="procedimiento-detallado-chain-of-thought-2" class="section level3">
+<div id="procedimiento-detallado-chain-of-thought-3" class="section level3">
 <h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
 <div id="paso-1-cálculo-de-la-intensidad-lambda" class="section level4">
 <h4>Paso 1: Cálculo de la Intensidad (<span class="math inline">\(\lambda\)</span>)</h4>
@@ -5071,7 +5499,7 @@ cuadrático en una medida lineal.</p>
 <hr />
 </div>
 </div>
-<div id="resultado-interpretado-4" class="section level3">
+<div id="resultado-interpretado-5" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <p>A la distancia de <strong>3 metros</strong>, el valor de la función L
 estandarizada es <strong>0.26</strong>.</p>
@@ -5086,7 +5514,7 @@ factor ambiental común que favorece la co-ocurrencia.</li>
 </ul>
 <hr />
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-4" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-5" class="section level3">
 <h3>📝 Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Olvidar los Pares Recíprocos:</strong> Un error clásico es
@@ -5109,7 +5537,7 @@ normaliza por su intensidad.</li>
 Regular</strong>.</li>
 </ol>
 </div>
-<div id="pause-22" class="section level3">
+<div id="pause-32" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5264,7 +5692,7 @@ debajo de la envolvente inferior, el patrón es <strong>regular o
 inhibido</strong>.</li>
 </ol>
 </div>
-<div id="pause-23" class="section level3">
+<div id="pause-33" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5392,7 +5820,7 @@ generadas por el modelo nulo.</li>
 resultado tan extremo como el observado bajo el supuesto de azar.</li>
 </ul>
 </div>
-<div id="pause-24" class="section level3">
+<div id="pause-34" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5556,7 +5984,7 @@ Fin de Grado para afirmar que un patrón (como los sismos en Colombia) no
 es obra de la casualidad, sino de procesos estructurales profundos.</p>
 </div>
 </div>
-<div id="pause-25" class="section level3">
+<div id="pause-35" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5591,7 +6019,7 @@ más cercano (<span class="math inline">\(\bar{d}\)</span>).</li>
 </ul>
 <hr />
 </div>
-<div id="procedimiento-detallado-chain-of-thought-3" class="section level3">
+<div id="procedimiento-detallado-chain-of-thought-4" class="section level3">
 <h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
 <div id="paso-1-cálculo-del-estadístico-observado-u_1" class="section level4">
 <h4>Paso 1: Cálculo del Estadístico Observado (<span class="math inline">\(u_1\)</span>)</h4>
@@ -5676,7 +6104,7 @@ limitada.</li>
 <hr />
 </div>
 </div>
-<div id="resultado-interpretado-5" class="section level3">
+<div id="resultado-interpretado-6" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <p>En este ejercicio con <span class="math inline">\(k=3\)</span>,
 nuestro patrón observado obtuvo el rango más bajo posible (<span class="math inline">\(r=1\)</span>).</p>
@@ -5696,7 +6124,7 @@ es aleatorio.</li>
 </ol>
 <hr />
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-5" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-6" class="section level3">
 <h3>📝 Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Exclusión del Observado:</strong> No incluir el dato real en
@@ -5716,7 +6144,7 @@ distancia como agregación. Recuerde: <strong>Distancia corta =
 Agregación; Distancia larga = Regularidad</strong>.</li>
 </ol>
 </div>
-<div id="pause-26" class="section level3">
+<div id="pause-36" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -5877,7 +6305,7 @@ de significancia asociadas a una prueba de hipótesis de Montecarlo. Un
 rango extremo (puesto 1 de 1000) nos da un pseudo p-valor aproximado de
 <span class="math inline">\(2/(999+1) = 0.002\)</span>.</p>
 </div>
-<div id="pause-27" class="section level3">
+<div id="pause-37" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -6037,7 +6465,7 @@ jerárquica de los procesos clúster.</li>
 fuerza de atracción o repulsión entre eventos cercanos.</li>
 </ul>
 </div>
-<div id="pause-28" class="section level3">
+<div id="pause-38" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -6228,7 +6656,7 @@ Ajusta un Proceso Clúster de Matérn.</li>
 </ul>
 </div>
 </div>
-<div id="pause-29" class="section level3">
+<div id="pause-39" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -6268,7 +6696,7 @@ húmeda).</li>
 </ul>
 <hr />
 </div>
-<div id="procedimiento-detallado-chain-of-thought-4" class="section level3">
+<div id="procedimiento-detallado-chain-of-thought-5" class="section level3">
 <h3>3. Procedimiento Detallado (Chain-of-Thought)</h3>
 <div id="paso-1-definición-de-la-función-de-intensidad-hatlambdas" class="section level4">
 <h4>Paso 1: Definición de la Función de Intensidad <span class="math inline">\(\hat{\lambda}(s)\)</span></h4>
@@ -6332,7 +6760,7 @@ aleatoriamente.</li>
 <hr />
 </div>
 </div>
-<div id="resultado-interpretado-6" class="section level3">
+<div id="resultado-interpretado-7" class="section level3">
 <h3>4. Resultado Interpretado</h3>
 <p>El modelo IPP ajustado revela que la intensidad de helechos no es
 uniforme, sino que aumenta drásticamente hacia el este (<span class="math inline">\(x\)</span>), pasando de <strong>0.30</strong> a
@@ -6349,7 +6777,7 @@ este patrón.</li>
 </ul>
 <hr />
 </div>
-<div id="guía-de-autoevaluación-errores-comunes-6" class="section level3">
+<div id="guía-de-autoevaluación-errores-comunes-7" class="section level3">
 <h3>📝 Guía de Autoevaluación (Errores Comunes)</h3>
 <ol style="list-style-type: decimal">
 <li><strong>Confundir Tendencia con Interacción:</strong> El error más
@@ -6378,7 +6806,7 @@ esperado es la suma (integral) de las intensidades en toda la
 ventana.</li>
 </ol>
 </div>
-<div id="pause-30" class="section level3">
+<div id="pause-40" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -6522,7 +6950,7 @@ actual (IPP) aún no ha explicado, sugiriendo la necesidad de un modelo
 de segundo orden.</li>
 </ol>
 </div>
-<div id="pause-31" class="section level3">
+<div id="pause-41" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -6573,7 +7001,7 @@ simulación</strong> (envelopes). Si la curva observada se sale de estos
 sobres, se rechaza la hipótesis de aleatoriedad con un nivel de
 confianza estadístico.</p>
 </div>
-<div id="fundamentación-matemática-5" class="section level3">
+<div id="fundamentación-matemática-4" class="section level3">
 <h3>Fundamentación Matemática</h3>
 <div id="intensidad-de-primer-orden-y-kde" class="section level4">
 <h4>Intensidad de Primer Orden y KDE</h4>
@@ -6609,7 +7037,7 @@ en una prueba de Montecarlo de dos colas con <span class="math inline">\(k\)</sp
 dentro de la lista ordenada de valores simulados.</p>
 </div>
 </div>
-<div id="implementación-en-r-5" class="section level3">
+<div id="implementación-en-r-4" class="section level3">
 <h3>Implementación en R</h3>
 <p>Para realizar estos análisis desde cero, utilizamos la librería
 <code>spatstat</code>.</p>
@@ -6694,7 +7122,7 @@ sale por arriba, el patrón es significativamente agrupado; si se sale
 por abajo, es significativamente regular.</p></li>
 </ul>
 </div>
-<div id="errores-comunes-5" class="section level3">
+<div id="errores-comunes-4" class="section level3">
 <h3>Errores Comunes</h3>
 <ol style="list-style-type: decimal">
 <li><p><strong>Subjetividad en el Ancho de Banda:</strong> Al igual que
@@ -6911,7 +7339,7 @@ presenta <strong>agregación</strong> significativa a esas distancias
 presenta <strong>regularidad</strong> significativa (proceso de
 inhibición).</li>
 </ol>
-<div id="errores-comunes-6" class="section level4">
+<div id="errores-comunes-5" class="section level4">
 <h4>Errores Comunes</h4>
 <ul>
 <li><strong>Ignorar la ventana de observación:</strong> El cálculo de la
@@ -7164,7 +7592,7 @@ reina; Distancia: k-NN). Estandarización por filas.</li>
 <code>spdep</code> (<code>poly2nb</code>, <code>nb2listw</code>).</li>
 </ul>
 </div>
-<div id="pause-32" class="section level3">
+<div id="pause-42" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7178,7 +7606,7 @@ Locales de Asociación Espacial (LISA) y estadística Getis-Ord.</li>
 <code>moran.plot</code> y <code>localmoran</code>.</li>
 </ul>
 </div>
-<div id="pause-33" class="section level3">
+<div id="pause-43" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7206,7 +7634,7 @@ CAR).</a></li>
 residuos de OLS. Modelos SLX (Spatially Lagged X).</li>
 </ul>
 </div>
-<div id="pause-34" class="section level3">
+<div id="pause-44" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7221,7 +7649,7 @@ El Modelo de Durbin Espacial (SDM).</li>
 y <code>lagsarlm</code> en <code>spatialreg</code>.</li>
 </ul>
 </div>
-<div id="pause-35" class="section level3">
+<div id="pause-45" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7234,7 +7662,7 @@ Descomposición espectral de la matriz W modificada.</li>
 <li><strong>Fuentes clave:</strong>,.</li>
 </ul>
 </div>
-<div id="pause-36" class="section level3">
+<div id="pause-46" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7259,7 +7687,7 @@ t)\)</span> y funciones de covarianza separables vs. no separables.
 Kriging espacio-temporal.</li>
 </ul>
 </div>
-<div id="pause-37" class="section level3">
+<div id="pause-47" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
@@ -7274,7 +7702,7 @@ geoestadística. Kriging funcional.</li>
 <code>SpatFD</code>.</li>
 </ul>
 </div>
-<div id="pause-38" class="section level3">
+<div id="pause-48" class="section level3">
 <h3>pause</h3>
 </div>
 </div>
