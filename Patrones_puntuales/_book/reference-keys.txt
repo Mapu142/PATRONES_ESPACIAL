@@ -1,0 +1,10 @@
+fig:Exploratoria
+fig:owin
+fig:mosaico
+tab:unnamed-chunk-5
+aplicación-práctica-en-r-análisis-de-patrones-puntuales-de-sismicidad-en-colombia
+instalación-y-carga-de-librerías
+carga-y-preparación-de-datos
+creación-del-patrón-puntual-ppp
+prueba-chi-cuadrado
+formulación-de-hipótesis-estadísticas
