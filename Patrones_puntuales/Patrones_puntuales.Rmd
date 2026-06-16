@@ -57,6 +57,8 @@ library(knitr)
 library(kableExtra)
 library(stars)        # Esencial para convertir mapas de spatstat a ggplot2
 library(ggrepel)      # Crucial para que los IDs no se tapen entre sí
+library(spatstat.geom)
+library(spatstat.explore)
 ```
 
 ### 2. Carga y Preparación de Datos
@@ -392,7 +394,7 @@ g_3x3 <- ggplot() +
   # Capa de la Rejilla estadística translúcida
   geom_sf(data = sf_3x3, 
           fill = "#3498db",          # Azul claro oficial
-          alpha = 0.05,              # Transparencia del 5% 👈
+          alpha = 0.05,              # Transparencia del 5% 
           color = "#e67e22",         # Borde naranja
           linewidth = 0.5, 
           linetype = "dashed") + 
@@ -418,7 +420,7 @@ g_4x4 <- ggplot() +
   # Capa de la Rejilla estadística translúcida
   geom_sf(data = sf_4x4, 
           fill = "#3498db",          # Azul claro oficial
-          alpha = 0.05,              # Transparencia del 5% 👈
+          alpha = 0.05,              # Transparencia del 5% 
           color = "#e67e22",         # Borde naranja
           linewidth = 0.5, 
           linetype = "dashed") + 
@@ -443,7 +445,7 @@ g_5x5 <- ggplot() +
   # Capa de la Rejilla estadística 5x5
   geom_sf(data = sf_5x5, 
           fill = "#3498db",          # Azul claro oficial
-          alpha = 0.05,              # Transparencia del 5% 👈
+          alpha = 0.05,              # Transparencia del 5% 
           color = "#e67e22",         # Borde naranja
           linewidth = 0.5, 
           linetype = "dashed") + 
@@ -468,7 +470,7 @@ g_6x6 <- ggplot() +
   # Capa de la Rejilla estadística 5x5
   geom_sf(data = sf_6x6, 
           fill = "#3498db",          # Azul claro oficial
-          alpha = 0.05,              # Transparencia del 5% 👈
+          alpha = 0.05,              # Transparencia del 5% 
           color = "#e67e22",         # Borde naranja
           linewidth = 0.5, 
           linetype = "dashed") + 
@@ -763,8 +765,8 @@ g_2_vecino <- ggplot() +
 # 5. ACOPLAMIENTO LADO A LADO CON ANOTACIÓN UNIFICADA
 # ==============================================================================
 mosaico_vecindad <- (g_1_vecino + g_2_vecino) + 
-  plot_layout(guides = "collect") & # 👈 Junta las leyendas y crea una sola compartida
-  theme(legend.position = "right")  # 👈 Posiciona la leyenda unificada a la derecha
+  plot_layout(guides = "collect") & #  Junta las leyendas y crea una sola compartida
+  theme(legend.position = "right")  #  Posiciona la leyenda unificada a la derecha
 
 # Añadimos títulos principales
 mosaico_final <- mosaico_vecindad + 
@@ -1031,3 +1033,159 @@ ggplot() +
     panel.background = element_rect(fill = "#eef2f7", color = NA) # Océano azul claro
   )
 ```
+
+Observando el gráfico \@ref(fig:intensidad) se concluye que la actividad sísmica se concentra en regiones asociadas a la cordillera de los Andes:
+
+1. **Suroccidente:** Cerca de **Nariño**, el **Cauca** y el **Valle del Cauca**, esto geologicamente tiene sentido debido a la interacción entre las **placas Naza y Sudamericana.**
+
+2. **Centro-sur andino:** Aproximadamente entre **Huila, Tolima, Meta** y **Caquetá**
+
+
+# Análisis de segundo orden
+
+Aunque se calculó la función K con corrección isotrópica y de borde, para futuros análisis se reportarán principalmente los resultados obtenidos mediante la corrección de traslación.
+
+```{r}
+set.seed(1433)
+envK <- envelope(
+  sismos_ppp,
+  Kest,
+  nsim = 499,
+  correction = "translate"
+)
+# 1. Convertir los resultados de spatstat a Data Frames
+df_kest <- as.data.frame(Kest(sismos_ppp))
+df_env  <- as.data.frame(envK)
+
+# 2. Construir el primer gráfico (Kest)
+g1 <- ggplot(df_kest, aes(x = r)) +
+  geom_line(aes(y = iso, color = "Isotrópica")) +
+  geom_line(aes(y = trans, color = "Translación")) +
+  geom_line(aes(y = border, color = "Borde")) +
+  geom_line(aes(y = theo, color = "Teórica"), linetype = "dashed") +
+  labs(
+    title = "Función K de Ripley con diferentes\ncorrecciones de borde",
+    x = "Distancia (r)", y = "K(r)", color = "Corrección"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
+
+# 3. Construir el segundo gráfico (Envelope / Bandas de confianza)
+g2 <- ggplot(df_env, aes(x = r)) +
+  # Sombra gris para las bandas de confianza (mínimo y máximo simulado)
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
+  # Línea teórica esperada
+  geom_line(aes(y = theo), color = "red", linetype = "dashed") +
+  # Línea observada en tus datos reales
+  geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
+  labs(
+    title = "Bandas de confianza para\ncorrección por traslación",
+    x = "Distancia (r)", y = "K(r)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
+
+# 4. Combinar ambos gráficos sin errores
+mosaico3 <- g1 + g2
+```
+
+```{r kest, fig.cap="Estimación de la función K de Ripley para los sismos en Colombia utilizando las correcciones isotrópica, de traslación y de borde. La curva teórica K pois(r) corresponde al proceso de Poisson homogéneo (CSR)"}
+plot(mosaico3)
+```
+
+
+
+Las distintas correciones mostradas en el gráfico \@ref(fig:kest) conducen a la misma interpretación general: la función $K(r)$ observada se encuentra por encima de la curva teórica esperada bajo un proceso de Poisson homogéneo, lo que sugiere una mayor concentración de eventos de la esperada bajo aleatoriedad espacial completa. No obstante, este resultado puede estar influenciado por la presencia de variaciones espaciales en la intensidad de ocurrencia de los sismos, ya que existen zonas con una mayor densidad de eventos que otras. Dado que la función K clásica supone homogeneidad espacial, a continuación se emplea la función *K inhomogénea* (**Kinhom**), la cual incorpora una estimación de la intensidad local y permite evaluar la estructura espacial de segundo orden una vez controlada la heterogeneidad de primer orden.
+
+```{r}
+lambda_s <- density(sismos_ppp)
+K_sismos_NH <- Kinhom(
+  sismos_ppp,
+  lambda_s,
+  correction = "translate"
+)
+env_kinhom <- envelope(
+  sismos_ppp,
+  fun = Kinhom,
+  nsim = 99,
+  correction = "translate"
+)
+```
+
+```{r kinhom, fig.cap=""}
+plot(K_sismos_NH)
+```
+
+El gráfico \@ref(fig:kinhom) muestra que la aparente agrupación observada mediante la función K clásica parece explicarse principalmente por la variación espacial de la intensidad de ocurrencia de los sismos. Una vez controlada dicha heterogeneidad mediante la función K inhomogénea, la evidencia de agregación disminuye considerablemente.
+
+
+```{r pcfkinhom,fig.cap=""}
+plot(pcf(K_sismos_NH))
+```
+
+La función de correlación por pares, mostrada en el gráfico \@ref(fig:pcfkinhom), presenta valores superiores a la unidad para distancias cortas, lo que sugiere la posible existencia de agregación residual entre eventos incluso después de corregir la heterogeneidad espacial mediante un modelo inhomogéneo.
+
+```{r}
+set.seed(1250)
+# 1. Calcular las bandas de confianza usando Fest
+Fenvel <- envelope(sismos_ppp, Fest, nsim = 499)
+
+# 2. Convertir los resultados de spatstat a Data Frames
+df_Fest <- as.data.frame(Fest(sismos_ppp))
+df_env  <- as.data.frame(Fenvel) 
+
+# 3. Construir el primer gráfico (Fest con diferentes correcciones)
+g1 <- ggplot(df_Fest, aes(x = r)) +
+  geom_line(aes(y = cs, color = "Sin corrección")) +
+  geom_line(aes(y = rs, color = "Borde (Border)")) +
+  geom_line(aes(y = km, color = "Kaplan-Meier")) +
+  geom_line(aes(y = theo, color = "Teórica"), linetype = "dashed") +
+  labs(
+    title = "Función F de Ripley con diferentes\ncorrecciones de borde",
+    x = "Distancia (r)", 
+    y = "F(r)", # Cambiado a F(r)
+    color = "Corrección"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
+
+# 4. Construir el segundo gráfico (Envelope de la función F)
+g2 <- ggplot(df_env, aes(x = r)) +
+  # Sombra gris para las bandas de confianza (mínimo y máximo simulado)
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
+  # Línea teórica esperada
+  geom_line(aes(y = theo), color = "red", linetype = "dashed") +
+  # Línea observada en tus datos reales (por defecto usa la mejor corrección)
+  geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
+  labs(
+    title = "Bandas de confianza para\nla función F de Ripley",
+    x = "Distancia (r)", 
+    y = "F(r)" # Cambiado a F(r)
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
+
+# 5. Combinar ambos gráficos sin errores
+mosaico4 <- g1 + g2
+
+```
+
+```{r Fest, fig.cap="Estimación de la función K de Ripley para los sismos en Colombia utilizando distintas correcciones"}
+plot(mosaico4)
+```
+
+```{r}
+plot(Jest(sismos_ppp))
+```
+
+```{r}
+plot(Gest(sismos_ppp))
+```
+
+
+
+```{r}
+plot(Hest(sismos_ppp))
+```
+
+
