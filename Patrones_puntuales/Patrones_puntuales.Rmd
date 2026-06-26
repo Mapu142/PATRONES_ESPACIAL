@@ -980,10 +980,27 @@ kableExtra::kbl(
 
 Ambos enfoques estadísticos coinciden en que la sismicidad administrada por el Servicio Geológico Colombiano posee un patrón de hiper-agregación espacial (los sistemas de fallas andinos y nidos tectónicos) separados por inmensos silencios espaciales (el océano y las llanuras).
 
+#### 2. Estimación de la intensidad
+
+$$
+\hat{\lambda}(u) = \sum_{i=1}^n \frac{1}{2\pi\sigma^2} \exp\left(-\frac{d(u, x_i)^2}{2\sigma^2}\right)
+$$
+donde:
+
++ $u$: cualquier lugar de Colombia.
+
++ $x_i$: cada sismo observado.
+
++ $d(u, x_i)$: distancia desde el lugar al sismo.
+
++ $\sigma$: controla qué tan lejos influye cada sismo.
+
+
 ```{r mapa_densidad, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 # 2. Cálculo de la Densidad Kernel Continua en spatstat
 # El objeto sismos_ppp ya está escalado a kilómetros automáticamente
-mapa_densidad_sp <- density(unmark(sismos_ppp))
+sigma <- bw.diggle(sismos_ppp)
+mapa_densidad_sp <- density(unmark(sismos_ppp),sigma = sigma)
 
 # 3. TRUCO GEOMÉTRICO: Conversión de formato .im a capas sf en Grados
 raster_densidad   <- st_as_stars(mapa_densidad_sp)
@@ -1400,6 +1417,7 @@ env_mc <- envelope(
   fun = markcorr,
   nsim = 499,
   verbose = FALSE,
+  simulate = expression(rlabel(sismos_ppp)),
   funargs = list(correction = "translation")
 )
 
@@ -1425,7 +1443,7 @@ g2 <- ggplot(df_env, aes(x = r)) +
   # Sombra gris para las bandas de confianza
   geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
   # Línea teórica esperada basada en las simulaciones
-  geom_line(aes(y = theo), color = "red", linetype = "dashed") + 
+  geom_line(aes(y = mmean), color = "red", linetype = "dashed") + 
   # Línea observada en tus datos reales
   geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
   labs(
@@ -1457,6 +1475,7 @@ env_mc <- envelope(
   fun = markvario,
   nsim = 499,
   verbose = FALSE,
+  simulate = expression(rlabel(sismos_ppp)),
   funargs = list(correction = "translation")
 )
 
@@ -1482,7 +1501,7 @@ g2 <- ggplot(df_env, aes(x = r)) +
   # Sombra gris para las bandas de confianza
   geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
   # Línea teórica esperada basada en las simulaciones
-  geom_line(aes(y = theo), color = "red", linetype = "dashed") + 
+  geom_line(aes(y = mmean), color = "red", linetype = "dashed") + 
   # Línea observada en tus datos reales
   geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
   labs(
