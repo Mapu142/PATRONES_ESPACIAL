@@ -1,6 +1,6 @@
 ---
 title: "Patrones Puntuales"
-author: "María Paula Camargo Rincón \nLaura Katherine Martinez Casatiblanco"
+author: "María Paula Camargo Rincón \nLaura Katherine Martinez Castiblanco"
 output:
   bookdown::html_document2:
     theme: flatly
@@ -982,9 +982,13 @@ Ambos enfoques estadísticos coinciden en que la sismicidad administrada por el 
 
 #### 2. Estimación de la intensidad
 
+Se considero una estimación no paramétrica de la intensidad ($\lambda(s)$) mediante un **kernel Gaussiano bivariado**, asumiendo isotropía.
+
+
 $$
 \hat{\lambda}(u) = \sum_{i=1}^n \frac{1}{2\pi\sigma^2} \exp\left(-\frac{d(u, x_i)^2}{2\sigma^2}\right)
 $$
+
 donde:
 
 + $u$: cualquier lugar de Colombia.
@@ -994,6 +998,15 @@ donde:
 + $d(u, x_i)$: distancia desde el lugar al sismo.
 
 + $\sigma$: controla qué tan lejos influye cada sismo.
+
+Para fines descriptivos se decidió utilizar un ancho de banda donde se optimizara el error de predicción, el algoritmo consiste en por cada valor de ancho ed banda:
+
+1. Eliminar un sismo.
+2. Estimar la intensidad.
+3. Evaluar en el sismo retirado.
+4. Calcular criterio de calidad.
+
+El ancho de banda que minimizo mejor el error de predicción.
 
 
 ```{r mapa_densidad, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
