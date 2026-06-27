@@ -1078,9 +1078,54 @@ Observando el gráfico \@ref(fig:intensidad) se concluye que la actividad sísmi
 
 ## 4. Análisis de segundo orden
 
+### Función k de Ripley
+
+Sabemos que hay zonas con mayor intensidad, pero habrá zonas cuyos sismos dependan de otros, es decir, ¿el que ocurra un segundo sismo depende del primero?.
+
+En un patrón no homogéneo, la relación entre la intensidad de segundo orden ($\lambda_2$) y las intensidades individuales ($\lambda(s)$) se describe mediante la función de intensidad \textbf{reponderada} $\rho(h)$, definida como:
+
+$$
+\rho(h) = \frac{\lambda_2(s_i, s_j)}{\lambda(s_i)\lambda(s_j)}
+$$
+
+A partir de esta relación, la función K para el caso inhomogéneo se define teóricamente como la integral de esta correlación:
+
+$$
+K_{inhom}(r) = 2\pi \int_0^r \rho(u)u \, du
+$$
+#### Formulación de Hipótesis Estadísticas
+
+- Hipótesis Nula ($H_0$): Los eventos son independientes, por lo tanto $\lambda_2(s_i, s_j)=\lambda(s_i)\lambda(s_j) \rightarrow \rho(h) = 1$. En consecuencia, el patrón se comporta como un proceso de Poisson no homogéneo (CSR inhomogénea).
+- Hipótesis Alternativa ($H_1$):Aun después de considerar la intensidad espacial $\lambda(s)$, los eventos no son independientes, es decir, 
+$$
+\lambda_2(s_i, s_j)\neq\lambda(s_i)\lambda(s_j) \rightarrow \rho(h) \neq 1
+$$
+Esto indica la existencia de interacción espacial de segundo orden, manifestada como agregación ($\rho(h) > 1$) o inhibición ($\rho(h) < 1$) entre los eventos.
+
+
 Aunque se calculó la función K con corrección isotrópica y de borde, para futuros análisis se reportarán principalmente los resultados obtenidos mediante la corrección de traslación. Además de esto, para el análisis de segundo orden se utilizó un ancho de banda en la estimación de la intensidad menos estricto, siendo aproximadamente 7 veces más grande que en la parte descriptiva ($\sigma \approx 124.45$), esto, con el fin de poder tener una intensidad más suavizada y manejable computacionalmente. 
 
 A continuación se emplea la función *K inhomogénea* (**Kinhom**), la cual incorpora una estimación de la intensidad local y permite evaluar la estructura espacial de segundo orden una vez controlada la heterogeneidad de primer orden.
+
+La formula que lleva a cabo la función es:
+
+$$
+\hat{K}_{inhom}(r) = \sum_{i \neq j} \frac{1(d_{ij} \leq r)}{\lambda(x_i) \lambda(x_j)e_{ij}} 
+$$
+donde:
+
++ $d_{ij}:$ distancia euclidiana entre los sismos $i$ y $j$.
+
++ $1(d_{ij}\leq r):$: función indicadora que toma el valor 1 si la distancia entre los sismos $i$ y $j$ es menor o igual que $r$, y 0 en caso contrario.
+
++ $\hat{\lambda}(x_i)$: intensidad estimada mediante Kernel Density Estimation (KDE) en la ubicación del sismo $i$.
+
++ $\hat{\lambda}(x_i)$: intensidad estimada mediante KDE en la ubicación del sismo $j$.
+
++ $e_{ij}$: factor de corrección por efecto de borde. En este trabajo se empleó la corrección translate, la cual ajusta la contribución de los pares de puntos cuya vecindad se encuentra parcialmente fuera de la ventana de observación.
+
++ $r$: distancia máxima considerada para contabilizar los pares de sismos.
+
 
 ```{r}
 lambda_s <- density(unmark(sismos_ppp))
@@ -1143,7 +1188,26 @@ mosaico4 <- g1 + g2
 plot(mosaico4)
 ```
 
-El gráfico \@ref(fig:kinhom) muestra que una vez controlada la heterogeneidad mediante la función K inhomogénea, no existe evidencia de agregación.
+El gráfico \@ref(fig:kinhom) muestra que una vez controlada la heterogeneidad mediante la función K inhomogénea, no existe evidencia de agregación, es decir los eventos son independientes.
+
+### Función L de Besag
+
+Su relación con función **K de Ripley** es:
+
+$$L_{inhom}=\sqrt{\frac{K_{inhom}}{\pi}}$$
+
+Es utilizada debido a su fácil interpretación.
+
+#### Formulación de Hipótesis Estadísticas
+
+- Hipótesis Nula ($H_0$): Los eventos son independientes, por lo tanto $\lambda_2(s_i, s_j)=\lambda(s_i)\lambda(s_j) \rightarrow \rho(h) = 1$, y por ende se comporta como aleatoriedad espacial completa (CSR, por sus siglas en inglés).
+- Hipótesis Alternativa ($H_1$): El patrón sísmico presenta heterogeneidad espacial o interacciones de segundo orden (agregación o inhibición). La intensidad ($\lambda$) varía significativamente en el espacio.
+
+Para tener una comparativa con la función **K de Ripley** se decidió reportar solamente la correción por **Traslación**.
+
+A continuación se emplea la función *L inhomogénea* (**Linhom**), la cual incorpora una estimación de la intensidad local y permite evaluar la estructura espacial de segundo orden una vez controlada la heterogeneidad de primer orden.
+
+
 
 ```{r}
 set.seed(1030)
@@ -1168,7 +1232,7 @@ g1 <- ggplot(df_Lest, aes(x = r)) +
   geom_line(aes(y = trans, color = "Translación")) +
   geom_line(aes(y = theo, color = "Teórica"), linetype = "dashed") +
   labs(
-    title = "Función L de Ripley con diferentes\ncorrecciones de borde",
+    title = "Función L de Besag con diferentes\ncorrecciones de borde",
     x = "Distancia (r)", 
     y = "L(r)", 
     color = "Corrección"
@@ -1185,7 +1249,7 @@ g2 <- ggplot(df_env, aes(x = r)) +
   # Línea observada en tus datos reales
   geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
   labs(
-    title = "Bandas de confianza para\nla función L de Ripley",
+    title = "Bandas de confianza para\nla función L de Besag",
     x = "Distancia (r)", 
     y = "L(r)"
   ) +
@@ -1198,26 +1262,50 @@ mosaico6 <- g1 + g2
 
 ```
 
-```{r linhom}
+```{r linhom, fig.cap="Función L de Besag eliminando la heterogeneidad"}
 plot(mosaico6)
 ```
 
 Al incorporar una intensidad espacial variable estimada mediante KDE y evaluar la función L inhomogénea (Figura \@ref(fig:linhom) ) bajo simulaciones de un proceso de Poisson no homogéneo, la curva observada permaneció dentro de las bandas de confianza para la mayoría de las distancias analizadas.
 Este resultado indica que cualquier agrupamiento puede atribuirse a la heterogeneidad espacial de la intensidad sísmica y no necesariamente a interacciones espaciales adicionales entre los eventos.
 
-```{r pcfkinhom,fig.cap="Función de correlación por pares"}
+### Función de correlación por pares reponderada
+
+$$
+\rho(h) = \frac{\lambda_2(s_i, s_j)}{\lambda(s_i)\lambda(s_j)}
+$$
+
+Como sabemos si son independientes los eventos entonces $\rho=1$.
+
+Su estimador es esencialmente
+
+$$
+\hat{g}_{\text{inhom}}(r) = \frac{1}{2\pi r} \sum_{i \neq j} \frac{k_h(r - d_{ij})}{\lambda(x_i) \lambda(x_j) e_{ij}},
+$$
+
+donde:
+
++ $k_h(\cdot)$ es un **kernel unidimensional** (normalmente gaussiano) utilizado para suavizar las distancias.
++ $h$ es el bandwidth de ese kernel (diferente del $\sigma$ usado para estimar la intensidad mediante KDE).
++ $e_{ij}$ es la corrección de borde.
++ $\lambda(x_i)$ y $\lambda(x_j)$ son las intensidades estimadas.
+
+
+```{r pcfkinhom,fig.cap="Función de correlación por pares reponderada"}
 plot(
   pcfinhom(
     unmark(sismos_ppp),
     lambda = lambda_s,
     correction = "translate"
-  )
+  ), main = "Función de intensidad reponderada"
 )
 ```
 
 La función de correlación por pares, mostrada en el gráfico \@ref(fig:pcfkinhom), presenta valores superiores a la unidad para distancias cortas, lo que sugiere la posible existencia de agregación residual entre eventos incluso después de corregir la heterogeneidad espacial mediante un modelo inhomogéneo a distancias cortas.
 
 # Dependencia espacial de la magnitud sísmica
+
+Analizar la magnitud (marca) de los sismos es importante porque no solo importa el espacio donde ocurrieron (los eventos) sino tambien sus carácterísicas.
 
 ```{r Exploratoria, fig.cap="Visualización de sismos en Colombia en el año 1990 por magnitud", message=FALSE, warning=FALSE}
 # ==============================================================================
@@ -1329,9 +1417,9 @@ Además, esos eventos parecen concentrarse principalmente en dos zonas que coinc
 
 Sin embargo, visualmente no parece que exista una separación espacial muy marcada entre sismos de baja y alta magnitud; más bien, las magnitudes elevadas se encuentran inmersas dentro de los mismos conglomerados espaciales donde se concentra la actividad sísmica general.
 
-## Magnitud por cuadrantes {.tabset}
+## Magnitud promedio espacial {.tabset}
 
-### Magnitud promedio
+### Magnitud promedio por cuadrantes
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 sismos_cuad <- st_join(
@@ -1378,7 +1466,7 @@ tabla_final %>%
   kableExtra::row_spec(5:8, bold = TRUE, background = "#e8f4fd") 
 ```
 
-### Gráfico ilustrativo
+### Gráfico ilustrativo de los cuadrantes
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 g_3x3 <- ggplot() +
@@ -1403,7 +1491,7 @@ g_3x3 <- ggplot() +
   scale_color_viridis_c(option = "magma", 
                         name = "magnitudd") +            
   coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
-  labs(title = "Prueba por Cuadrantes (3x3)", subtitle = "Evaluación de Homogeneidad CSR", x = "Longitud", y = "Latitud") +
+  labs(title = "Distribución espacial de la magnitud por cuadrantes", subtitle = "Partición espacial empleada en el análisis.", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
     panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
@@ -1419,12 +1507,112 @@ g_3x3
 
 ```
 
-## 
+### Estimación de la magnitud promedio espacial
+
+```{r}
+mag_media <- Smooth.ppp(
+  sismos_ppp,
+  sigma = bw.diggle(sismos_ppp),
+  at = "pixels"
+)
+
+raster_mag <- st_as_stars(mag_media)
+
+sf_mag <- st_as_sf(raster_mag)
+
+# Como sismos_ppp está en kilómetros, regresamos a metros
+st_geometry(sf_mag) <- st_geometry(sf_mag) * 1000
+
+st_crs(sf_mag) <- 9377
+
+# Transformar a coordenadas geográficas
+sf_mag <- st_transform(sf_mag, 4326)
+
+g_magnitud <- ggplot() +
+
+  geom_sf(
+    data = sf_mag,
+    aes(fill = v),
+    color = NA,
+    alpha = 0.85
+  ) +
+
+  scale_fill_viridis_c(
+    option = "magma",
+    name = "Magnitud\nmedia"
+  ) +
+
+  geom_sf(
+    data = paises_vecinos,
+    fill = NA,
+    color = "#bdc3c7", 
+    linewidth = 0.3
+  ) +
+
+  geom_sf(
+    data = colombia_map,
+    fill = NA,
+    color = "#2c3e50",
+    linewidth = 0.7
+  ) +
+
+  geom_sf(
+    data = sismos_sf,
+    aes(size = magnitudd),
+    colour = "white",
+    fill = "#1f78b4",
+    shape = 21,
+    alpha = 0.35,
+    stroke = 0.2
+  ) +
+
+  coord_sf(
+    crs = st_crs(4326),
+    xlim = c(-86, -63),
+    ylim = c(-6.5, 15.5)
+  ) +
+
+  labs(
+    title = "Superficie suavizada de la magnitud sísmica",
+    x = "Longitud",
+    y = "Latitud"
+  ) +
+
+  theme_minimal() +
+
+  theme(
+    panel.background = element_rect(fill = "#eef2f7", colour = NA),
+    panel.grid.major = element_line(
+      colour = "gray90",
+      linetype = "dotted"
+    ),
+    plot.title = element_text(
+      face = "bold",
+      size = 11,
+      colour = "#2c3e50"
+    ),
+    plot.subtitle = element_text(
+      size = 9,
+      colour = "#555555",
+      face = "italic"
+    )
+  )
+
+```
+```{r estimacion-magnitud, fig.cap="Estimación Kernel de la magnitud media espacial"}
+g_magnitud
+```
+
+## Discusión
 
 En la tabla \@ref(tab:magnpromedio) la magnitud promedio por cuadrante oscila entre 6.04 y 7.08, sin embargo, los valores más elevados corresponden a cuadrantes con muy pocos eventos observados, por lo que es díficil interpretar a la alta variabilidad asociada a tamaños muestrales reducidos.
 En contraste, los cuadrantes que concentran la mayor cantidad de sismos (5, 6, 7 y 8) presentan magnitudes promedio relativamente similares, comprendidas entre 6.10 y 6.37, esto sugiere que las zonas con mayor concentración de eventos identificadas en el análisis espacial no marcado no se caracterizan necesariamente por magnitudes significativamente mayores, sino principalmente por una mayor frecuencia de ocurrencia de sismos.
 
 Por otro lado observese que en la figura \@ref(fig:magcuadrantes) podemos ver que el cuadrante 7 contiene ese hot spot del suroccidente colombiano, conteniendo uno de los pocos sismos con alta magnitud, sin embargo su promedio no es muy alejado de los otros cuadrantes destacados en la tabla \@ref(tab:magnpromedio).
+
+Por último, en la Figura \@ref(fig:estimacion-magnitud) se observa que las zonas con magnitud promedio alrededor de $6.1$ coinciden con los cuadrantes destacados en la Tabla @ref(tab:magnpromedio). Sin embargo, la distribución espacial de esta estimación difiere de la intensidad de ocurrencia mostrada en la Figura \@ref(fig:intensidad), lo que indica que las áreas con mayor concentración de sismos no necesariamente corresponden a aquellas donde estos presentan, en promedio, mayores magnitudes.
+
+
 
 ## Función de correlación de marcas
 
@@ -1547,5 +1735,8 @@ mosaico_mc
 Aunque se observa un incremento del variograma (\@ref(fig:correlacionk)) para distancias superiores a aproximadamente 150 km, dicho comportamiento es compatible con lo esperado bajo una asignación aleatoria de las magnitudes a las ubicaciones observadas.
 
 # Conclusiones
+
++ El análisis espacial sugiere que la distribución de los sismos está determinada principalmente por su ubicación geográfica, sin evidenciar interacción espacial significativa entre eventos una vez considerada la variación de la intensidad.
++ La intensidad de ocurrencia y la intensidad marcada describen características diferentes del proceso espacial. Mientras la primera identifica las zonas con mayor concentración de sismos, la segunda refleja la distribución espacial de la magnitud promedio. En consecuencia, una mayor concentración de eventos no implica necesariamente que estos presenten magnitudes más elevadas.
 
 # Referencias
