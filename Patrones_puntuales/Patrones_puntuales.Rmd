@@ -1,10 +1,11 @@
 ---
 title: "Patrones Puntuales"
-author: "María Paula Camargo Rincón \nLaura Katherine Martinez Castiblanco"
+author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
 output:
   bookdown::html_document2:
     theme: flatly
-    toc: false
+    toc: true
+    toc_float: true
     number_sections: true
     self_contained: true
     code_folding: hide
@@ -12,15 +13,25 @@ output:
 editor_options: 
   markdown: 
     wrap: sentence
+bibliography: bibliografia.bib
 ---
+
+# Introducción
+
+Un patrón puntual espacial se define como un conjunto de ubicaciones observadas ,los denominados eventos, que no han sido fijos ni predeterminados por ningún diseño de muestreo, sino que emergen de forma natural o como resultado de procesos subyacentes.
+El análisis de estos patrones resulta fundamental para desentrañar los mecanismos que generan dicha distribución espacial, ya que permite ir más allá de la simple descripción geográfica y adentrarse en la comprensión causal de los fenómenos.
+Esta aproximación tiene aplicaciones en muy diversos campos: desde el estudio de la dispersión de especies y la dinámica de poblaciones, hasta el análisis de la movilidad laboral, la localización de actividades económicas o incluso la prevención de accidentes aéreos.
+En todos estos casos, entender cómo y por qué se agrupan, dispersan o aleatorizan los eventos en el espacio ofrece claves valiosas para la toma de decisiones y la formulación de hipótesis científicas.
 
 # Aplicación Práctica en R: Análisis de Patrones Puntuales de Sismicidad en Colombia
 
-La base de datos utilizada recopila información sobre sismos con magnitud igual o superior a 4.5.
+"*Un sismo es la liberación de energía elástica almacenada durante años por movimientos relativos entre placas tectónicas*" @carrillo2013evaluacion. 
+
 El interés de estudiar estos eventos radica en que pueda generar consecuencias que afectan varios ámbitos de nuestro país.
 
-Para iniciar un ejercicio de **patrones puntuales** siguiendo la metodología de la Dra.
-Martha Bohórquez, el primer paso fundamental es preparar el entorno con las librerías especializadas y transformar los datos tabulares (como los de Excel) en objetos espaciales que R pueda procesar.
+La base de datos utilizada recopila información sobre sismos con magnitud igual o superior a 4.5.
+
+Para iniciar un ejercicio de **patrones puntuales** siguiendo la metodología de la Dra. Martha Bohórquez (@bohorquez2026patrones), el primer paso fundamental es preparar el entorno con las librerías especializadas y transformar los datos tabulares (como los de Excel) en objetos espaciales que R pueda procesar.
 
 A continuación, se presenta el código inicial estructurado para instalar las herramientas necesarias, cargar los datos de los epicentros y crear un objeto de patrón puntual (`ppp`).
 
@@ -171,6 +182,7 @@ ventana_owin <- as.owin(st_geometry(ventana_sf))
 ventana_grados <- st_transform(ventana_sf, crs = 4326)
 
 ```
+
 ```{r mapa, fig.cap="Visualización de sismos en Colombia en el año 1990", message=FALSE, warning=FALSE}
 # ==============================================================================
 #  VISUALIZACIÓN CON GGPlot2 (Mapa profesional)
@@ -222,7 +234,7 @@ ggplot() +
 Un patrón puntual espacial consiste en un conjunto de ubicaciones llamadas **eventos**.
 Para usar `spatstat`, debemos extraer las coordenadas y definir una **ventana de observación** (`owin`), que delimita el área donde el fenómeno es posible.
 
-Para trabajar exactamente con la ventana de visualización que presenta el Servicio Geológico Colombiano (SGC) en su plataforma interactiva (la cual incluye sismos en el océano Pacífico, el mar Caribe y zonas fronterizas), la decisión de usar una ventana rectangular (`owin` de tipo caja)
+Para trabajar exactamente con la ventana de visualización que presenta el Servicio Geológico Colombiano (SGC) en su plataforma interactiva (la cual incluye sismos en el océano Pacífico, el mar Caribe y zonas fronterizas).
 
 ```{r objeto ppp}
 # ==============================================================================
@@ -245,7 +257,6 @@ sismos_ppp <- spatstat.geom::rescale(sismos_ppp, 1000, "km")
 
 
 ```
-
 
 ```{r owin, fig.cap="Patrón puntual sísmico"}
 ggplot() +
@@ -567,8 +578,6 @@ tabla_resultados <- tabla_resultados %>%
 
 ```
 
-
-
 ```{r chi}
 kableExtra::kbl(
   tabla_resultados,
@@ -606,8 +615,7 @@ kableExtra::kbl(
 
 Los resultados observados en la Tabla \@ref(tab:chi) confirman que al evaluar el patrón mediante el estadístico óptimo de Cressie-Read la sismicidad mantiene un rechazo absoluto del modelo nulo de aleatoriedad.
 
-Al evaluar los vecinos de primer y segundo orden presentados en la tabla \@ref(tab:vecinos)
-y los mapas consiguientes, se evidencia que los sismos se agrupan en zonas muy específicas, principalmente en la región Andina y la costa del Pacífico.
+Al evaluar los vecinos de primer y segundo orden presentados en la tabla \@ref(tab:vecinos) y los mapas consiguientes, se evidencia que los sismos se agrupan en zonas muy específicas, principalmente en la región Andina y la costa del Pacífico.
 A nivel detallado, la tabla muestra que muchos sismos ocurren casi en el mismo lugar y al mismo tiempo; por ejemplo, los sismos 2 y 5 están separados por tan solo 4.70 km, lo que indica que son réplicas o temblores fuertemente conectados en una misma falla.
 
 ```{r mapa_vecinos, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
@@ -984,30 +992,26 @@ Ambos enfoques estadísticos coinciden en que la sismicidad administrada por el 
 
 Se considero una estimación no paramétrica de la intensidad ($\lambda(s)$) mediante un **kernel Gaussiano bivariado**, asumiendo isotropía.
 
-
-$$
-\hat{\lambda}(u) = \sum_{i=1}^n \frac{1}{2\pi\sigma^2} \exp\left(-\frac{d(u, x_i)^2}{2\sigma^2}\right)
-$$
+$$\hat{\lambda}(u) = \sum_{i=1}^n \frac{1}{2\pi\sigma^2} \exp\left(-\frac{d(u, x_i)^2}{2\sigma^2}\right)$$
 
 donde:
 
-+ $u$: cualquier lugar de Colombia.
+- $u$: cualquier lugar de Colombia.
 
-+ $x_i$: cada sismo observado.
+- $x_i$: cada sismo observado.
 
-+ $d(u, x_i)$: distancia desde el lugar al sismo.
+- $d(u, x_i)$: distancia desde el lugar al sismo.
 
-+ $\sigma$: controla qué tan lejos influye cada sismo.
+- $\sigma$: controla qué tan lejos influye cada sismo.
 
-Para fines descriptivos se decidió utilizar un ancho de banda donde se optimizara el error de predicción, el algoritmo consiste en por cada valor de ancho ed banda:
+Para fines descriptivos se decidió utilizar un ancho de banda donde se optimizara el error de predicción, el algoritmo consiste en que por cada valor de ancho de banda:
 
-1. Eliminar un sismo.
-2. Estimar la intensidad.
-3. Evaluar en el sismo retirado.
-4. Calcular criterio de calidad.
+1.  Eliminar un sismo.
+2.  Estimar la intensidad.
+3.  Evaluar en el sismo retirado.
+4.  Calcular criterio de calidad.
 
-El ancho de banda que minimizo mejor el error de predicción.
-
+El ancho de banda que minimizo mejor el error de predicción fue de aproximadamente $18.75$ km.
 
 ```{r mapa_densidad, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 # 2. Cálculo de la Densidad Kernel Continua en spatstat
@@ -1066,19 +1070,21 @@ ggplot() +
 
 Observando el gráfico \@ref(fig:intensidad) se concluye que la actividad sísmica se concentra en regiones asociadas a la cordillera de los Andes:
 
-1. **Suroccidente:** Cerca de **Nariño**, el **Cauca** y el **Valle del Cauca**, esto geologicamente tiene sentido debido a la interacción entre las **placas Naza y Sudamericana.**
+1.  **Suroccidente:** En **Nariño** y **el Cauca**, esto geologicamente tiene sentido debido a la interacción entre las **placas Naza y Sudamericana.**
 
-2. **Centro-sur andino:** Aproximadamente entre **Huila, Tolima, Meta** y **Caquetá**
+2.  **Centro-sur andino:** Aproximadamente entre **Huila, Tolima, Meta** y **Cundinamarca**
 
+3. **Eje Cafetero:** Se identifica un foco secundario entre **Quindío**, **Risaralda**, **norte del Valle del Cauca** y **Tolima**, región caracterizada por una elevada actividad sísmica asociada a sistemas de fallas andinas.
 
 ## 4. Análisis de segundo orden
 
-Aunque se calculó la función K con corrección isotrópica y de borde, para futuros análisis se reportarán principalmente los resultados obtenidos mediante la corrección de traslación.
+Aunque se calculó la función K con corrección isotrópica y de borde, para futuros análisis se reportarán principalmente los resultados obtenidos mediante la corrección de traslación. Además de esto, para el análisis de segundo orden se utilizó un ancho de banda en la estimación de la intensidad menos estricto, siendo aproximadamente 7 veces más grande que en la parte descriptiva ($\sigma \approx 124.45$), esto, con el fin de poder tener una intensidad más suavizada y manejable computacionalmente. 
 
 A continuación se emplea la función *K inhomogénea* (**Kinhom**), la cual incorpora una estimación de la intensidad local y permite evaluar la estructura espacial de segundo orden una vez controlada la heterogeneidad de primer orden.
 
 ```{r}
 lambda_s <- density(unmark(sismos_ppp))
+attributes(lambda_s)$sigma
 K_sismos_NH <- Kinhom(
   unmark(sismos_ppp),
   lambda_s,
@@ -1195,7 +1201,9 @@ mosaico6 <- g1 + g2
 ```{r linhom}
 plot(mosaico6)
 ```
-Al incorporar una intensidad espacial variable estimada mediante KDE y evaluar la función L inhomogénea (Figura \@ref(fig:linhom) ) bajo simulaciones de un proceso de Poisson no homogéneo, la curva observada permaneció dentro de las bandas de confianza para la mayoría de las distancias analizadas. Este resultado indica que cualquier agrupamiento puede atribuirse a la heterogeneidad espacial de la intensidad sísmica y no necesariamente a interacciones espaciales adicionales entre los eventos.
+
+Al incorporar una intensidad espacial variable estimada mediante KDE y evaluar la función L inhomogénea (Figura \@ref(fig:linhom) ) bajo simulaciones de un proceso de Poisson no homogéneo, la curva observada permaneció dentro de las bandas de confianza para la mayoría de las distancias analizadas.
+Este resultado indica que cualquier agrupamiento puede atribuirse a la heterogeneidad espacial de la intensidad sísmica y no necesariamente a interacciones espaciales adicionales entre los eventos.
 
 ```{r pcfkinhom,fig.cap="Función de correlación por pares"}
 plot(
@@ -1261,7 +1269,6 @@ ggplot() +
 Podemos ver en la figura \@ref(fig:Exploratoria) una clara concentración sobre la región andina, mostrando que los sismos no se comportan de manera uniforme a través de todo el territorio.
 Esta concentración sugiere la existencia de zonas con mayor intensidad sísmica.
 
-
 ```{r owinmagnitud, fig.cap="Patrón puntual sísmico e influencia regional"}
 ggplot() +
   # Capa 1: Países vecinos (Fondo gris neutro y bordes sutiles)
@@ -1313,11 +1320,12 @@ ggplot() +
   )
 ```
 
-Al mirar el mapa (Figura \@ref(fig:owinmagnitud)) se observan algunos eventos de mayor magnitud (tonos más claros y tamaños mayores), pero son pocos respecto al total de sismos. Además, esos eventos parecen concentrarse principalmente en dos zonas que coinciden con los focos de concentración identificados previamente en el análisis sin marca:
+Al mirar el mapa (Figura \@ref(fig:owinmagnitud)) se observan algunos eventos de mayor magnitud (tonos más claros y tamaños mayores), pero son pocos respecto al total de sismos.
+Además, esos eventos parecen concentrarse principalmente en dos zonas que coinciden con los focos de concentración identificados previamente en el análisis sin marca:
 
-1. Suroccidente colombiano, asociado a la interacción entre las placas de Nazca y Sudamericana.
+1.  Suroccidente colombiano, asociado a la interacción entre las placas de Nazca y Sudamericana.
 
-2. Centro-sur andino, aproximadamente entre Huila, Tolima, Meta y Caquetá.
+2.  Centro-sur andino, aproximadamente entre Huila, Tolima, Meta y Caquetá.
 
 Sin embargo, visualmente no parece que exista una separación espacial muy marcada entre sismos de baja y alta magnitud; más bien, las magnitudes elevadas se encuentran inmersas dentro de los mismos conglomerados espaciales donde se concentra la actividad sísmica general.
 
@@ -1370,7 +1378,6 @@ tabla_final %>%
   kableExtra::row_spec(5:8, bold = TRUE, background = "#e8f4fd") 
 ```
 
-
 ### Gráfico ilustrativo
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -1412,12 +1419,12 @@ g_3x3
 
 ```
 
-##
+## 
 
-En la tabla \@ref(tab:magnpromedio) la magnitud promedio por cuadrante oscila entre 6.04 y 7.08, sin embargo, los valores más elevados corresponden a cuadrantes con muy pocos eventos observados, por lo que es díficil interpretar a la alta variabilidad asociada a tamaños muestrales reducidos. En contraste, los cuadrantes que concentran la mayor cantidad de sismos (5, 6, 7 y 8) presentan magnitudes promedio relativamente similares, comprendidas entre 6.10 y 6.37, esto sugiere que las zonas con mayor concentración de eventos identificadas en el análisis espacial no marcado no se caracterizan necesariamente por magnitudes significativamente mayores, sino principalmente por una mayor frecuencia de ocurrencia de sismos.
+En la tabla \@ref(tab:magnpromedio) la magnitud promedio por cuadrante oscila entre 6.04 y 7.08, sin embargo, los valores más elevados corresponden a cuadrantes con muy pocos eventos observados, por lo que es díficil interpretar a la alta variabilidad asociada a tamaños muestrales reducidos.
+En contraste, los cuadrantes que concentran la mayor cantidad de sismos (5, 6, 7 y 8) presentan magnitudes promedio relativamente similares, comprendidas entre 6.10 y 6.37, esto sugiere que las zonas con mayor concentración de eventos identificadas en el análisis espacial no marcado no se caracterizan necesariamente por magnitudes significativamente mayores, sino principalmente por una mayor frecuencia de ocurrencia de sismos.
 
 Por otro lado observese que en la figura \@ref(fig:magcuadrantes) podemos ver que el cuadrante 7 contiene ese hot spot del suroccidente colombiano, conteniendo uno de los pocos sismos con alta magnitud, sin embargo su promedio no es muy alejado de los otros cuadrantes destacados en la tabla \@ref(tab:magnpromedio).
-
 
 ## Función de correlación de marcas
 
@@ -1472,12 +1479,15 @@ mosaico_mc <- g1 + g2
 
 ```
 
-
 ```{r correlacionk, fig.cap="La función de correlación de marcas"}
 mosaico_mc
 ```
 
-La función de correlación de marcas se utilizó para evaluar si las magnitudes sísmicas presentan dependencia espacial. La curva observada mostró ligeras fluctuaciones alrededor del valor teórico de referencia ($k_{mm}(r)=1$), con una leve tendencia positiva entre aproximadamente 180 y 220 km. Sin embargo, al comparar la función observada con las envolventes Monte Carlo (\@ref(fig:correlacionk)) obtenidas mediante permutación aleatoria de las marcas, se encontró que la curva permanece completamente dentro de las bandas de simulación. En consecuencia, no existe evidencia estadística suficiente para rechazar la hipótesis de independencia entre la magnitud de los sismos y su localización espacial. Esto sugiere que las zonas donde se concentra la actividad sísmica no presentan necesariamente magnitudes mayores que las esperadas bajo una asignación aleatoria de las marcas.
+La función de correlación de marcas se utilizó para evaluar si las magnitudes sísmicas presentan dependencia espacial.
+La curva observada mostró ligeras fluctuaciones alrededor del valor teórico de referencia ($k_{mm}(r)=1$), con una leve tendencia positiva entre aproximadamente 180 y 220 km.
+Sin embargo, al comparar la función observada con las envolventes Monte Carlo (\@ref(fig:correlacionk)) obtenidas mediante permutación aleatoria de las marcas, se encontró que la curva permanece completamente dentro de las bandas de simulación.
+En consecuencia, no existe evidencia estadística suficiente para rechazar la hipótesis de independencia entre la magnitud de los sismos y su localización espacial.
+Esto sugiere que las zonas donde se concentra la actividad sísmica no presentan necesariamente magnitudes mayores que las esperadas bajo una asignación aleatoria de las marcas.
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 set.seed(1900)
@@ -1533,9 +1543,9 @@ mosaico_mc <- g1 + g2
 ```{r variograma}
 mosaico_mc
 ```
+
 Aunque se observa un incremento del variograma (\@ref(fig:correlacionk)) para distancias superiores a aproximadamente 150 km, dicho comportamiento es compatible con lo esperado bajo una asignación aleatoria de las magnitudes a las ubicaciones observadas.
 
 # Conclusiones
 
-
-
+# Referencias
