@@ -620,7 +620,7 @@ A nivel detallado, la tabla muestra que muchos sismos ocurren casi en el mismo l
 
 ```{r mapa_vecinos, fig.height=7, fig.width=11, message=FALSE, warning=FALSE}
 
-# Qué hace: Construye una matriz simétrica de tamaño \(N \times N\) (donde \(N\) es el número total de sismos). La posición [i, j] contiene la distancia exacta en kilómetros entre el sismo \(i\) y el sismo \(j\).
+# Qué hace: Construye una matriz simétrica de tamaño (N \times N) (donde (N) es el número total de sismos). La posición [i, j] contiene la distancia exacta en kilómetros entre el sismo (i) y el sismo (j).
 # Tu ejemplo: La distancia entre el sismo 1 y el sismo 2 es de 360.61 km. La distancia del sismo 2 al sismo 5 es de apenas 10.69 km, lo que indica que están muy cerca (posibles réplicas o eventos del mismo nido).
 
 Distodas <- pairdist(unmark(sismos_ppp))
@@ -1738,5 +1738,168 @@ Aunque se observa un incremento del variograma (\@ref(fig:correlacionk)) para di
 
 + El análisis espacial sugiere que la distribución de los sismos está determinada principalmente por su ubicación geográfica, sin evidenciar interacción espacial significativa entre eventos una vez considerada la variación de la intensidad.
 + La intensidad de ocurrencia y la intensidad marcada describen características diferentes del proceso espacial. Mientras la primera identifica las zonas con mayor concentración de sismos, la segunda refleja la distribución espacial de la magnitud promedio. En consecuencia, una mayor concentración de eventos no implica necesariamente que estos presenten magnitudes más elevadas.
+
+
+# Ejercicios de clase: Prueba de Homogeneidad con Índice de Clark-Evans
+
+## 6. Para 3 eventos en una región de área $16u^2$ , sin eventos en el borde:
+
+1. ¿Cuál es la probabilidad de que un evento esté dentro de la distancia ( 4u ) de un evento específico?
+
+Dado que los eventos se distribuyen aleatoriamente en el área de ( 16u^2 ), la probabilidad de que un segundo evento caiga dentro de un círculo de radio ( r = 4u ) alrededor de un evento específico es:
+
+$$
+P = \frac{\text{Área del círculo de radio } 4u}{\text{Área total}} = \frac{\pi (4)^2}{16} = \frac{16\pi}{16} = \pi.
+$$
+
+Dado que $\pi \approx 3.1416$, esto sugiere que en este caso particular la probabilidad es mayor que 1, lo cual indica que el círculo de radio 4 cubre más área que la ventana de estudio (ya que el área del círculo es $ 16\pi \approx 50.27 $ y el área de la ventana es 16). Por lo tanto, debemos considerar la intersección del círculo con la ventana.
+
+2. Dada la homogeneidad del patrón, ¿cuánto es el valor de la intensidad en cada punto del área?
+
+La intensidad ( \lambda ) (número esperado de eventos por unidad de área) bajo homogeneidad es:
+
+$$
+\lambda = \frac{n}{A} = \frac{3}{16} = 0.1875,\hspace{1cm}\text{eventos por unidad de área}.
+$$
+
+## 7. Con base en el enunciado anterior, si este es el patrón observado:
+
+| x   | 2.3 | 3.9 | 1.8 |
+|-----|-----|-----|-----|
+| y   | 3.8 | 2.4 | 3.5 |
+
+**Cuadro 1.1: Patrón observado**
+
+Realice la prueba de la hipótesis de homogeneidad usando el índice de Clark-Evans:
+
+- **Asumiendo normalidad.**
+- **Usando Montecarlo** a partir de la siguiente información relacionada:  
+  Se hizo una simulación aleatoria de patrones homogéneos en la misma ventana, con los siguientes resultados para el índice de Clark-Evans:  
+  4.089047, 2.036709, 1.999559, 2.042786, 2.246962, 2.132787, 3.592137, 2.841816, 2.414787, 2.561401, 3.379868, 3.254646, 3.834864, 2.236916, 3.011672, 3.905689, 4.086589, 4.031859, 1.993797.
+
+El índice de Clark-Evans se define como:
+
+$$
+R = \frac{\bar{r}_{\text{obs}}}{\bar{r}_{\text{esp}}},
+$$
+
+donde:
+
+- ( $\bar{r}_{\text{obs}}$ ) es la distancia promedio observada al vecino más cercano.
+- ( $\bar{r}_{\text{esp}}$ ) es la distancia esperada bajo un patrón aleatorio homogéneo.
+
+Para un patrón Poisson en un área ( A ) con ( n ) puntos:
+
+$$
+\bar{r}_{\text{esp}} = \frac{1}{2\sqrt{\lambda}} = \frac{1}{2\sqrt{0.1875}} \approx 1.1547.
+$$
+
+### Cálculo de ( \bar{r}_{\text{obs}} )
+
+Datos observados:
+
+| Punto | x   | y   |
+|-------|-----|-----|
+| A     | 2.3 | 3.8 |
+| B     | 3.9 | 2.4 |
+| C     | 1.8 | 3.5 |
+
+Distancia al vecino más cercano para cada punto:
+
+- **Punto A (2.3, 3.8):**
+  - a Punto 2: ( \sqrt{(3.9-2.3)^2 + (2.4-3.8)^2} = \sqrt{1.6^2 + (-1.4)^2} = \sqrt{2.56 + 1.96} = \sqrt{4.52} \approx 2.126 )
+  - a Punto 3: ( \sqrt{(1.8-2.3)^2 + (3.5-3.8)^2} = \sqrt{(-0.5)^2 + (-0.3)^2} = \sqrt{0.25 + 0.09} = \sqrt{0.34} \approx 0.583 )
+  - **Mínimo:** 0.583
+
+- **Punto B (3.9, 2.4):**
+  - a Punto 1: 2.126
+  - a Punto 3: ( \sqrt{(1.8-3.9)^2 + (3.5-2.4)^2} = \sqrt{(-2.1)^2 + 1.1^2} = \sqrt{4.41 + 1.21} = \sqrt{5.62} \approx 2.371 )
+  - **Mínimo:** 2.126
+
+- **Punto C (1.8, 3.5):**
+  - a Punto 1: 0.583
+  - a Punto 2: 2.371
+  - **Mínimo:** 0.583
+
+Entonces:
+
+$$
+\bar{r}_{\text{obs}} = \frac{0.583 + 2.126 + 0.583}{3} = \frac{3.292}{3} \approx 1.0973.
+$$
+
+Por lo tanto:
+
+$$
+R = \frac{1.0973}{1.1547} \approx 0.9503.
+$$
+
+### Prueba de hipótesis bajo normalidad
+
+El estadístico de prueba ( Z ) se aproxima como:
+
+$$
+Z = \frac{R - 1}{\text{SE}(R)},
+$$
+
+donde:
+
+$$
+\text{SE}(R) \approx \frac{0.26136}{\sqrt{n \cdot \lambda}} = \frac{0.26136}{\sqrt{3 \cdot 0.1875}} = \frac{0.26136}{\sqrt{0.5625}} = \frac{0.26136}{0.75} \approx 0.3485.
+$$
+
+Entonces:
+
+$$
+Z = \frac{0.9503 - 1}{0.3485} = \frac{-0.0497}{0.3485} \approx -0.1426.
+$$
+
+Con un nivel de significancia ( \alpha = 0.05 ), el valor crítico para una prueba bilateral es ( \pm 1.96 ). Como ( -0.1426 ) se encuentra dentro del intervalo ( [-1.96, 1.96] ), **no se rechaza la hipótesis de homogeneidad**.
+
+---
+
+## 4. Prueba de Clark-Evans usando Montecarlo
+
+Resultados de la simulación (19 valores):
+
+$$
+\begin{aligned}
+&4.089047,\ 2.036709,\ 1.999559,\ 2.042786,\ 2.246962,\ 2.132787,\ 3.592137,\ 2.841816,\\
+&2.414787,\ 2.561401,\ 3.379868,\ 3.254646,\ 3.834864,\ 2.236916,\ 3.011672,\ 3.905689,\\
+&4.086589,\ 4.031859,\ 1.993797.
+\end{aligned}
+$$
+
+### Cálculo del ( R ) observado
+
+Ya calculamos:
+
+$$
+R_{\text{obs}} \approx 0.9503.
+$$
+
+### Determinación del p-valor empírico
+
+Para obtener el p-valor, comparamos ( R_{\text{obs}} ) con los valores simulados bajo homogeneidad. Observamos que todos los valores simulados son **mayores que 1.99**, mientras que ( R_{\text{obs}} \approx 0.95 ), que es considerablemente menor.
+
+Contamos cuántos valores simulados son menores o iguales a ( R_{\text{obs}} ):
+
+Ninguno de los 19 valores es menor que 0.9503. Por lo tanto, el p-valor empírico es:
+
+$$
+p = \frac{0 + 1}{19 + 1} = \frac{1}{20} = 0.05.
+$$
+
+Esto indica que, al nivel ( \alpha = 0.05 ), el valor observado está en el límite de la región de rechazo. Si se usa un nivel de significancia estricto de 0.05, **se rechaza la hipótesis de homogeneidad** (pues ( p \leq 0.05 )).
+
+---
+
+## Resumen de resultados
+
+| Prueba                        | Estadístico | Conclusión                          |
+|-------------------------------|-------------|-------------------------------------|
+| Normalidad                    | ( Z \approx -0.1426 ) | No se rechaza homogeneidad         |
+| Montecarlo (p-valor empírico) | ( p \approx 0.05 )   | Rechazo en el límite (si ( \alpha = 0.05 )) |
+
+**Nota:** La discrepancia entre ambas pruebas puede deberse a que la aproximación normal no es adecuada para muestras muy pequeñas (( n = 3 )), por lo que el método de Montecarlo es más fiable en este contexto.
 
 # Referencias
