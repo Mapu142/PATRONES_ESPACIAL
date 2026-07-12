@@ -70,9 +70,11 @@ library(stars)        # Esencial para convertir mapas de spatstat a ggplot2
 library(ggrepel)      # Crucial para que los IDs no se tapen entre sí
 library(spatstat.geom)
 library(spatstat.explore)
+library(corrplot)
+
 ```
 
-### 2. Carga y Preparación de Datos
+### 2. Carga y Preparación de Datos 
 
 Dado que los datos de epicentros suelen venir en coordenadas geográficas (latitud/longitud), es una buena práctica convertirlos a un sistema proyectado (en metros) para que los cálculos de distancias e intensidades sean precisos.
 
@@ -228,6 +230,7 @@ ggplot() +
 
 
 ```
+
 
 ### 3. Creación del Patrón Puntual (`ppp`)
 
@@ -1303,9 +1306,11 @@ plot(
 
 La función de correlación por pares, mostrada en el gráfico \@ref(fig:pcfkinhom), presenta valores superiores a la unidad para distancias cortas, lo que sugiere la posible existencia de agregación residual entre eventos incluso después de corregir la heterogeneidad espacial mediante un modelo inhomogéneo a distancias cortas.
 
-# Dependencia espacial de la magnitud sísmica
+# Dependencia espacial de la magnitud sísmica {.tabset}
 
 Analizar la magnitud (marca) de los sismos es importante porque no solo importa el espacio donde ocurrieron (los eventos) sino tambien sus carácterísicas.
+
+## Visualización
 
 ```{r Exploratoria, fig.cap="Visualización de sismos en Colombia en el año 1990 por magnitud", message=FALSE, warning=FALSE}
 # ==============================================================================
@@ -1353,6 +1358,34 @@ ggplot() +
 
 
 ```
+
+## Correlación 
+
+```{r}
+
+coords <- st_coordinates(sismos_sf)
+datos <- cbind(sismos_sf$magnitudd, coords[,c(1,2)])
+
+mat_cor <- cor(
+  datos,
+  method = "pearson",
+  use = "complete.obs"
+)
+
+```
+
+```{r corrplot, fig.align='center',fig.cap="Correlación de pearson entre la variable magnitud y las coordenadas"}
+corrplot(
+  mat_cor,
+  method = "color",
+  addCoef.col = "black",
+  tl.col = "black",
+  number.cex = 0.8
+)
+```
+
+
+# Discusión
 
 Podemos ver en la figura \@ref(fig:Exploratoria) una clara concentración sobre la región andina, mostrando que los sismos no se comportan de manera uniforme a través de todo el territorio.
 Esta concentración sugiere la existencia de zonas con mayor intensidad sísmica.

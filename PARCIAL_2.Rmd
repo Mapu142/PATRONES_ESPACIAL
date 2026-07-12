@@ -11,11 +11,10 @@ library(readxl)
 library(dplyr)
 library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
 library(tidyverse)
+library(corrplot)
 
 
 ```
-
-
 
 ```{r PM10-O3, eval=FALSE, warning=FALSE, include=FALSE}
 reporte_ene_jun_2024 <- read_excel("reporteIbocaene-jun-2024.xlsx", 
@@ -190,6 +189,8 @@ O3 <- O3 %>%
     values_to = "O3"             # Los valores van a una nueva columna llamada O3
   )
 
+
+
 ```
 
 ```{r}
@@ -205,5 +206,47 @@ tabla_conteos_NAS <- data.frame(
   row.names = NULL
 )
 tabla_conteos_NAS
+
+estaciones <- read_excel("Base_Trabajo2.xlsx", 
+    sheet = "Ubicaciones", range = "A3:J23")
+
+reporte_completo$Estacion <-
+  stringi::stri_trans_general(reporte_completo$Estacion, "Latin-ASCII")
+
+estaciones$Estacion <-
+  stringi::stri_trans_general(estaciones$Estacion, "Latin-ASCII")
+
+estaciones <- estaciones |>
+  mutate(
+    Estacion = recode(
+      Estacion,
+      "Centro de alto rendimiento" = "CDAR",
+      "Carvajal-Sevillana" = "Carvajal - Sevillana",
+      "El Jazmin" = "Jazmin",
+      "Estacion movil 7ma" = "Movil 7ma"
+    )
+  )
+
+reporte_completo <- reporte_completo  %>% 
+  left_join(
+    estaciones,
+    by = "Estacion"
+  )
+```
+
+```{r}
+mat_cor <- cor(
+  reporte_completo[, c("PM10", "x", "y")],
+  method = "pearson",
+  use = "complete.obs"
+)
+
+corrplot(
+  mat_cor,
+  method = "color",
+  addCoef.col = "black",
+  tl.col = "black",
+  number.cex = 0.8
+)
 ```
 
