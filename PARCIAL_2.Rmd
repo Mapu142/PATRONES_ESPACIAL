@@ -357,6 +357,8 @@ reporte_completo %>%
   ) 
 ```
 
+# Calidad de datos {.tabset}
+
 ## Datos faltantes
 
 ```{r faltantes, tab.cap="Conteo de datos faltantes"}
@@ -385,7 +387,14 @@ tabla_conteos_NAS %>%
   ) 
 ```
 
-# Visualizaciones{.tabset}
+## Boxplot de PM10
+
+```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=14, message=FALSE, warning=FALSE}
+ggplot()+
+  geom_boxplot(data = reporte_completo, aes(y = PM10),fill = "#41B7C4")
+```
+
+# Exploración espacial{.tabset}
 
 ## Mapa de bogotá
 
@@ -447,12 +456,14 @@ anim_save("PM10_Bogota.gif", anim)
 knitr::include_graphics("PM10_Bogota.gif")
 ```
 
+# Relaciones ente variables {.tabset}
+
 ## Correlación con la variable de interés $PM_{10}$
 
 ```{r correlacion-variable, fig.height=10, fig.width=10}
 mat_cor <- cor(
   reporte_completo  %>% 
-    dplyr::select(PM10, Longitud, Latitud),
+    dplyr::select(PM10, O3, `Altitud (m)`, `Altura (m)`),
   use = "complete.obs"
 )
 
