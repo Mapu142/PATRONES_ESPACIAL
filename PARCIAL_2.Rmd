@@ -1,19 +1,34 @@
 ---
-title: "PARCIAL 2"
-author: "María Paula Camargo Rincón"
-date: "2026-06-04"
-output: html_document
+title: "Patrones Puntuales"
+author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
+output:
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    code_folding: hide
+    mathjax: default
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
 
 ```{r Librerias, include=FALSE}
 #setwd("C:/PERSONAL_MAPU/UNIVERSIDADES/NACIONAL/ESTADÍSTICA_ESPACIAL/PARCIAL_2")
 library(readxl)
 library(dplyr)
+library(stringr)
 library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
 library(tidyverse)
 library(corrplot)
-
-
+library(sf)
+library(ggplot2)
+library(kableExtra)
+library(measurements)
+library(gganimate) # para hacer película
+library(gifski) #para renderizar la película
 ```
 
 ```{r PM10-O3, eval=FALSE, warning=FALSE, include=FALSE}
@@ -189,24 +204,6 @@ O3 <- O3 %>%
     values_to = "O3"             # Los valores van a una nueva columna llamada O3
   )
 
-
-
-```
-
-```{r}
-# 3. Unir ambos datasets en uno solo final
-#reporte_completo <- full_join(PM10, O3, by = c("Fecha & Hora", "Estacion"))
-#writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
-reporte_completo <- read_excel("reporte_completo.xlsx")
-str(reporte_completo)
-summary(reporte_completo)
-tabla_conteos_NAS <- data.frame(
-  estaciones=names(reporte_completo)[-1],
-  conteos=colSums(is.na(reporte_completo))[-1],
-  row.names = NULL
-)
-tabla_conteos_NAS
-
 estaciones <- read_excel("Base_Trabajo2.xlsx", 
     sheet = "Ubicaciones", range = "A3:J23")
 
@@ -216,7 +213,7 @@ reporte_completo$Estacion <-
 estaciones$Estacion <-
   stringi::stri_trans_general(estaciones$Estacion, "Latin-ASCII")
 
-estaciones <- estaciones |>
+estaciones <- estaciones %>%
   mutate(
     Estacion = recode(
       Estacion,
@@ -232,12 +229,230 @@ reporte_completo <- reporte_completo  %>%
     estaciones,
     by = "Estacion"
   )
+
 ```
 
-```{r}
+# Introducción
+
+```{r base-datos}
+#writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
+reporte_completo <- read_excel("reporte_completo.xlsx")
+dms_a_decimal <- function(x) {
+
+  nums <- str_extract_all(x, "\\d+\\.?\\d*")
+
+  decimal <- sapply(seq_along(nums), function(i) {
+
+    v <- as.numeric(nums[[i]])
+
+    dec <- v[1] + v[2] / 60 + v[3] / 3600
+
+    if (str_detect(x[i], "[WS]$")) {
+      dec <- -dec
+    }
+
+    dec
+  })
+
+  decimal
+}
+reporte_completo$Longitud <- dms_a_decimal(reporte_completo$Longitud)
+reporte_completo$Latitud  <- dms_a_decimal(reporte_completo$Latitud)
+reporte_completo <- reporte_completo  %>% 
+  rename(fecha_hora = `Fecha & Hora`)
+str(reporte_completo)
+summary(reporte_completo)
+tabla_conteos_NAS <- data.frame(
+  estaciones=names(reporte_completo)[-1],
+  conteos=colSums(is.na(reporte_completo))[-1],
+  row.names = NULL
+)
+
+# Mapa de Bogotá
+bogota <- st_read("Loca.shp")
+estaciones_sf <- st_as_sf(
+  reporte_completo,
+  coords = c("Longitud", "Latitud"),
+  crs = 4326
+)
+
+
+
+```
+
+
+# Base de datos {.tabset}
+
+## Primeras 10 filas.
+
+```{r primeras-filas}
+reporte_completo %>% 
+  head(10) %>% 
+  kableExtra::kbl(
+  caption = "Primeras 10 filas de la base de datos",
+  col.names = c(
+    "Fecha & Hora",
+    "Estación",
+    bquote(PM_10),
+    bquote(O_3),
+    "Sigla",
+    "Latitud",
+    "Longitud",
+    "Altitud (m)",
+    "Altura (m)",
+    "Localidad",
+    "Tipo de zona",
+    "Tipo de estación",
+    "Dirección"),
+  align = c("l", "l", "c", "c", "c",
+            "l", "l", "c", "c", "c",
+            "c", "c", "l")
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
+## Últimas 10 filas.
+
+```{r ultimas-filas}
+reporte_completo %>% 
+  tail(10) %>% 
+  kableExtra::kbl(
+  caption = "Últimas 10 filas de la base de datos",
+  col.names = c(
+    "Fecha & Hora",
+    "Estación",
+    bquote(PM_10),
+    bquote(O_3),
+    "Sigla",
+    "Latitud",
+    "Longitud",
+    "Altitud (m)",
+    "Altura (m)",
+    "Localidad",
+    "Tipo de zona",
+    "Tipo de estación",
+    "Dirección"),
+  align = c("l", "l", "c", "c", "c",
+            "l", "l", "c", "c", "c",
+            "c", "c", "l")
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
+## Datos faltantes
+
+```{r faltantes, tab.cap="Conteo de datos faltantes"}
+tabla_conteos_NAS %>% 
+  kableExtra::kbl(
+  caption = "Conteo de datos faltantes",
+  col.names = c(
+    "Estaciones",
+    "Conteos"),
+  align = c("l", "c")
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) %>%
+  kableExtra::row_spec(
+    2:4,
+    bold = TRUE,
+    background = "#e8f4fd"
+  ) 
+```
+
+# Visualizaciones{.tabset}
+
+## Mapa de bogotá
+
+```{r mapa-bogota}
+ggplot() +
+  geom_sf(
+    data = bogota,
+    fill = "gray95",
+    color = "black"
+  ) +
+  geom_sf(
+    data = estaciones_sf,
+    color = "red",
+    size = 3
+  ) +
+  labs(
+    title = "Estaciones de monitoreo de Bogotá"
+  ) +
+  theme_minimal()
+```
+
+## Visualización con la variable
+
+```{r generar-gif, eval=FALSE, include=FALSE}
+estaciones_anim <- reporte_completo %>%
+  sf::st_as_sf(
+    coords = c("Longitud", "Latitud"),
+    crs = 4326,
+    remove = FALSE
+  )
+p <- ggplot() +
+  geom_sf(data = bogota, fill = "gray95") +
+  geom_sf(
+    data = estaciones_anim,
+    aes(size = PM10,color = PM10)
+  ) +
+  transition_time(fecha_hora) +
+  labs(
+    title = "Fecha: {frame_time}",
+    color = "PM10"
+  ) +
+  scale_color_viridis_c(
+  option = "magma",
+  limits = c(0, 350),
+  oob = scales::squish
+)
+anim <- animate(
+  p,
+  width = 900,
+  height = 700,
+  fps = 10,
+  renderer = gifski_renderer()
+)
+
+anim_save("PM10_Bogota.gif", anim)
+```
+
+```{r anim-bogota, echo=FALSE, results='asis'}
+knitr::include_graphics("PM10_Bogota.gif")
+```
+
+## Correlación con la variable de interés $PM_{10}$
+
+```{r correlacion-variable, fig.height=10, fig.width=10}
 mat_cor <- cor(
-  reporte_completo[, c("PM10", "x", "y")],
-  method = "pearson",
+  reporte_completo  %>% 
+    dplyr::select(PM10, Longitud, Latitud),
   use = "complete.obs"
 )
 
