@@ -29,6 +29,8 @@ library(kableExtra)
 library(measurements)
 library(gganimate) # para hacer película
 library(gifski) #para renderizar la película
+library(spdep)
+library(adespatial)
 ```
 
 ```{r PM10-O3, eval=FALSE, warning=FALSE, include=FALSE}
@@ -476,3 +478,341 @@ corrplot(
 )
 ```
 
+## Dispersión con longitud
+
+```{r dispm10lon, message=FALSE, warning=FALSE}
+ggplot(reporte_completo,
+       aes(Longitud, PM10))+
+    geom_point(alpha=.3)+
+    geom_smooth(method="loess")
+```
+
+## Dispersión con latitud
+
+```{r disPM10lat, message=FALSE, warning=FALSE}
+ggplot(reporte_completo,
+       aes(Latitud, PM10))+
+    geom_point(alpha=.3)+
+    geom_smooth(method="loess")
+```
+
+## Moran
+
+```{r moran}
+datos_moran <- reporte_completo  %>% 
+  group_by(Estacion, Longitud, Latitud)  %>% 
+  summarise(
+    PM10 = mean(PM10, na.rm = TRUE),
+    O3 = mean(O3, na.rm = TRUE),
+    .groups = "drop"
+  )
+datos_sf <- st_as_sf(
+  datos_moran,
+  coords = c("Longitud", "Latitud"),
+  crs = 4326
+)
+
+coords <- st_coordinates(datos_sf)
+
+vecinos <- knearneigh(coords, k = 4)
+vecinos <- knn2nb(vecinos)
+
+pesos <- nb2listw(
+  vecinos,
+  style = "W"
+)
+
+plot(st_geometry(datos_sf))
+plot(vecinos, coords, add = TRUE)
+moran.test(
+  datos_sf$PM10,
+  listw = pesos
+)
+```
+
+## Moran local
+
+```{r}
+moran_local <- localmoran(
+  datos_sf$PM10,
+  pesos
+)
+
+head(moran_local)
+```
+
+## Moran bivariado
+
+```{r}
+moran_bv(
+  x = datos_sf$PM10,
+  y = datos_sf$O3,
+  listw = pesos,
+  nsim = 999
+)
+```
+
+## Modelo de regresión normal
+
+```{r}
+modelo <- lm(
+    PM10 ~ Longitud + Latitud,
+    data = datos_moran
+)
+
+summary(modelo)
+```
+
+# Exploración temporal: correlograma temporal {.tabset}
+
+## 
+
+## Correlogramas temporales {.tabset}
+
+```{r temporal}
+datos_temporal <- reporte_completo %>%
+  group_by(fecha_hora) %>%
+  summarise(
+    PM10 = mean(PM10, na.rm = TRUE),
+    O3 = mean(O3, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r ggplottemporal}
+ggplot(datos_temporal, aes(x = fecha_hora, y = PM10)) +
+  geom_line(color = "steelblue") +
+  labs(
+    x = "Fecha",
+    y = "PM10 promedio",
+    title = "Serie temporal promedio de PM10 en Bogotá"
+  ) +
+  theme_minimal()
+```
+
+### Bolivia y Carvajal - Sevillana.
+
+```{r bolycar}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Bolivia")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Carvajal - Sevillana")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfbolycar}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### CDAR y Ciudad Bolivar
+
+```{r CDARyCbol}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "CDAR")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Ciudad Bolivar")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfCDARyCbol}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Colina y Fontibon
+
+```{r ColyFon}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Colina")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Fontibon")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfColyfon}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Guaymaral y Jazmin
+
+```{r Guayyjaz}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Guaymaral")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Jazmin")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfGuayyjaz}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Kennedy y Las ferias
+
+```{r Kenyfer}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Kennedy")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Las Ferias")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfKenyFer}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### MinAmbiente y Movil 7ma
+
+```{r MinAyMo7}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "MinAmbiente")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Movil 7ma")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfMinAyMo7}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Movil Fontibón y Puente Aranda
+
+```{r MoFonyPAr}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Movil Fontibon")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Puente Aranda")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfMoFonyPAr}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### San Cristobal y Suba
+
+```{r SCysuba}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "San Cristobal")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Suba")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfSCysuba}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Tunal y Usaquén
+
+```{r tunyus}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Tunal")  %>% 
+  arrange(fecha_hora)
+Estacion2 <- reporte_completo  %>% 
+  filter(Estacion == "Usaquen")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acftunyus}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  Estacion2$PM10,
+  na.action = na.pass
+)
+```
+
+### Usme y promedio temporal
+
+```{r usme}
+Estacion1 <- reporte_completo  %>% 
+  filter(Estacion == "Usme")  %>% 
+  arrange(fecha_hora)
+```
+
+```{r acfusme}
+par(mfrow=c(1,2))
+acf(
+  Estacion1$PM10,
+  na.action = na.pass
+)
+acf(
+  datos_temporal$PM10, 
+  na.action = na.pass
+)
+```
