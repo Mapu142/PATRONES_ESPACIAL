@@ -31,6 +31,10 @@ library(gganimate) # para hacer película
 library(gifski) #para renderizar la película
 library(spdep)
 library(adespatial)
+library(gstat)
+library(sp)
+library(spacetime)
+
 ```
 
 ```{r PM10-O3, eval=FALSE, warning=FALSE, include=FALSE}
@@ -499,6 +503,7 @@ ggplot(reporte_completo,
 ## Moran
 
 ```{r moran}
+set.seed(1110)
 datos_moran <- reporte_completo  %>% 
   group_by(Estacion, Longitud, Latitud)  %>% 
   summarise(
@@ -565,9 +570,7 @@ summary(modelo)
 
 # Exploración temporal: correlograma temporal {.tabset}
 
-## 
-
-## Correlogramas temporales {.tabset}
+## Temporal
 
 ```{r temporal}
 datos_temporal <- reporte_completo %>%
@@ -582,6 +585,11 @@ datos_temporal <- reporte_completo %>%
 ```{r ggplottemporal}
 ggplot(datos_temporal, aes(x = fecha_hora, y = PM10)) +
   geom_line(color = "steelblue") +
+  geom_smooth(
+    method = "loess",
+    color = "red",
+    se = FALSE
+  ) +
   labs(
     x = "Fecha",
     y = "PM10 promedio",
@@ -589,6 +597,9 @@ ggplot(datos_temporal, aes(x = fecha_hora, y = PM10)) +
   ) +
   theme_minimal()
 ```
+
+## Correlogramas temporales {.tabset}
+
 
 ### Bolivia y Carvajal - Sevillana.
 
@@ -816,3 +827,325 @@ acf(
   na.action = na.pass
 )
 ```
+
+# Formulación del modelo geoestadístico
+
+La exploración gráfica no evidenció una tendencia espacial marcada en la media de las concentraciones de PM10, mientras que la serie temporal mostró un comportamiento oscilatorio sin una tendencia sostenida. Adicionalmente, el índice global de Moran y el correlograma espacial evidenciaron autocorrelación espacial significativa. Bajo estas condiciones, resulta razonable considerar un modelo geoestadístico con media constante,
+
+$$
+\mathbf{Y}(s,t)=\mu+\mathbf(Z)(s,t)
+$$
+
+donde $\mathbf{Z}(s,t)$ representa un proceso aleatorio de media cero que captura la dependencia espacial, temporal y espacio-temporal presente en las observaciones.
+
+## Estimación variograma
+
+```{r}
+datos <- reporte_completo %>%
+  arrange(fecha_hora, Estacion)
+estaciones <- datos %>%
+  distinct(
+    Estacion,
+    Longitud,
+    Latitud
+  )
+datos_sf <- st_transform(
+  datos_sf,
+  3116
+)
+estaciones_sf <- st_as_sf(
+  estaciones,
+  coords = c("Longitud", "Latitud"),
+  crs = 4326
+)
+
+estaciones_sf <- st_transform(
+  estaciones_sf,
+  3116
+)
+
+estaciones_sp <- as(estaciones_sf, "Spatial")
+tiempo <- sort(unique(datos$fecha_hora))
+datos_st <- STFDF(
+  sp = estaciones_sp,
+  time = tiempo,
+  data = data.frame(
+    PM10 = datos$PM10,
+    O3 = datos$O3
+  )
+)
+variograma <-  variogramST(
+  PM10 ~ 1,
+  data = datos_st,
+  tlags = 0:24,
+  cutoff = 30000,
+  width = 3000
+)
+modelo_sep_ini <- vgmST(
+  "separable",
+  space = vgm(
+    psill = 500,
+    model = "Exp",
+    range = 18000,
+    nugget = 250
+  ),
+  time = vgm(
+    psill = 500,
+    model = "Exp",
+    range = 10,
+    nugget = 250
+  ),
+  sill = 700
+)
+modelo_metric_ini <- vgmST(
+  "metric",
+  joint = vgm(
+    psill = 500,
+    model = "Exp",
+    range = 18000,
+    nugget = 250
+  ),
+  stAni = 1700
+)
+
+modelo_sum_ini <- vgmST(
+  "sumMetric",
+
+  space = vgm(
+    psill = 1,
+    model = "Exp",
+    range = 18000,
+    nugget = 0.5
+  ),
+
+  time = vgm(
+    psill = 1,
+    model = "Exp",
+    range = 12,
+    nugget = 0.5
+  ),
+
+  joint = vgm(
+    psill = 1,
+    model = "Exp",
+    range = 18000,
+    nugget = 0.5
+  ),
+
+  stAni = 1500
+)
+
+modelo_prod_ini <- vgmST(
+  "productSum",
+
+  space = vgm(
+    psill = 1,
+    model = "Exp",
+    range = 18000,
+    nugget = 30
+  ),
+
+  time = vgm(
+    psill = 60,
+    model = "Exp",
+    range = 7,
+    nugget = 80
+  ),
+
+  k = 10
+)
+
+modelo_metric <- fit.StVariogram(
+  variograma,
+  modelo_metric_ini
+)
+
+modelo_sep <- fit.StVariogram(
+  variograma,
+  model = modelo_sep_ini
+)
+
+modelo_sum <- fit.StVariogram(
+  variograma,
+  modelo_sum_ini,
+  lower = c(
+    0.001,   # sill.s
+    1000,    # range.s
+    0,        # nugget.s
+    0.001,    # sill.t
+    0.1,      # range.t
+    0,        # nugget.t
+    0.001,    # sill.st
+    1000,     # range.st
+    0,        # nugget.st
+    1         # anis
+  ),
+  upper = c(
+    1000,
+    50000,
+    1000,
+    1000,
+    100,
+    1000,
+    1000,
+    50000,
+    1000,
+    10000
+  )
+)
+
+modelo_prod <- fit.StVariogram(
+  variograma,
+  modelo_prod_ini,
+  lower = c(
+    0.001,   # sill.s
+    1000,    # range.s
+    0,       # nugget.s
+    0.001,   # sill.t
+    0.1,     # range.t
+    0,       # nugget.t
+    0.001    # k
+  ),
+  upper = c(
+    1000,
+    50000,
+    1000,
+    1000,
+    100,
+    1000,
+    1000
+  )
+)
+```
+```{r fig.width=10}
+plot(variograma)
+```
+
+```{r}
+plot(variograma, modelo_sep)
+```
+```{r}
+attr(modelo_sep, "MSE")
+```
+
+```{r}
+attr(modelo_sep, "optim.output")
+```
+
+```{r}
+plot(variograma, modelo_metric)
+```
+```{r}
+attr(modelo_metric, "MSE")
+```
+
+```{r}
+attr(modelo_metric, "optim.output")
+```
+```{r}
+plot(variograma, modelo_sum)
+```
+```{r}
+attr(modelo_sum, "MSE")
+```
+
+```{r}
+attr(modelo_sum, "optim.output")
+```
+```{r}
+plot(variograma, modelo_prod)
+```
+```{r}
+attr(modelo_prod, "MSE")
+```
+
+```{r}
+attr(modelo_prod, "optim.output")
+```
+
+
+
+# Kriging espacio-temporal
+
+```{r}
+bogota <- st_transform(bogota, 3116)
+
+# Malla de puntos cada 500 m
+grilla <- st_make_grid(
+  bogota,
+  cellsize = 500,
+  what = "centers"
+)
+
+grilla <- st_sf(geometry = grilla)
+
+# Conservar únicamente los puntos dentro de Bogotá
+grilla <- st_intersection(grilla, bogota)
+```
+```{r}
+plot(
+  st_geometry(bogota),
+  border = "black",
+  col = "white"
+)
+
+plot(
+  st_geometry(grilla),
+  add = TRUE,
+  col = "red",
+  pch = 16,
+  cex = 0.15
+)
+```
+
+```{r}
+datos_obs <- datos  %>% 
+  dplyr::filter(!is.na(PM10))
+coordinates(datos_obs) <- ~Longitud + Latitud
+proj4string(datos_obs) <- CRS(st_crs(bogota)$wkt)
+datos_obs_st <- STIDF(
+  sp = as(datos_obs, "SpatialPoints"),
+  time = datos_obs$fecha_hora,
+  data = data.frame(PM10 = datos_obs$PM10)
+)
+
+tiempo_pred <- c(
+  max(reporte_completo$fecha_hora),
+  max(reporte_completo$fecha_hora) + 3600
+)
+
+grilla_sp <- as(grilla, "Spatial")
+
+pred_st <- STF(
+  sp = grilla_sp,
+  time = tiempo_pred
+)
+```
+
+```{r}
+krig_pm10 <- krigeST(
+  formula = PM10 ~ 1,
+  data = datos_obs_st,
+  newdata = pred_st,
+  modelList = modelo_sum
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
