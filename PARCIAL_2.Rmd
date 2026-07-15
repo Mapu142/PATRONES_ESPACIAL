@@ -240,6 +240,8 @@ reporte_completo <- reporte_completo  %>%
 
 # Introducción
 
+La calidad del aire es un tema que ha venido cogiendo fuerza y en ciudades suele ser más delicado, hay distintos contaminantes desde $O_3$ que es .... hasta $PM_{10}$ que es ...
+
 ```{r base-datos}
 #writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
 reporte_completo <- read_excel("reporte_completo.xlsx")
@@ -289,6 +291,8 @@ estaciones_sf <- st_as_sf(
 
 # Base de datos {.tabset}
 
+La base de datos fue construida a partir de la unión de varios datasets debido a que la página solo permitía descargar maximo 6 meses y una variable. Al final consta de 13243 observaciones (19 estaciones $\times$ 697 tiempos).
+
 ## Primeras 10 filas.
 
 ```{r primeras-filas}
@@ -299,7 +303,7 @@ reporte_completo %>%
   col.names = c(
     "Fecha & Hora",
     "Estación",
-    bquote(PM_10),
+    bquote(PM_{10}),
     bquote(O_3),
     "Sigla",
     "Latitud",
@@ -336,7 +340,7 @@ reporte_completo %>%
   col.names = c(
     "Fecha & Hora",
     "Estación",
-    bquote(PM_10),
+    bquote(PM_{10}),
     bquote(O_3),
     "Sigla",
     "Latitud",
@@ -364,6 +368,8 @@ reporte_completo %>%
 ```
 
 # Calidad de datos {.tabset}
+
+Cuenta con 1911 datos faltantes en la variable de interés $PM_{10}$ (véase la Tabla \@ref(tab:faltantes)). Además, en la Figura \@ref(fig:boxplot-pm10) se observa que la mayor parte de las concentraciones se encuentran aproximadamente entre 1 y 60 $μg/m^3$, aunque también se evidencian numerosos valores atípicos y algunos valores extremadamente altos. Esta presencia de valores extremos sugiere una distribución asimétrica y una alta variabilidad en los datos, lo que podría influir en la estimación del variograma y, en consecuencia, en el desempeño del kriging, al incrementar la sensibilidad de estos procedimientos a observaciones de gran magnitud.
 
 ## Datos faltantes
 
@@ -393,6 +399,8 @@ tabla_conteos_NAS %>%
   ) 
 ```
 
+
+
 ## Boxplot de PM10
 
 ```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=14, message=FALSE, warning=FALSE}
@@ -402,9 +410,13 @@ ggplot()+
 
 # Exploración espacial{.tabset}
 
+Podemos ver en la Figura \@ref(fig:mapa-bogota) que la distribución espacial de las estaciones de monitoreo no es homogénea, concentrándose principalmente en la zona urbana de Bogotá. Por otra parte, en el gif \@ref(fig:anim-bogota) se observa que, a lo largo del período de estudio, la mayoría de las estaciones presentan concentraciones de $PM_{10}$ dentro de rangos similares, evidenciado por la predominancia de colores y tamaños semejantes entre los puntos. Los episodios de concentraciones elevadas son poco frecuentes y se presentan únicamente en algunos instantes y estaciones específicas, lo que es consistente con la presencia de unos pocos valores extremos observados previamente en el diagrama de caja.
+
+
 ## Mapa de bogotá
 
-```{r mapa-bogota}
+
+```{r mapa-bogota, fig.cap="Visalización ed las 19 estaciones de Bogotá"}
 ggplot() +
   geom_sf(
     data = bogota,
@@ -458,21 +470,28 @@ anim <- animate(
 anim_save("PM10_Bogota.gif", anim)
 ```
 
-```{r anim-bogota, echo=FALSE, results='asis'}
+```{r anim-bogota, fig.cap="Gif de las observaciones a través del tiempo", echo=FALSE, results='asis'}
 knitr::include_graphics("PM10_Bogota.gif")
 ```
 
 # Relaciones ente variables {.tabset}
 
+
++ La Figura \@ref(fig:correlacion-variable) muestra que no se evidencia una correlación lineal entre la concentración de $PM_{10}$ y las variables geográficas Altitud (m) y Altura (m), con coeficientes de correlación de 0.04 y 0.03, respectivamente. Esto sugiere que, al menos desde una perspectiva lineal, la concentración del contaminante no presenta una relación directa con la elevación del terreno ni con la altura de la estación de monitoreo, por lo que otros factores ambientales o antrópicos podrían desempeñar un papel más importante en su variabilidad espacial.
+
++ En la Figura \@ref(fig:dispm10lon) así como también en la figura \@ref(fig:disPM10lat) no se observa una tendencia clara entre la concentración de $PM_{10}$ y la longitud. La curva suavizada mediante LOESS permanece prácticamente horizontal a lo largo del dominio espacial, lo que sugiere que el valor esperado de la concentración no presenta un cambio sistemático en función de la longitud. Asimismo, se aprecia una alta dispersión de las observaciones para prácticamente todos los valores de longitud, lo que indica que esta coordenada, por sí sola, no explica una proporción importante de la variabilidad observada en las concentraciones.
+
 ## Correlación con la variable de interés $PM_{10}$
 
-```{r correlacion-variable, fig.height=10, fig.width=10}
+```{r mat_cor}
 mat_cor <- cor(
   reporte_completo  %>% 
     dplyr::select(PM10, O3, `Altitud (m)`, `Altura (m)`),
   use = "complete.obs"
 )
+```
 
+```{r correlacion-variable, fig.height=10, fig.width=10, fig.cap="Correlación lineal entre algunas variables"}
 corrplot(
   mat_cor,
   method = "color",
@@ -840,7 +859,7 @@ donde $\mathbf{Z}(s,t)$ representa un proceso aleatorio de media cero que captur
 
 ## Estimación variograma
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 datos <- reporte_completo %>%
   arrange(fecha_hora, Estacion)
 estaciones <- datos %>%
@@ -1017,49 +1036,49 @@ modelo_prod <- fit.StVariogram(
   )
 )
 ```
-```{r fig.width=10}
+```{r eval=FALSE, fig.width=10, include=FALSE}
 plot(variograma)
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot(variograma, modelo_sep)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_sep, "MSE")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_sep, "optim.output")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot(variograma, modelo_metric)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_metric, "MSE")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_metric, "optim.output")
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot(variograma, modelo_sum)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_sum, "MSE")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_sum, "optim.output")
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot(variograma, modelo_prod)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_prod, "MSE")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 attr(modelo_prod, "optim.output")
 ```
 
@@ -1067,7 +1086,7 @@ attr(modelo_prod, "optim.output")
 
 # Kriging espacio-temporal
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 bogota <- st_transform(bogota, 3116)
 
 # Malla de puntos cada 500 m
@@ -1082,7 +1101,7 @@ grilla <- st_sf(geometry = grilla)
 # Conservar únicamente los puntos dentro de Bogotá
 grilla <- st_intersection(grilla, bogota)
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 plot(
   st_geometry(bogota),
   border = "black",
@@ -1098,7 +1117,7 @@ plot(
 )
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 datos_obs <- datos  %>% 
   dplyr::filter(!is.na(PM10))
 coordinates(datos_obs) <- ~Longitud + Latitud
@@ -1130,7 +1149,7 @@ krig_pm10 <- krigeST(
 )
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 pred_df <- as.data.frame(krig_pm10)
 head(pred_df)
 
@@ -1140,7 +1159,7 @@ pred1 <- subset(
 )
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 ggplot(pred1) +
   geom_raster(
     aes(
