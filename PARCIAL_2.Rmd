@@ -1115,20 +1115,47 @@ tiempo_pred <- c(
 )
 
 grilla_sp <- as(grilla, "Spatial")
+tiempos <- sort(unique(reporte_completo$fecha_hora))
+tiempo_pred <- c(tiempos[200],tiempos[200]+3600)
 
 pred_st <- STF(
   sp = grilla_sp,
   time = tiempo_pred
 )
-```
-
-```{r}
 krig_pm10 <- krigeST(
   formula = PM10 ~ 1,
   data = datos_obs_st,
   newdata = pred_st,
   modelList = modelo_sum
 )
+```
+
+```{r}
+pred_df <- as.data.frame(krig_pm10)
+head(pred_df)
+
+pred1 <- subset(
+  pred_df,
+  time == min(time)
+)
+```
+
+```{r}
+ggplot(pred1) +
+  geom_raster(
+    aes(
+      x = coords.x1,
+      y = coords.x2,
+      fill = var1.pred
+    )
+  ) +
+  coord_equal() +
+  scale_fill_viridis_c() +
+  labs(
+    fill = "PM10",
+    title = "Predicción mediante Kriging espacio-temporal"
+  ) +
+  theme_minimal()
 ```
 
 
