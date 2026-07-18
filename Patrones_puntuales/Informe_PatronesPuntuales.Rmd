@@ -1,0 +1,516 @@
+---
+title: |
+  | **Análisis de Patrones Puntuales Espaciales**
+  | *Aplicación a la Sismicidad Histórica de Colombia*
+  
+author: |
+  | María Paula Camargo Rincón  
+  | Laura Katherine Martínez Castiblanco
+  
+date: "`r format(Sys.time(), '%d de %B de %Y')`"
+
+output:
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
+    self_contained: true
+    code_folding: hide
+    mathjax: default
+    fig_caption: true
+    highlight: tango
+    
+editor_options:
+  chunk_output_type: inline
+  markdown:
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+# ==============================================================================
+# CONFIGURACIÓN GLOBAL DEL DOCUMENTO
+# ==============================================================================
+# Este chunk controla el comportamiento de TODOS los chunks siguientes.
+# Al usar include=FALSE, no se muestra en el informe pero establece las reglas.
+
+knitr::opts_chunk$set(
+  message     = FALSE,      # Silencia mensajes de carga
+  warning     = FALSE,      # Silencia advertencias
+  error       = FALSE,      # Detiene el render si hay error
+  fig.align   = "center",   # Centra todas las figuras
+  fig.width   = 10,         # Ancho estándar de figuras
+  fig.height  = 7,          # Alto estándar de figuras
+  dpi         = 150,        # Resolución para nitidez cartográfica
+  cache       = FALSE       # Sin caché para garantizar reproducibilidad
+)
+
+# Semilla global para reproducibilidad de simulaciones Monte Carlo
+set.seed(5869)
+```
+
+```{r librerias, include=FALSE}
+# ==============================================================================
+# CARGA DE LIBRERÍAS ESPECIALIZADAS
+# ==============================================================================
+# Paquetes organizados por función para facilitar el mantenimiento
+
+# Análisis de patrones puntuales (spatstat ecosystem)
+library(spatstat)
+library(spatstat.geom)
+library(spatstat.explore)
+library(spatstat.model)
+
+# Manejo de datos espaciales vectoriales
+library(sf)
+library(stars)
+
+# Manipulación y lectura de datos
+library(tidyverse)
+library(readr)
+library(readxl)
+
+# Visualización cartográfica profesional
+library(ggplot2)
+library(patchwork)
+library(scales)
+library(ggrepel)
+library(corrplot)
+
+# Descarga automática de mapas base
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+# Tablas con formato académico
+library(knitr)
+library(kableExtra)
+```
+
+```{r paleta-colores, include=FALSE}
+# ==============================================================================
+# PALETA DE COLORES INSTITUCIONAL
+# ==============================================================================
+# Definimos una paleta coherente para todo el informe
+
+colores <- list(
+  azul_oscuro   = "#1f3a60",   # Títulos principales y bordes
+  azul_medio    = "#2c3e50",   # Texto destacado
+  gris_texto    = "#555555",   # Subtítulos
+  gris_suave    = "#f8f9fa",   # Fondo Colombia
+  gris_vecinos  = "#f1f2f6",   # Fondo países vecinos
+  borde_vecinos = "#bdc3c7",   # Bordes sutiles
+  oceano        = "#eef2f7",   # Fondo oceánico
+  rojo_sismo    = "#e74c3c",   # Eventos sísmicos
+  naranja_borde = "#e67e22",   # Bordes de rejillas
+  azul_rejilla  = "#3498db"    # Relleno de cuadrantes
+)
+```
+
+---
+
+# Resumen {-}
+
+> El presente informe aborda el análisis de **patrones puntuales espaciales** aplicado a la sismicidad histórica de Colombia, utilizando datos del Servicio Geológico Colombiano (SGC) correspondientes a eventos con magnitud $\geq 4.5$. El estudio se estructura en seis etapas metodológicas que abarcan desde la caracterización del proceso generador hasta el análisis de propiedades de segundo orden con marcas.
+
+---
+
+# Planteamiento del Problema, Área de Estudio y Proceso de Interés
+
+## Planteamiento del Problema
+
+Colombia se encuentra en una zona de alta actividad sísmica debido a su posición geográfica en el noroccidente de Sudamérica, donde convergen múltiples placas tectónicas y sistemas de fallas activas. 
+
+Desde la perspectiva de la estadística espacial, los epicentros sísmicos constituyen un patrón puntual donde cada evento representa una realización de un proceso estocástico subyacente. La pregunta central que guía este análisis es:
+
+> **¿Los sismos en Colombia se distribuyen aleatoriamente en el espacio, o existen mecanismos generadores (ej.: fallas tectónicas) que producen patrones de agregación espacial identificables?**
+
+Responder esta pregunta requiere, en primer lugar, caracterizar adecuadamente el área de estudio, el proceso de interés y las marcas asociadas a cada evento.
+
+## Definición del Área de Estudio
+
+El área de estudio se define como la región geográfica que contiene la totalidad de los eventos sísmicos analizados, extendiéndose ligeramente más allá de los límites políticos de Colombia para capturar la influencia regional de los sistemas tectónicos adyacentes.
+
+**Criterios de delimitación:**
+
+1. **Cobertura tectónica regional**: Se incluyen zonas oceánicas del Pacífico y el Caribe, así como territorios fronterizos, donde ocurren eventos relacionados con la subducción de la placa de Nazca y la interacción con la placa Caribe.
+2. **Consistencia con la plataforma SGC**: Los límites se ajustan al recuadro de visualización oficial del Servicio Geológico Colombiano.
+3. **Exclusión de eventos atípicos**: Se filtra el punto extremo noroccidental (correspondiente al archipiélago de San Andrés) para mantener la coherencia del análisis en el territorio continental y su margen marítimo inmediato.
+
+La ventana de observación se construye mediante la envolvente convexa de los eventos, expandida con un *buffer* de **30 km** para evitar que los puntos más extremos queden sobre el borde, lo cual mitigaría los efectos de borde en las estimaciones posteriores.
+
+```{r carga-datos-area, message=FALSE, warning=FALSE}
+# ==============================================================================
+# DELIMITACIÓN DEL ÁREA DE ESTUDIO
+# ==============================================================================
+
+# 1. Descarga automática de mapas base (Natural Earth - dominio público)
+colombia_map   <- ne_countries(scale = "medium", country = "colombia", 
+                               returnclass = "sf") %>%
+  st_transform(crs = 4326)
+
+paises_vecinos <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  st_transform(crs = 4326)
+
+# 2. Carga y limpieza de datos de sismicidad (SGC)
+df <- read_csv("sismicidad_historica.csv", skip = 7, show_col_types = FALSE)
+names(df)[4] <- "Latitud"
+names(df)[5] <- "Longitud"
+names(df)[7] <- "magnitud"
+
+df <- df %>%
+  select(Latitud, Longitud, magnitud) %>%
+  mutate(
+    Latitud  = as.numeric(Latitud),
+    Longitud = as.numeric(Longitud),
+    magnitud = as.numeric(magnitud)
+  ) %>%
+  filter(!is.na(Latitud), !is.na(Longitud))
+
+# 3. Conversión a objeto espacial (sf) con proyección WGS84
+sismos_sf <- st_as_sf(df, coords = c("Longitud", "Latitud"), crs = 4326)
+sismos_sf$ID_Sismo <- 1:nrow(sismos_sf)
+
+# 4. Proyección al sistema oficial de Colombia (Origen Nacional - MAGNA-SIRGAS)
+sismos_proj <- st_transform(sismos_sf, crs = 9377)
+
+# 5. Filtro geográfico ajustado (excluye San Andrés, conserva territorio continental)
+caja_filtro <- st_bbox(c(xmin = -79.5, ymin = 0, xmax = -66, ymax = 13.5), 
+                       crs = st_crs(4326))
+sismos_sf   <- sismos_sf %>% st_filter(st_as_sfc(caja_filtro))
+sismos_proj <- st_transform(sismos_sf, crs = 9377)
+
+# 6. Construcción de la ventana de observación con buffer de 30 km
+ventana_base   <- st_convex_hull(st_union(sismos_proj))
+ventana_sf     <- st_buffer(ventana_base, dist = 30000)  # 30 km en metros
+ventana_owin   <- as.owin(st_geometry(ventana_sf))
+ventana_grados <- st_transform(ventana_sf, crs = 4326)
+
+# 7. Construcción del objeto ppp (patrón puntual) en kilómetros
+coords_metros <- st_coordinates(sismos_proj)
+sismos_ppp    <- ppp(
+  x       = coords_metros[, 1],
+  y       = coords_metros[, 2],
+  window  = ventana_owin,
+  marks   = sismos_proj$magnitud
+)
+
+# Manejo de puntos duplicados mediante jittering controlado
+if (any(duplicated(sismos_ppp))) {
+  sismos_ppp <- rjitter(sismos_ppp, retry = TRUE)
+}
+
+# Reescalado final a kilómetros para coherencia interpretativa
+sismos_ppp <- spatstat.geom::rescale(sismos_ppp, 1000, "km")
+```
+
+La siguiente tabla resume las características del patrón puntual construido:
+
+```{r tabla-resumen-ppp}
+# Aseguramos el vector de magnitudes
+magnitudes <- as.numeric(marks(sismos_ppp))
+
+# Construir el dataframe consolidando el área total
+resumen_ppp <- data.frame(
+  Característica = c(
+    "Número total de eventos",
+    "Área de la ventana de observación",
+    "Intensidad promedio",
+    "Rango de magnitudes",
+    "Magnitud media",
+    "Magnitud mediana",
+    "Unidad de longitud"
+  ),
+  Valor = c(
+    paste0(npoints(sismos_ppp), " sismos"),
+    paste0(round(sum(as.numeric(area(sismos_ppp))), 0), " km²"), # <-- SOLUCIÓN: Agregamos sum() aquí
+    paste0(round(as.numeric(intensity(sismos_ppp)) * 1e4, 2), " × 10⁻⁴ sismos/km²"),
+    paste0(round(min(magnitudes, na.rm = TRUE), 1), " - ", 
+           round(max(magnitudes, na.rm = TRUE), 1)),
+    paste0(round(mean(magnitudes, na.rm = TRUE), 2)),
+    paste0(round(median(magnitudes, na.rm = TRUE), 2)),
+    "1 km"
+  ),
+  stringsAsFactors = FALSE
+)
+
+kable(resumen_ppp, 
+      col.names = c("Característica", "Valor"),
+      align = c("l", "c"),
+      caption = "Características del patrón puntual sísmico construido") %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE, background = colores$azul_oscuro, color = "white")
+```
+
+## Proceso de Interés
+
+El proceso de interés es la *sismicidad superficial e intermedia* registrada en el territorio colombiano y su zona de influencia regional. Desde la perspectiva de los patrones puntuales, modelamos este fenómeno como una realización de un proceso puntual espacial $\{S\} = \{s_1, s_2, \ldots, s_n\}$ donde cada $s_i = (x_i, y_i)$ representa la ubicación geográfica del epicentro del $i$-ésimo sismo.
+
+Las hipótesis que se pondrán a prueba a lo largo de este informe son:
+
+- **$H_0$ (CSR)**: Los eventos siguen un **Proceso Homogéneo de Poisson** (Aleatoriedad Espacial Completa), con intensidad constante $\lambda(s) = \lambda$ e independencia entre eventos.
+- **$H_1$**: El patrón presenta **heterogeneidad de primer orden** (intensidad variable $\lambda(s)$) y/o **dependencia de segundo orden** (agregación o inhibición entre eventos).
+
+## Definición de las Marcas
+
+Cada evento $s_i$ del patrón puntual posee una **marca** $m_i$ que aporta información adicional sobre sus características intrínsecas. En este estudio, la marca seleccionada es la **magnitud sísmica**, que cuantifica la energía liberada durante el sismo.
+
+La marca $m_i \in \mathbb{R}^+$ convierte al patrón en un **patrón puntual marcado** (marked point pattern), lo que permite analizar no solo *dónde* ocurren los sismos, sino también *con qué intensidad energética*. Esto habilita preguntas de investigación adicionales:
+
+> ¿Existe dependencia espacial en la magnitud de los sismos? Es decir, ¿las zonas de alta concentración sísmica tienden a producir eventos de mayor magnitud, o la magnitud se distribuye independientemente de la localización?
+
+```{r mapa-patron-puntual, fig.cap="Patrón puntual sísmico de Colombia con magnitud como marca. La línea discontinua delimita la ventana de observación con buffer de 30 km."}
+# ==============================================================================
+# MAPA PRINCIPAL DEL PATRÓN PUNTUAL
+# ==============================================================================
+
+ggplot() +
+  # Capa 1: Países vecinos (fondo contextual)
+  geom_sf(data = paises_vecinos, 
+          fill = colores$gris_vecinos, 
+          color = colores$borde_vecinos, 
+          linewidth = 0.3) +
+  # Capa 2: Frontera de Colombia destacada
+  geom_sf(data = colombia_map, 
+          fill = colores$gris_suave, 
+          color = colores$azul_oscuro, 
+          linewidth = 0.8) +
+  # Capa 3: Ventana de observación (buffer de 30 km)
+  geom_sf(data = ventana_grados, 
+          fill = NA, 
+          color = colores$azul_oscuro, 
+          linewidth = 0.8, 
+          linetype = "dashed") +
+  # Capa 4: Eventos sísmicos codificados por magnitud
+  geom_sf(data = sismos_sf, 
+          aes(color = magnitud, size = magnitud), 
+          shape = 20, 
+          alpha = 0.75) +
+  # Escalas visuales
+  scale_color_viridis_c(option = "magma", name = "Magnitud") +
+  scale_size_continuous(range = c(1, 9), name = "Magnitud") +
+  # Encuadre geográfico
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-82, -66), 
+           ylim = c(-5, 14)) +
+  # Etiquetas y títulos
+  labs(
+    title    = "Patrón Puntual Sísmico de Colombia",
+    subtitle = "Eventos con magnitud ≥ 4.5 | Ventana de observación con buffer de 30 km",
+    x        = "Longitud", 
+    y        = "Latitud"
+  ) +
+  # Estética profesional
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title       = element_text(face = "bold", size = 13, color = colores$azul_medio),
+    plot.subtitle    = element_text(size = 10, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA),
+    legend.position  = "right"
+  )
+```
+
+En la Figura \@ref(fig:mapa-patron-puntual) se observa visualmente que los eventos no se distribuyen uniformemente en el territorio: existe una marcada concentración a lo largo de la Cordillera de los Andes, el suroccidente (Nariño, Cauca) y la frontera con Ecuador, coincidente con los sistemas de fallas activas y la zona de subducción de la placa de Nazca. Esta primera impresión visual será formalizada estadísticamente en las secciones siguientes mediante pruebas de homogeneidad y estimación de intensidad.
+
+
+# Inferencia sobre la Homogeneidad del Patrón
+
+Para determinar si la distribución espacial de los sismos responde a un proceso homogéneo de CSR o si, se empieza por evaluar el patrón con pruebas estadísticas de primer orden. 
+
+## Pruebas Basadas en Variables de Conteo
+
+La prueba de bondad de ajuste $\chi^2$ por cuadrantes evalúa la hipótesis nula de que el patrón proviene de un Proceso Homogéneo de Poisson. El espacio de observación $D_s$ se divide en $L$ subregiones disjuntas (cuadrantes). Si el proceso es homogéneo, el número de eventos $n_i$ en cada subregión debe seguir una distribución uniforme, y el estadístico de prueba se define como:
+
+$$ \chi^2_0 = \sum_{i=1}^{L} \frac{(n_i - \bar{n})^2}{\bar{n}} \sim \chi^2_{(L-1)} $$
+
+donde $\bar{n}$ es el conteo esperado bajo CSR. Un inconveniente de esta prueba es la subjetividad en la elección del tamaño de la rejilla y la posible violación del supuesto de frecuencias esperadas mínimas (generalmente $E \geq 5$). Para mitigar este sesgo, se emplean pruebas condicionales de Monte Carlo bajo la familia de estadísticos de poder de Cressie-Read, que son robustas ante celdas con conteos bajos o nulos.
+
+A continuación, se evalúa la homogeneidad utilizando una rejilla de $3 \times 3$ cuadrantes, complementada con simulaciones de Monte Carlo ($999$ réplicas) para validar la robustez del rechazo de la hipótesis nula.
+
+```{r prueba-cuadrantes, message=FALSE, warning=FALSE, fig.cap="Diagnóstico de Primer Orden: Pruebas de Homogeneidad Espacial por Cuadrantes"}
+# Ejecutar la prueba de cuadrantes 3x3
+chi_3x3 <- quadrat.test(unmark(sismos_ppp), nx = 3, ny = 3)
+
+# Función auxiliar para extraer la rejilla y graficarla con ggplot2
+crear_capa_cuadrantes <- function(modelo_chi) {
+  rejilla_data <- tiles(as.tess(modelo_chi))
+  obs <- modelo_chi$observed
+  exp <- round(modelo_chi$expected, 1)
+  res <- round(modelo_chi$residuals, 1)
+  
+  lista_poligonos <- lapply(seq_along(rejilla_data), function(i) {
+    lims <- rejilla_data[[i]]
+    x1 <- lims$xrange[1]; x2 <- lims$xrange[2]
+    y1 <- lims$yrange[1]; y2 <- lims$yrange[2]
+    
+    # Polígono en metros (multiplicamos por 1000 desde km)
+    p <- st_polygon(list(matrix(c(
+      x1*1000, y1*1000, x2*1000, y1*1000, x2*1000, y2*1000, x1*1000, y2*1000, x1*1000, y1*1000
+    ), ncol = 2, byrow = TRUE)))
+    return(p)
+  })
+  
+  sf_cuadrantes_metros <- st_sf(
+    id = 1:length(lista_poligonos),
+    Obs = as.vector(obs), Exp = as.vector(exp), Res = as.vector(res),
+    geometry = st_sfc(lista_poligonos, crs = 9377)
+  )
+  
+  sf_cuadrantes_grados <- st_transform(sf_cuadrantes_metros, crs = 4326)
+  centroides <- st_coordinates(st_centroid(sf_cuadrantes_grados))
+  sf_cuadrantes_grados$lon_c <- centroides[,1]
+  sf_cuadrantes_grados$lat_c <- centroides[,2]
+  sf_cuadrantes_grados$etiqueta <- paste0("O: ", sf_cuadrantes_grados$Obs, "\nE: ", sf_cuadrantes_grados$Exp)
+  
+  return(sf_cuadrantes_grados)
+}
+
+sf_3x3 <- crear_capa_cuadrantes(chi_3x3)
+
+ggplot() +
+  geom_sf(data = paises_vecinos, fill = colores$gris_vecinos, color = colores$borde_vecinos, linewidth = 0.3) +
+  geom_sf(data = colombia_map, fill = colores$gris_suave, color = colores$azul_oscuro, linewidth = 0.6) +
+  geom_sf(data = sf_3x3, fill = colores$azul_rejilla, alpha = 0.1, color = colores$naranja_borde, linewidth = 0.5, linetype = "dashed") +
+  geom_text(data = sf_3x3, aes(x = lon_c, y = lat_c, label = etiqueta), size = 4, fontface = "bold", color = colores$azul_oscuro) +
+  geom_sf(data = sismos_sf, color = colores$rojo_sismo, size = 1.2, alpha = 0.6) +
+  coord_sf(crs = st_crs(4326), xlim = c(-81, -69.5), ylim = c(-1.5, 13.5)) +
+  labs(title = "Prueba por Cuadrantes (3x3)", subtitle = "Evaluación de Homogeneidad CSR", x = "Longitud", y = "Latitud") +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 12, color = colores$azul_medio),
+    plot.subtitle = element_text(size = 10, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA)
+  )
+```
+
+Dado que la rejilla $3 \times 3$ presenta frecuencias esperadas reducidas en algunas celdas periféricas, la aproximación asintótica de la prueba $\chi^2$ puede ser inadecuada. Por ello, se ejecutó un análisis de robustez mediante Monte Carlo bajo la familia de Cressie-Read:
+
+```{r tabla-cressie-read}
+# Ejecución de pruebas de Monte Carlo para diferentes lambdas de Cressie-Read
+prueba_NM2 <- quadrat.test(unmark(sismos_ppp), method = "MonteCarlo", CR = -2, nx = 3, ny = 3)
+prueba_T2  <- quadrat.test(unmark(sismos_ppp), method = "MonteCarlo", CR = -0.5, nx = 3, ny = 3)
+prueba_CR1 <- quadrat.test(unmark(sismos_ppp), method = "MonteCarlo", CR = 1/3, nx = 3, ny = 3)
+prueba_CR2 <- quadrat.test(unmark(sismos_ppp), method = "MonteCarlo", CR = 2/3, nx = 3, ny = 3)
+prueba_X2  <- quadrat.test(unmark(sismos_ppp), method = "MonteCarlo", CR = 1, nx = 3, ny = 3)
+
+tabla_robustez <- data.frame(
+  "Estadístico" = c("Neyman Modificado (NM2)", "Freeman-Tukey (T2)", "Cressie-Read ($\\lambda=1/3$)", "Cressie-Read ($\\lambda=2/3$)", "Chi-cuadrado de Pearson (X2)"),
+  "Valor del Test" = c(
+    round(as.numeric(prueba_NM2$statistic), 2),
+    round(as.numeric(prueba_T2$statistic), 2),
+    round(as.numeric(prueba_CR1$statistic), 2),
+    round(as.numeric(prueba_CR2$statistic), 2),
+    round(as.numeric(prueba_X2$statistic), 2)
+  ),
+  "p-valor (Simulado)" = c(
+    ifelse(prueba_NM2$p.value < 0.001, "< 0.001", round(prueba_NM2$p.value, 3)),
+    ifelse(prueba_T2$p.value < 0.001, "< 0.001", round(prueba_T2$p.value, 3)),
+    ifelse(prueba_CR1$p.value < 0.001, "< 0.001", round(prueba_CR1$p.value, 3)),
+    ifelse(prueba_CR2$p.value < 0.001, "< 0.001", round(prueba_CR2$p.value, 3)),
+    ifelse(prueba_X2$p.value < 0.001, "< 0.001", round(prueba_X2$p.value, 3))
+  ),
+  "Diagnóstico" = c("Rechazo de CSR", "Rechazo de CSR", "Rechazo de CSR", "Rechazo de CSR", "Rechazo de CSR")
+)
+
+kable(tabla_robustez, format = "html", escape = FALSE,
+      caption = "Pruebas de Robustez de Monte Carlo bajo la Familia de Cressie-Read (Rejilla 3x3)",
+      col.names = c("Estadístico de Prueba", "Valor", "p-valor", "Diagnóstico Espacial")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, background = colores$azul_oscuro, color = "white")
+```
+
+Como se observa en la Tabla \@ref(tab:tabla-cressie-read), todos los estadísticos arrojan un p-valor $< 0.05$. Esto proporciona evidencia estadística para rechazar la hipótesis nula ($H_0$) de CSR. Los sismos no se distribuyen de manera homogénea.
+
+---
+
+## Pruebas Basadas en Variables de Distancia
+
+Mientras que los cuadrantes imponen una rejilla rígida, las pruebas de distancia evalúan las interacciones métricas puras entre los eventos. Dos índices clásicos para esto son:
+
+1. **Índice de Clark-Evans ($R$)**: Compara la distancia media observada al vecino más cercano ($\bar{r}_{obs}$) con la distancia esperada bajo un proceso de Poisson ($\bar{r}_{esp} = 1 / (2\sqrt{\lambda})$). 
+   - $R \approx 1$: Aleatoriedad (CSR).
+   - $R < 1$: Agregación (Clúster).
+   - $R > 1$: Regularidad (Inhibición).
+2. **Índice de Hopkins-Skellam ($HS$)**: Compara las distancias evento-evento con las distancias espacio-vacío (punto aleatorio al evento más cercano). Un valor $HS < 1$ confirma estructura de clúster, siendo menos sensible a los efectos de borde que Clark-Evans.
+
+A continuación, se calculan estos índices globales y se visualizan las áreas de influencia mediante diagramas de Stienen (círculos con radio igual a la mitad de la distancia al vecino más cercano) y la teselación de Dirichlet (polígonos de Voronoi).
+
+```{r pruebas-distancia, message=FALSE, warning=FALSE}
+# Cálculo de los índices
+CE_test <- clarkevans.test(unmark(sismos_ppp))
+HS_test <- hopskel.test(unmark(sismos_ppp))
+
+# Extracción dinámica de valores para garantizar consistencia
+valor_R <- round(CE_test$statistic["R"], 4)
+p_valor_R <- ifelse(CE_test$p.value < 0.001, "< 0.001", round(CE_test$p.value, 4))
+valor_HS <- round(HS_test$statistic["A"], 4)
+p_valor_HS <- ifelse(HS_test$p.value < 0.001, "< 0.001", round(HS_test$p.value, 4))
+
+tabla_indices <- data.frame(
+  "Prueba" = c("Test de Clark-Evans", "Test de Hopkins-Skellam (Bilateral)"),
+  "Métrica" = c("R", "A"),
+  "Valor Observado" = c(valor_R, valor_HS),
+  "p-valor" = c(p_valor_R, p_valor_HS),
+  "Conclución" = c("Agregación (Clúster)", "Agregación (Clúster)")
+)
+
+kable(tabla_indices, format = "html", escape = FALSE,
+      caption = "Diagnóstico Global de Asociación Espacial: Índices de Distancia",
+      col.names = c("Prueba", "Métrica", "Valor", "p-valor", "Conclución")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, background = colores$azul_oscuro, color = "white") %>%
+  row_spec(1:2, bold = TRUE, background = "#e8f4fd")
+```
+La Tabla \@ref(tab:pruebas-distancia) muestra un índice de Clark-Evans de $R \approx 0.69$ y un Hopkins-Skellam de $A \approx 0.46$, ambos con p-valores $< 0.001$. Esto confirma una agregación del patrón.
+
+Para complementar la inferencia numérica, se construyen representaciones geométricas de la proximidad:
+
+```{r diagramas-geometricos, fig.cap="Modelado espacial mediante Diagramas de Stienen y Polígonos de Voronoi", message=FALSE, warning=FALSE}
+# 1. Diagrama de Stienen
+dist_vecino_metros <- nndist(unmark(sismos_ppp), k = 1) * 1000
+radios_stienen <- dist_vecino_metros / 2
+sf_stienen_grados <- st_transform(st_buffer(sismos_proj, dist = radios_stienen), crs = 4326)
+
+g_stienen <- ggplot() +
+  geom_sf(data = colombia_map, fill = colores$gris_suave, color = colores$azul_oscuro, linewidth = 0.5) +
+  geom_sf(data = sf_stienen_grados, fill = colores$rojo_sismo, alpha = 0.15, color = "#c0392b", linewidth = 0.3) +
+  geom_sf(data = sismos_sf, color = colores$azul_oscuro, size = 0.8, alpha = 0.8) +
+  coord_sf(crs = st_crs(4326), xlim = c(-81, -69.5), ylim = c(-1.5, 13.5)) +
+  labs(title = "A. Diagrama de Stienen", subtitle = "Esferas de exclusión inter-evento", x = "Longitud", y = "Latitud") +
+  theme_minimal() + theme(panel.background = element_rect(fill = colores$oceano, color = NA))
+
+# 2. Teselación de Dirichlet (Voronoi)
+dirichlet_sp <- dirichlet(unmark(sismos_ppp))
+celdas_lista <- tiles(dirichlet_sp)
+
+lista_sf_poligonos <- lapply(celdas_lista, function(celda) {
+  coor_x <- celda$bdry[[1]]$x
+  coor_y <- celda$bdry[[1]]$y
+  matriz_metros <- matrix(c(coor_x, coor_x[1], coor_y, coor_y[1]), ncol = 2) * 1000
+  return(st_polygon(list(matriz_metros)))
+})
+
+sf_dirichlet_grados <- st_transform(st_sf(geometry = st_sfc(lista_sf_poligonos, crs = 9377)), crs = 4326)
+
+g_dirichlet <- ggplot() +
+  geom_sf(data = colombia_map, fill = colores$gris_suave, color = colores$azul_oscuro, linewidth = 0.5) +
+  geom_sf(data = sf_dirichlet_grados, fill = colores$azul_rejilla, alpha = 0.05, color = colores$naranja_borde, linewidth = 0.3) +
+  geom_sf(data = sismos_sf, color = colores$azul_oscuro, size = 0.8, alpha = 0.8) +
+  coord_sf(crs = st_crs(4326), xlim = c(-81, -69.5), ylim = c(-1.5, 13.5)) +
+  labs(title = "B. Teselación de Dirichlet", subtitle = "Áreas de influencia de cada evento", x = "Longitud", y = "") +
+  theme_minimal() + theme(panel.background = element_rect(fill = colores$oceano, color = NA))
+
+g_stienen + g_dirichlet + plot_annotation(title = "Análisis Geométrico de Proximidad Sísmica", theme = theme(plot.title = element_text(face = "bold", hjust = 0.5, color = colores$azul_medio)))
+```
+
+Visualmente, la Figura \@ref(fig:diagramas-geometricos) corrobora que el Diagrama de Stienen muestra círculos muy pequeños (y a veces superpuestos) en zonas como el Nudo de Pasto y el Eje Cafetero, indicando eventos extremadamente cercanos entre sí (réplicas o nidos sísmicos). A su vez, la Teselación de Dirichlet revela polígonos de áreas vastas en el océano Pacífico y la Amazonía, que contrastan con las zonas de alta actividad.
+
+Ambos enfoques (conteo y distancia) concluyen que la sismicidad en Colombia no es homogénea. Esta heterogeneidad de primer orden justifica modelar y estimar la función de intensidad $\lambda(s)$ de manera no paramétrica.
