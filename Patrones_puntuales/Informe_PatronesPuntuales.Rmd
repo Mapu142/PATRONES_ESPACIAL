@@ -811,3 +811,509 @@ La función $g_{inhom}(r)$ en \@ref(fig:segundo-orden-pcf) muestra un pico local
 El análisis de segundo orden revela que la aparente agregación del patrón sísmico está principalmente explicada por la heterogeneidad de la intensidad de primer orden (zonas tectónicas activas y concentración de fallas geológicas como el nido de Bucaramanga). Al controlar esta inhomogeneidad espacial a través del suavizado kernel, el comportamiento residual de los sismos no muestra desviaciones estadísticamente significativas respecto a una distribución condicionalmente aleatoria (Poisson no homogéneo) en ninguna de las escalas de distancia evaluadas.
 
 ---
+
+# Análisis del Patrón Puntual Marcado: Dependencia Espacial de la Magnitud
+
+Hasta las secciones anteriores, el análisis se ha centrado en la localización de los eventos (el patrón puntual no marcado). Sin embargo, cada sismo posee una propiedad intrínseca adicional: su **magnitud** $m_i$.
+
+## Análisis Exploratorio de la Marca
+
+### Correlación Espacial de la Magnitud
+
+Antes de aplicar herramientas específicas de patrones marcados, evaluamos si existe correlación lineal entre la magnitud y las coordenadas espaciales mediante el coeficiente de correlación de Pearson. Esto nos permite detectar tendencias globales.
+
+```{r correlacion-magnitud, message=FALSE, warning=FALSE, fig.cap="Matriz de correlación de Pearson entre la magnitud sísmica y las coordenadas espaciales."}
+# ==============================================================================
+# 1. CORRELACIÓN DE PEARSON ENTRE MAGNITUD Y COORDENADAS
+# ==============================================================================
+coords <- st_coordinates(sismos_sf)
+datos_marca <- data.frame(
+  magnitud = sismos_sf$magnitud,
+  Longitud = coords[, 1],
+  Latitud  = coords[, 2]
+)
+
+mat_cor <- cor(datos_marca, method = "pearson", use = "complete.obs")
+
+# Visualización con corrplot
+corrplot(
+  mat_cor,
+  method    = "color",
+  type      = "upper",
+  addCoef.col = "black",
+  number.cex  = 1.1,
+  tl.col    = "black",
+  tl.srt    = 45,
+  title     = "Correlación de Pearson: Magnitud vs. Coordenadas",
+  mar       = c(0, 0, 2, 0)
+)
+```
+ Los coeficientes de correlación entre la magnitud y las coordenadas espaciales son  r(Longitud, magnitud) = -0.3, r(Latitud, magnitud) = -0.04]. Estos valores no son estadísticamente significativos, lo que sugiere que no existe una tendencia global clara de la magnitud en función de la ubicación geográfica.
+ 
+ Sin embargo, la correlación de Pearson solo captura relaciones lineales globales; para detectar estructuras de dependencia espacial más complejas (como agrupamientos locales de magnitudes altas)
+
+---
+
+## Estimación de la Intensidad Marcada
+
+### Magnitud Promedio por Cuadrantes
+
+Para tener una primera aproximación descriptiva, calculamos la magnitud promedio de los sismos dentro de cada uno de los cuadrantes de la rejilla $3 \times 3$ utilizada en la Sección 2.1.
+
+```{r magnitud-cuadrantes, message=FALSE, warning=FALSE}
+# ==============================================================================
+# 1. MAGNITUD PROMEDIO POR CUADRANTES
+# ==============================================================================
+# Unimos los sismos con los cuadrantes de la prueba chi_3x3
+sismos_cuad <- st_join(sismos_sf, sf_3x3 |> dplyr::select(id), join = st_within)
+
+# Calculamos estadísticas por cuadrante
+tabla_magnitud_cuad <- sismos_cuad |>
+  st_drop_geometry() |>
+  dplyr::group_by(id) |>
+  dplyr::summarise(
+    n_sismos       = dplyr::n(),
+    magnitud_media = mean(magnitud, na.rm = TRUE),
+    magnitud_sd    = sd(magnitud, na.rm = TRUE)
+  )
+
+# Consolidamos con la información de la rejilla
+tabla_final_cuad <- sf_3x3 |>
+  st_drop_geometry() |>
+  dplyr::select(id, Obs) |>
+  dplyr::left_join(tabla_magnitud_cuad, by = "id") |>
+  dplyr::mutate(
+    magnitud_media = ifelse(is.na(magnitud_media), 0, magnitud_media),
+    n_sismos       = ifelse(is.na(n_sismos), 0, n_sismos)
+  )
+```
+
+```{r tabla-magnitud-cuadrantes}
+kable(
+  tabla_final_cuad |> dplyr::select(id, Obs, n_sismos, magnitud_media) |> dplyr::arrange(id),
+  caption = "Magnitud promedio por cuadrante de la rejilla 3x3",
+  col.names = c("ID Cuadrante", "Eventos Obs.", "N° Sismos", "Magnitud Media"),
+  align = c("c", "c", "c", "c")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE, position = "center") %>%
+  row_spec(0, bold = TRUE, background = colores$azul_oscuro, color = "white")
+```
+
+ La magnitud promedio por cuadrante oscila entre $6.04$ (Cuadrante 2) y $7.08$ (Cuadrante 4). Los cuadrantes con mayor concentración de eventos (IDs 5, 6 y 7, los cuales acumulan 21, 17 y 17 sismos respectivamente) presentan magnitudes medias de 6.20, 6.10 y 6.30, mientras que los cuadrantes con pocos eventos (como el 4 y el 9, con solo 5 y 1 sismo) muestran magnitudes más altas (alcanzando 7.08 y 7.00). 
+ 
+ Esto sugiere que las zonas de alta frecuencia sísmica no necesariamente coinciden con magnitudes más elevadas.
+
+### Estimación Kernel de la Magnitud Media Espacial
+
+Para obtener una superficie continua de la magnitud promedio, utilizamos la función `Smooth.ppp` de `spatstat`, que aplica un suavizado kernel a las marcas del patrón puntual. Esta es la analogía marcada de la estimación de intensidad $\lambda(s)$ realizada en la Sección 3.
+
+```{r suavizado-magnitud, message=FALSE, warning=FALSE, fig.cap="Superficie suavizada de la magnitud sísmica media estimada mediante kernel gaussiano."}
+# ==============================================================================
+# ESTIMACIÓN KERNEL DE LA MAGNITUD MEDIA
+# ==============================================================================
+# Nota metodológica: Se utiliza un ancho de banda ligeramente mayor al óptimo
+# de Diggle para evitar problemas de underflow numérico en la estimación
+# de la marca, dado que las marcas (magnitudes) tienen menor variabilidad
+# que las coordenadas.
+sigma_marca <- bw.diggle(unmark(sismos_ppp)) * 1.5
+
+mag_media <- Smooth.ppp(sismos_ppp, sigma = sigma_marca, at = "pixels")
+
+# Conversión a formato sf para ggplot2
+raster_mag <- st_as_stars(mag_media)
+sf_mag_km  <- st_as_sf(raster_mag)
+st_geometry(sf_mag_km) <- st_geometry(sf_mag_km) * 1000
+st_crs(sf_mag_km)      <- 9377
+sf_mag_grados <- st_transform(sf_mag_km, crs = 4326)
+
+ggplot() +
+  geom_sf(data = sf_mag_grados, aes(fill = v), color = NA, alpha = 0.9) +
+  scale_fill_viridis_c(
+    option     = "magma",
+    name       = "Magnitud\nMedia",
+    na.value   = "transparent",
+    limits     = c(5.5, 7.5)
+  ) +
+  geom_sf(data = paises_vecinos, fill = NA, color = colores$borde_vecinos, linewidth = 0.3) +
+  geom_sf(data = colombia_map, fill = NA, color = colores$azul_oscuro, linewidth = 0.7) +
+  geom_sf(data = sismos_sf, aes(size = magnitud), colour = "white", fill = colores$azul_medio,
+          shape = 21, alpha = 0.5, stroke = 0.3) +
+  coord_sf(crs = st_crs(4326), xlim = c(-81, -69.5), ylim = c(-1.5, 13.5)) +
+  labs(
+    title    = "Superficie Suavizada de la Magnitud Sísmica Media",
+    subtitle = paste0("Kernel Gaussiano | σ = ", round(sigma_marca, 2), " km"),
+    x = "Longitud", y = "Latitud"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title       = element_text(face = "bold", size = 12, color = colores$azul_medio),
+    plot.subtitle    = element_text(size = 9, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA),
+    legend.position  = "right"
+  )
+```
+
+ La superficie de magnitud media revela que las zonas con valores más elevados (tonos amarillos y blancos) se localizan principalmente en el noroccidente del país, abarcando la región del Pacífico chocoano y extendiéndose sutilmente hacia el Caribe. Sin embargo, la distribución espacial de esta estimación difiere con la intensidad de ocurrencia mostrada en la Figura \@ref(fig:estimacion-intensidad), lo que indica que las áreas con mayor concentración de sismos no necesariamente corresponden a aquellas donde estos presentan, en promedio, mayores magnitudes.
+
+---
+
+## Función de Correlación de Marcas ($k_{mm}(r)$)
+
+### Fundamento Teórico
+
+La función de correlación de marcas $k_{mm}(r)$ cuantifica la dependencia espacial de las marcas a diferentes distancias. Para un patrón puntual isotrópico con marcas numéricas, se define como:
+
+$$ k_{mm}(r) = \frac{E[m_i \cdot m_j \mid d_{ij} = r]}{E[m^2]} $$
+
+donde $m_i$ y $m_j$ son las marcas de dos eventos separados por una distancia $r$, y $E[m^2]$ es el segundo momento de la distribución de marcas. Bajo la hipótesis nula de independencia entre la marca y la ubicación espacial (es decir, las marcas se asignan aleatoriamente a los eventos), se espera que $k_{mm}(r) = 1$ para todo $r$.
+
+- $k_{mm}(r) > 1$: indica que eventos cercanos tienden a tener marcas similares (agrupamiento de magnitudes).
+- $k_{mm}(r) < 1$: indica que eventos cercanos tienden a tener marcas disímiles (inhibición de magnitudes).
+
+Para evaluar la significancia estadística, construimos envolventes de simulación mediante permutación aleatoria de las marcas (`rlabel`), lo que preserva el patrón puntual pero destruye cualquier asociación entre ubicación y magnitud.
+
+```{r markcorr, fig.cap="Función de correlación de marcas con envolventes de Monte Carlo (999 permutaciones).", fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+# ==============================================================================
+# FUNCIÓN DE CORRELACIÓN DE MARCAS
+# ==============================================================================
+set.seed(1900)
+
+# Cálculo de la función observada
+kmm_obs <- markcorr(sismos_ppp, correction = "translation")
+
+# Envolventes de Monte Carlo mediante permutación de marcas
+env_mc <- envelope(
+  sismos_ppp,
+  fun       = markcorr,
+  nsim      = 999,
+  verbose   = FALSE,
+  simulate  = expression(rlabel(sismos_ppp)),
+  funargs   = list(correction = "translation"),
+  savefuns  = TRUE
+)
+
+# Conversión a dataframes
+df_kmm  <- as.data.frame(kmm_obs)
+df_env  <- as.data.frame(env_mc)
+
+ggplot(df_env, aes(x = r)) +
+ # 1. Bandas de confianza de Monte Carlo (rlabel)
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.7) +
+  
+  # 2. Línea de referencia teórica absoluta (kmm = 1)
+  geom_hline(aes(yintercept = 1, color = "Referencia Teórica (k_mm = 1)"), linetype = "dotted", linewidth = 0.8) +
+  
+  # 3. Media simulada bajo permutación
+  geom_line(aes(y = mmean, color = "Media Simulada (H0: Independencia)"), linetype = "dashed", linewidth = 1) +
+  
+  # 4. Línea observada real (azul medio)
+  geom_line(aes(y = obs, color = "Correlación de Marcas Observada"), linewidth = 1.2) +
+  scale_color_manual(
+    name = "Identificación de Líneas",
+    values = c(
+      "Correlación de Marcas Observada" = "darkslategray", # Reemplazar si usas colores$azul_medio
+      "Media Simulada (H0: Independencia)" = "red",
+      "Referencia Teórica (k_mm = 1)"   = "black"
+    ),
+    breaks = c(
+      "Correlación de Marcas Observada",
+      "Media Simulada (H0: Independencia)",
+      "Referencia Teórica (k_mm = 1)"
+    )
+  ) +
+  # 5. Títulos y etiquetas claras
+  labs(
+    title    = "Función de Correlación de Marcas",
+    subtitle = "Análisis de la distribución espacial de magnitudes",
+    x = "Distancia r (km)",
+    y = expression(k[mm](r)),
+    caption = "Nota: Valores dentro de la banda gris indican que las magnitudes se distribuyen de forma independiente a la ubicación.\nValores de k_mm(r) < 1 a distancias cortas sugieren una leve tendencia a la inhibición o variabilidad de magnitudes en la cercanía."
+  ) +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    panel.grid.minor = element_blank(),
+    plot.title       = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle    = element_text(size = 9, color = "grey40", hjust = 0.5),
+    plot.caption     = element_text(size = 8, face = "italic", color = "grey30", hjust = 0),
+    legend.position  = "bottom",
+    legend.title     = element_text(size = 9, face = "bold"),
+    legend.text      = element_text(size = 8)
+  ) +
+  # Sincroniza los trazos de las líneas en los cuadros de la leyenda
+  guides(color = guide_legend(override.aes = list(
+    linetype = c("solid", "dashed", "dotted"),
+    linewidth = c(1.2, 1, 0.8)
+  )))
+```
+
+ La función de correlación de marcas observada (línea oscura) permanece dentro de  las envolventes de simulación (zona gris) para la mayoría de las distancias evaluadas. Específicamente, en el rango de 0 a 50 km], la curva muestra valores inferiores a 1, para luego estabilizarse y fluctuar muy cerca de la media teórica a distancias mayores.
+ 
+ Dado que la curva real jamás logra romper ni salirse de los límites de la banda gris generada por las 999 permutaciones aleatorias de las marcas, esto no proporciona evidencia estadística para rechazar la hipótesis de independencia entre la magnitud y la localización espacial.
+
+---
+
+## Variograma de Marcas
+
+### Fundamento Teórico
+
+Como herramienta complementaria a $k_{mm}(r)$, el variograma de marcas $\gamma_{mm}(r)$ cuantifica la disimilitud de las marcas en función de la distancia:
+
+$$ \gamma_{mm}(r) = \frac{1}{2} E[(m_i - m_j)^2 \mid d_{ij} = r] $$
+
+Bajo independencia marca-ubicación, el variograma debería estabilizarse rápidamente en la varianza marginal de las marcas. Un incremento sostenido del variograma con la distancia indicaría que las magnitudes son más similares a distancias cortas que a distancias largas (estructura de agrupamiento de magnitudes).
+
+```{r markvario, fig.cap="Variograma de marcas con envolventes de Monte Carlo (999 permutaciones).", fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+# ==============================================================================
+# VARIOGRAMA DE MARCAS
+# ==============================================================================
+set.seed(1900)
+
+# Cálculo del variograma de marcas observado
+mvario_obs <- markvario(sismos_ppp, correction = "translation")
+
+# Envolventes de Monte Carlo
+env_mvario <- envelope(
+  sismos_ppp,
+  fun       = markvario,
+  nsim      = 999,
+  verbose   = FALSE,
+  simulate  = expression(rlabel(sismos_ppp)),
+  funargs   = list(correction = "translation"),
+  savefuns  = TRUE
+)
+
+df_mvario     <- as.data.frame(mvario_obs)
+df_env_mvario <- as.data.frame(env_mvario)
+
+ggplot(df_env_mvario, aes(x = r)) +
+  # 1. Bandas de confianza de Monte Carlo (envolvente)
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.7) +
+  
+  # 2. Media simulada bajo H0 (permutación de marcas)
+  geom_line(aes(y = mmean, color = "Media Simulada (H0: Independencia)"), linetype = "dashed", linewidth = 1) +
+  
+  # 3. Variograma observado real (azul oscuro)
+  geom_line(aes(y = obs, color = "Variograma de Marcas Observado"), linewidth = 1.2) +
+  scale_color_manual(
+    name = "Identificación de Líneas",
+    values = c(
+      "Variograma de Marcas Observado"     = "darkslategray", # Reemplazar por colores$azul_oscuro si aplica
+      "Media Simulada (H0: Independencia)" = "red"
+    ),
+    breaks = c(
+      "Variograma de Marcas Observado",
+      "Media Simulada (H0: Independencia)"
+    )
+  ) +
+  
+  # 4. Títulos y etiquetas claras
+  labs(
+    title    = "Variograma de Marcas",
+    subtitle = "Análisis de la variabilidad espacial de las magnitudes",
+    x = "Distancia r (km)",
+    y = expression(gamma[mm](r)),
+    caption = "Nota: El variograma mide la disimilitud promedio de las magnitudes a distintas distancias.\nValores dentro de la banda gris confirman la falta de estructura espacial o dependencia en los tamaños de los sismos."
+  ) +
+  
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    panel.grid.minor = element_blank(),
+    plot.title       = element_text(face = "bold", size = 11, hjust = 0.5),
+    plot.subtitle    = element_text(size = 9, color = "grey40", hjust = 0.5),
+    plot.caption     = element_text(size = 8, face = "italic", color = "grey30", hjust = 0),
+    legend.position  = "bottom",
+    legend.title     = element_text(size = 9, face = "bold"),
+    legend.text      = element_text(size = 8)
+  ) +
+  # Sincroniza los estilos de trazo en los cuadros de la leyenda
+  guides(color = guide_legend(override.aes = list(
+    linetype = c("solid", "dashed"),
+    linewidth = c(1.2, 1)
+  )))
+```
+
+El variograma de marcas observado (linea oscura) muestra un ascendiendo de forma escalonada a partir de los 140 km hasta estabilizarse cerca de 0.65. Este comportamiento es compatible con lo esperado bajo una asignación aleatoria de las magnitudes a las ubicaciones observadas, lo que refuerza la conclusión obtenida con la función de correlación de marcas.
+
+---
+
+## Síntesis del Análisis Marcado
+
+El análisis de la marca magnitud a través de múltiples herramientas (correlación espacial, suavizado kernel, función de correlación de marcas y variograma de marcas) converge en la siguiente conclusión:
+
+> La magnitud sísmica no presenta dependencia espacial significativa una vez controlada la localización de los eventos. Las zonas de alta concentración sísmica (suroccidente, centro-sur andino, Eje Cafetero) no se caracterizan por magnitudes sistemáticamente mayores que el resto del territorio. Esto sugiere que la magnitud de un sismo es independiente de su ubicación dentro del patrón.
+
+Esta conclusión es coherente con el análisis de segundo orden de la Sección 4, donde se encontró que la aparente agregación del patrón sísmico está principalmente explicada por la heterogeneidad de la intensidad de primer orden. De manera análoga, la variabilidad de la magnitud no presenta una estructura de segundo orden marcada, lo que refuerza la idea de que la magnitud se distribuye como una propiedad independiente dentro del patrón.
+
+---
+
+
+# Ejercicios de clase: Prueba de Homogeneidad con Índice de Clark-Evans
+
+## **6.**
+
+Para 3 eventos en una región de área $16u^2$ , sin eventos en el borde:
+
+1. ¿Cuál es la probabilidad de que un evento esté dentro de la distancia $4u$ de un evento específico?
+
+Dado que los eventos se distribuyen aleatoriamente en el área de $16u^2$, la probabilidad de que un segundo evento caiga dentro de un círculo de radio $r = 4u$ alrededor de un evento específico es:
+
+$$
+P = \frac{\text{Área del círculo de radio } 4u}{\text{Área total}} = \frac{\pi (4)^2}{16} = \frac{16\pi}{16} = \pi.
+$$
+
+Dado que $\pi \approx 3.1416$, esto sugiere que en este caso particular la probabilidad es mayor que 1, lo cual indica que el círculo de radio 4 cubre más área que la ventana de estudio (ya que el área del círculo es $ 16\pi \approx 50.27 $ y el área de la ventana es 16). Por lo tanto, debemos considerar la intersección del círculo con la ventana.
+
+2. Dada la homogeneidad del patrón, ¿cuánto es el valor de la intensidad en cada punto del área?
+
+La intensidad $\lambda$ (número esperado de eventos por unidad de área) bajo homogeneidad es:
+
+$$
+\lambda = \frac{n}{A} = \frac{3}{16} = 0.1875,\hspace{1cm}\text{eventos por unidad de área}.
+$$
+
+## **7.** 
+
+Con base en el enunciado anterior, si este es el patrón observado:
+
+
+| x   | 2.3 | 3.9 | 1.8 |
+|-----|-----|-----|-----|
+| y   | 3.8 | 2.4 | 3.5 |
+
+**Cuadro 1.1: Patrón observado**
+
+Realice la prueba de la hipótesis de homogeneidad usando el índice de Clark-Evans:
+
+- **Asumiendo normalidad.**
+- **Usando Montecarlo** a partir de la siguiente información relacionada:  
+  Se hizo una simulación aleatoria de patrones homogéneos en la misma ventana, con los siguientes resultados para el índice de Clark-Evans:  
+  4.089047, 2.036709, 1.999559, 2.042786, 2.246962, 2.132787, 3.592137, 2.841816, 2.414787, 2.561401, 3.379868, 3.254646, 3.834864, 2.236916, 3.011672, 3.905689, 4.086589, 4.031859, 1.993797.
+
+El índice de Clark-Evans se define como:
+
+$$
+R = \frac{\bar{r}_{\text{obs}}}{\bar{r}_{\text{esp}}},
+$$
+
+donde:
+
+- ( $\bar{r}_{\text{obs}}$ ) es la distancia promedio observada al vecino más cercano.
+- ( $\bar{r}_{\text{esp}}$ ) es la distancia esperada bajo un patrón aleatorio homogéneo.
+
+Para un patrón Poisson en un área $A$ con $n$ puntos:
+
+$$
+\bar{r}_{\text{esp}} = \frac{1}{2\sqrt{\lambda}} = \frac{1}{2\sqrt{0.1875}} \approx 1.1547.
+$$
+
+### Cálculo de $bar{r}_{\text{obs}}$
+
+Datos observados:
+
+| Punto | x   | y   |
+|-------|-----|-----|
+| A     | 2.3 | 3.8 |
+| B     | 3.9 | 2.4 |
+| C     | 1.8 | 3.5 |
+
+Distancia al vecino más cercano para cada punto:
+
+- **Punto A (2.3, 3.8):**
+  - a Punto 2: $\sqrt{(3.9-2.3)^2 + (2.4-3.8)^2} = \sqrt{1.6^2 + (-1.4)^2} = \sqrt{2.56 + 1.96} = \sqrt{4.52} \approx 2.126$
+  - a Punto 3: $\sqrt{(1.8-2.3)^2 + (3.5-3.8)^2} = \sqrt{(-0.5)^2 + (-0.3)^2} = \sqrt{0.25 + 0.09} = \sqrt{0.34} \approx 0.583$
+  - **Mínimo:** 0.583
+
+- **Punto B (3.9, 2.4):**
+  - a Punto 1: 2.126
+  - a Punto 3: $\sqrt{(1.8-3.9)^2 + (3.5-2.4)^2} = \sqrt{(-2.1)^2 + 1.1^2} = \sqrt{4.41 + 1.21} = \sqrt{5.62} \approx 2.371$
+  - **Mínimo:** 2.126
+
+- **Punto C (1.8, 3.5):**
+  - a Punto 1: 0.583
+  - a Punto 2: 2.371
+  - **Mínimo:** 0.583
+
+Entonces:
+
+$$
+\bar{r}_{\text{obs}} = \frac{0.583 + 2.126 + 0.583}{3} = \frac{3.292}{3} \approx 1.0973.
+$$
+
+Por lo tanto:
+
+$$
+R = \frac{1.0973}{1.1547} \approx 0.9503.
+$$
+
+### Prueba de hipótesis bajo normalidad
+
+El estadístico de prueba $Z$ se aproxima como:
+
+$$
+Z = \frac{R - 1}{\text{SE}(R)},
+$$
+
+donde:
+
+$$
+\text{SE}(R) \approx \frac{0.26136}{\sqrt{n \cdot \lambda}} = \frac{0.26136}{\sqrt{3 \cdot 0.1875}} = \frac{0.26136}{\sqrt{0.5625}} = \frac{0.26136}{0.75} \approx 0.3485.
+$$
+
+Entonces:
+
+$$
+Z = \frac{0.9503 - 1}{0.3485} = \frac{-0.0497}{0.3485} \approx -0.1426.
+$$
+
+Con un nivel de significancia $\alpha = 0.05$, el valor crítico para una prueba bilateral es $\pm 1.96$. Como $-0.1426$ se encuentra dentro del intervalo $[-1.96, 1.96]$, no se rechaza la hipótesis de homogeneidad.
+
+---
+
+## 4. Prueba de Clark-Evans usando Montecarlo
+
+Resultados de la simulación (19 valores):
+
+$$
+\begin{aligned}
+&4.089047,\ 2.036709,\ 1.999559,\ 2.042786,\ 2.246962,\ 2.132787,\ 3.592137,\ 2.841816,\\
+&2.414787,\ 2.561401,\ 3.379868,\ 3.254646,\ 3.834864,\ 2.236916,\ 3.011672,\ 3.905689,\\
+&4.086589,\ 4.031859,\ 1.993797.
+\end{aligned}
+$$
+
+### Cálculo del $R$ observado
+
+Ya calculamos:
+
+$$
+R_{\text{obs}} \approx 0.9503.
+$$
+
+### Determinación del p-valor empírico
+
+Para obtener el p-valor, comparamos $R_{\text{obs}}$ con los valores simulados bajo homogeneidad. Observamos que todos los valores simulados son mayores que 1.99, mientras que $R_{\text{obs}} \approx 0.95$, que es considerablemente menor.
+
+Contamos cuántos valores simulados son menores o iguales a $R_{\text{obs}}$:
+
+Ninguno de los 19 valores es menor que $0.9503$. Por lo tanto, el p-valor empírico es:
+
+$$
+p = \frac{0 + 1}{19 + 1} = \frac{1}{20} = 0.05.
+$$
+
+Esto indica que, al nivel $\alpha = 0.05$, el valor observado está en el límite de la región de rechazo. Si se usa un nivel de significancia estricto de $0.05$, se rechaza la hipótesis de homogeneidad (pues $p \leq 0.05$).
+
+---
+
+## Resumen de resultados
+
+| Prueba                        | Estadístico | Conclusión                          |
+|-------------------------------|-------------|-------------------------------------|
+| Normalidad                    | $Z \approx -0.1426$ | No se rechaza homogeneidad         |
+| Montecarlo (p-valor empírico) | $p \approx 0.05$   | Rechazo en el límite (si $\alpha = 0.05$) |
+
+**Nota:** La discrepancia entre ambas pruebas puede deberse a que la aproximación normal no es adecuada para muestras muy pequeñas ($n = 3$), por lo que el método de Montecarlo es más fiable en este contexto.
+
+# Referencias
