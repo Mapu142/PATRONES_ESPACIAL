@@ -480,6 +480,7 @@ radios_stienen <- dist_vecino_metros / 2
 sf_stienen_grados <- st_transform(st_buffer(sismos_proj, dist = radios_stienen), crs = 4326)
 
 g_stienen <- ggplot() +
+  geom_sf(data = paises_vecinos, fill = colores$gris_vecinos, color = colores$borde_vecinos, linewidth = 0.3) +
   geom_sf(data = colombia_map, fill = colores$gris_suave, color = colores$azul_oscuro, linewidth = 0.5) +
   geom_sf(data = sf_stienen_grados, fill = colores$rojo_sismo, alpha = 0.15, color = "#c0392b", linewidth = 0.3) +
   geom_sf(data = sismos_sf, color = colores$azul_oscuro, size = 0.8, alpha = 0.8) +
@@ -501,6 +502,7 @@ lista_sf_poligonos <- lapply(celdas_lista, function(celda) {
 sf_dirichlet_grados <- st_transform(st_sf(geometry = st_sfc(lista_sf_poligonos, crs = 9377)), crs = 4326)
 
 g_dirichlet <- ggplot() +
+  geom_sf(data = paises_vecinos, fill = colores$gris_vecinos, color = colores$borde_vecinos, linewidth = 0.3) +
   geom_sf(data = colombia_map, fill = colores$gris_suave, color = colores$azul_oscuro, linewidth = 0.5) +
   geom_sf(data = sf_dirichlet_grados, fill = colores$azul_rejilla, alpha = 0.05, color = colores$naranja_borde, linewidth = 0.3) +
   geom_sf(data = sismos_sf, color = colores$azul_oscuro, size = 0.8, alpha = 0.8) +
@@ -514,3 +516,298 @@ g_stienen + g_dirichlet + plot_annotation(title = "Análisis Geométrico de Prox
 Visualmente, la Figura \@ref(fig:diagramas-geometricos) corrobora que el Diagrama de Stienen muestra círculos muy pequeños (y a veces superpuestos) en zonas como el Nudo de Pasto y el Eje Cafetero, indicando eventos extremadamente cercanos entre sí (réplicas o nidos sísmicos). A su vez, la Teselación de Dirichlet revela polígonos de áreas vastas en el océano Pacífico y la Amazonía, que contrastan con las zonas de alta actividad.
 
 Ambos enfoques (conteo y distancia) concluyen que la sismicidad en Colombia no es homogénea. Esta heterogeneidad de primer orden justifica modelar y estimar la función de intensidad $\lambda(s)$ de manera no paramétrica.
+
+# Estimación de la Intensidad del Patrón
+
+Haber rechazado la hipótesis de homogeneidad en la Sección 2 implica que el proceso de sismicidad en Colombia es no homogeneo, es decir $\lambda(s)$ no es constante, sino una función que varía según la ubicación espacial $s \in D_s$.
+
+Para estimar esta función se hace uso del enfoque no paramétrico, el estimador de intensidad tipo kernel en dos dimensiones se define como:
+
+$$ \hat{\lambda}(u) = \sum_{i=1}^n \frac{1}{2\pi \sigma^2} \exp\left(-\frac{\|u - s_i\|^2}{2\sigma^2}\right) $$
+
+donde:
+- $u$: es cualquier ubicación de evaluación dentro de la ventana de observación.
+- $s_i$: son las ubicaciones observadas de los $n$ sismos.
+- $\|u - s_i\|$: es la distancia euclidiana entre el punto de evaluación y el evento.
+- $\sigma$: es el ancho de banda (bandwidth), que controla el grado de suavizamiento.
+
+Se selecciona el Kernel Gaussiano por su suavidad infinita y su propiedad de isotropía. Por otro lado se selecciona $\sigma$ para evitar la subjetividad, utilizamos el método de validación cruzada de Diggle (`bw.diggle` en `spatstat`). Este algoritmo minimiza el error cuadrático medio de predicción mediante un enfoque *leave-one-out*: retira un sismo, estima la intensidad con el resto, evalúa la intensidad en el punto retirado y repite el proceso para todos los eventos, seleccionando el $\sigma$ que optimiza este criterio.
+
+
+```{r estimacion-intensidad, message=FALSE, warning=FALSE, fig.cap="Estimación no paramétrica de la intensidad sísmica (sismos/km²) mediante Kernel Gaussiano."}
+# ==============================================================================
+# 1. CÁLCULO DE LA INTENSIDAD MEDIANTE KERNEL
+# ==============================================================================
+# Calculamos el ancho de banda óptimo usando el método de validación cruzada de Diggle
+sigma_optimo <- bw.diggle(unmark(sismos_ppp))
+
+# Estimamos la densidad (intensidad) en una grilla de píxeles dentro de la ventana
+# El objeto sismos_ppp ya está escalado a kilómetros, por lo que sigma y el resultado están en km
+mapa_densidad_sp <- density(unmark(sismos_ppp), sigma = sigma_optimo)
+
+# ==============================================================================
+# 2. CONVERSIÓN A FORMATO CARTOGRÁFICO (sf) PARA GGPLOT2
+# ==============================================================================
+# Convertimos el objeto de imagen (.im) de spatstat a un objeto stars y luego a sf
+raster_densidad <- st_as_stars(mapa_densidad_sp)
+sf_densidad_km  <- st_as_sf(raster_densidad)
+
+# TRUCO GEOMÉTRICO: Como el objeto ppp está en kilómetros, multiplicamos la geometría 
+# por 1000 para devolverla a metros y poder asignarle el CRS oficial (9377)
+st_geometry(sf_densidad_km) <- st_geometry(sf_densidad_km) * 1000
+st_crs(sf_densidad_km)      <- 9377
+
+# Reproyectamos a grados decimales (WGS84) para que coincida con el mapa base
+sf_densidad_grados <- st_transform(sf_densidad_km, crs = 4326)
+
+# ==============================================================================
+# 3. VISUALIZACIÓN CARTOGRÁFICA PROFESIONAL
+# ==============================================================================
+ggplot() +
+  # Capa 1: Mapa de calor continuo (Densidad Kernel)
+  geom_sf(data = sf_densidad_grados, aes(fill = v), color = NA) +
+  
+  # Escala de colores: Paleta Magma (Negro/Morado = Baja intensidad, Amarillo = Alta intensidad)
+  scale_fill_viridis_c(
+    option = "magma",
+    name = "Intensidad\n(sismos/km²)",
+    na.value = "transparent",
+    labels = scales::label_number(accuracy = 0.0001) # Formato científico limpio
+  ) +
+  
+  # Capa 2: Contexto geográfico (Países vecinos y frontera de Colombia)
+  geom_sf(data = paises_vecinos, fill = NA, color = colores$borde_vecinos, linewidth = 0.3) +
+  geom_sf(data = colombia_map, fill = NA, color = colores$azul_oscuro, linewidth = 0.7) +
+  
+  # Capa 3: Eventos sísmicos reales superpuestos como puntos guía (negros y translúcidos)
+  geom_sf(data = sismos_sf, color = "black", size = 0.6, alpha = 0.4) +
+  
+  # Encuadre geográfico ajustado
+  coord_sf(crs = st_crs(4326), xlim = c(-81, -69.5), ylim = c(-1.5, 13.5)) +
+  
+  # Títulos y etiquetas
+  labs(
+    title    = "Estimación de la Intensidad de Sismos en Colombia",
+    subtitle = paste0("Modelado por Densidad Kernel (KDE) | Ancho de banda óptimo (Diggle): ", round(sigma_optimo, 2), " km"),
+    x        = "Longitud", 
+    y        = "Latitud"
+  ) +
+  
+  # Estética profesional
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title       = element_text(face = "bold", size = 12, color = colores$azul_medio),
+    plot.subtitle    = element_text(size = 9, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA),
+    legend.position  = "right"
+  )
+```
+
+La Figura \@ref(fig:estimacion-intensidad) cuantifica visualmente la heterogeneidad de primer orden que detectamos estadísticamente en la Sección 2. Al observar el mapa de calor, se identifican claramente tres zonas de alta intensidad (representadas en tonos amarillos y naranjas), las cuales coinciden con la literatura y sismológica del país:
+
+1. **Suroccidente (Nariño y Cauca)**: Presenta la intensidad más elevada. Esto es geológicamente coherente, ya que corresponde a la zona de subducción de la placa de Nazca bajo la placa Sudamericana, generando una alta frecuencia de sismos de interfaz y corteza profunda.
+2. **Centro-Sur Andino (Huila, Tolima, Meta y Cundinamarca)**: Corresponde al sistema de fallas del sistema andino (como la falla del Sistema de Fallas de Romeral), que actúa como una zona de deformación activa.
+3. **Eje Cafetero (Norte del Valle del Cauca, Quindío, Risaralda y Tolima)**: Se identifica como un foco secundario de alta intensidad, asociado al complejo sistema de fallas locales (ej. falla del Cauca) y a la actividad del macizo volcánico.
+
+La estimación de $\lambda(s)$ confirma que la sismicidad no es un fenómeno de "ruido blanco" espacial, sino que está estructurado por la tectónica de placas. Sin embargo ¿dada esa intensidad los sismos tienden a agruparse o repelerse entre sí (interacción de segundo orden)?, se procede con el análisis de la Función K de Ripley no homogeneo.
+
+---
+
+# Análisis de las Propiedades de Segundo Orden
+
+Haber confirmado la heterogeneidad de primer orden en las secciones anteriores nos lleva a evaluar si los sismos interactúan entre sí (se agrupan o se repelen) a ciertas distancias, o son condicionalmente independientes.
+
+Para esto, analizamos las propiedades de segundo orden del proceso puntual. Dado que el patrón es no homogéneo, utilizamos las versiones adaptadas de la Función K de Ripley y la Función de Correlación por Pares, las cuales ponderan las distancias por la intensidad local estimada.
+
+## Función K de Ripley Inhomogénea ($K_{inhom}$)
+
+La función $K_{inhom}(r)$ cuantifica el número esperado de eventos adicionales a una distancia $r$ de un evento arbitrario, ponderado por la intensidad local. Bajo la hipótesis nula de un Proceso de Poisson Inhomogéneo (independencia condicional dada la intensidad), se espera que $K_{inhom}(r) = \pi r^2$.
+
+**El problema del efecto de borde:** Al calcular distancias desde eventos cercanos al límite de la ventana de observación $D_s$, los círculos de radio $r$ se salen del área de estudio, subestimando el número de vecinos. Para corregir este sesgo, `spatstat` implementa factores de corrección $e_{ij}$:
+1. **Corrección de Traslación (`translate`)**: Asume que el patrón se extiende periódicamente más allá de la ventana. Es la más robusta para ventanas irregulares (como la nuestra).
+ a $e_{ij} = \frac{|D_s|}{|D_s \cap (D_s + (s_i - s_j))|}$
+2. **Corrección Isotrópica (`isotropic`)**: Pondera cada par de puntos por la propación de la circunferencia de radio $r$ centrada en $s_i$ que cae dentro de $D_s$.
+
+## Función de Correlación por Pares Inhomogénea ($g_{inhom}$)
+
+Mientras que $K(r)$ es una función acumulativa (lo que puede suavizar picos localizados), la función de correlación por pares $g(r)$ es su derivada normalizada:
+$$ g_{inhom}(r) approx \frac{K'_{inhom}(r)}{2\pi r} $$
+Bajo la hipótesis nula de independencia, $g_{inhom}(r) = 1$. Valores $g(r) > 1$ indican agregación a la distancia $r$, y $g(r) < 1$ indican inhibición o regularidad.
+
+A continuación, estimamos ambas funciones utilizando la intensidad $\lambda(s)$ calculada previamente. Para cumplir con el rigor metodológico, compararemos visualmente las correcciones de borde y evaluaremos la significancia estadística mediante envolventes de simulación de Monte Carlo ($999$ réplicas) bajo un Proceso de Poisson Inhomogéneo.
+
+```{r segundo-orden-kinhom, fig.cap="Función K de Ripley Inhomogénea comparando correcciones de borde y envolventes de Monte Carlo.", fig.height=6, fig.width=10, message=FALSE, warning=FALSE}
+# ==============================================================================
+# 1. FUNCIÓN K INHOMOGÉNEA CON COMPARACIÓN DE CORRECCIONES DE BORDE
+# ==============================================================================
+# Reutilizamos la intensidad estimada en la Sección 3
+lambda_s <- density(unmark(sismos_ppp), sigma = sigma_optimo)
+lambda_s[lambda_s <= 0] <- 1e-10
+attributes(lambda_s)$sigma
+
+# Calculamos K_inhom solicitando explícitamente ambas correcciones
+K_inhom_multi <- Kinhom(
+  unmark(sismos_ppp), 
+  lambda = lambda_s, 
+  correction = c("translate", "isotropic")
+)
+
+# Generamos envolventes de Monte Carlo usando la corrección de traslación (la más robusta)
+set.seed(2026) # Semilla para reproducibilidad de las simulaciones
+env_K <- envelope(
+  unmark(sismos_ppp), 
+  fun = Kinhom, 
+  nsim = 999, 
+  simulate = expression(rpoispp(lambda_s)), # Simula bajo H0: Poisson Inhomogéneo
+  funargs = list(lambda = lambda_s, correction = "translate"),
+  savefuns = TRUE,
+  verbose = FALSE
+)
+
+# Convertimos a dataframes para ggplot2
+df_K_multi <- as.data.frame(K_inhom_multi)
+df_env_K   <- as.data.frame(env_K)
+
+g_K_corr <- ggplot(df_K_multi, aes(x = r)) +
+  geom_line(aes(y = trans, color = "Translate"), linewidth = 0.8) +
+  geom_line(aes(y = iso, color = "Isotrópica"), linewidth = 0.8, linetype = "dotdash") + 
+  geom_line(aes(y = theo, color = "Teórica"), linetype = "dashed", linewidth = 0.8) +
+  scale_color_manual(
+    name = "Corrección",
+    values = c("Translate" = colores$rojo_sismo,        # Color base oscuro
+               "Isotrópica" = colores$azul_rejilla,        # Azul sutil para diferenciar
+               "Teórica" = "black")            # Rojo de referencia teórica
+  ) +
+  labs(
+    title = "Función K no homogénea\ncon corrección de borde", # Título en dos líneas
+    x = "Distancia (r)", 
+    y = "K_inhom(r)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5), # Centrado y tamaño 10
+    legend.position = "bottom"
+  )
+
+g_K_env <- ggplot(df_env_K, aes(x = r)) +
+  # Sombra gris exacta para las bandas de confianza
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
+  # Línea teórica esperada (Media simulada en rojo discontinuo)
+  geom_line(aes(y = mmean), color = "red", linetype = "dashed", linewidth = 0.8) +
+  # Línea observada real en negro sólido
+  geom_line(aes(y = obs), color = "black", linewidth = 0.8) +
+  labs(
+    title = "Bandas de confianza para\nla función K no homogénea", # Título en dos líneas
+    x = "Distancia (r)", 
+    y = "K_inhom(r)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5) # Centrado y tamaño 10
+  )
+
+g_K_corr + g_K_env + plot_layout(ncol = 2)
+
+```
+
+Al comparar las curvas de traslación e isotrópica, se observa que ambas correcciones siguen una trayectoria prácticamente idéntica a lo largo de todo el rango evaluado (de 0 a 250 km), solapándose casi a la perfección sin mostrar divergencias significativas. Esto valida el uso de la corrección de traslación como la más estable para nuestro dominio irregular.
+
+Por otro lado en la figura \@ref(fig:segundo-orden-kinhom)B la curva observada (negra en tu versión corregida / representada por la línea continua inferior) se mantiene dentro de las envolventes de simulación (zona gris) para la mayoría de las distancias. La curva observada se sitúa cerca del límite inferior de la envolvente. Esto no indica evidencia estadística de agregación residual una vez controlada la intensidad de primer orden.
+
+```{r segundo-orden-pcf, fig.cap="Función de Correlación por Pares Inhomogénea con envolvente de Monte Carlo.", fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+# ==============================================================================
+# 2. FUNCIÓN DE CORRELACIÓN POR PARES INHOMOGÉNEA (g)
+# ==============================================================================
+# Calculamos pcf_inhom con corrección de traslación
+pcf_inhom_obj <- pcfinhom(
+  unmark(sismos_ppp), 
+  lambda = lambda_s, 
+  correction = "translate",
+  divisor = "d" # Estabiliza la varianza a distancias grandes
+)
+
+
+# plot(
+#   pcfinhom(
+#     unmark(sismos_ppp),
+#     lambda = lambda_s,
+#     correction = "translate"
+#   ), main = "Función de intensidad reponderada"
+# )
+
+
+# Envolvente de Monte Carlo para g_inhom
+set.seed(2026)
+env_pcf <- envelope(
+  unmark(sismos_ppp), 
+  fun = pcfinhom, 
+  nsim = 999, 
+  simulate = expression(rpoispp(lambda_s)),
+  funargs = list(lambda = lambda_s, correction = "translate", divisor = "d"),
+  savefuns = TRUE,
+  verbose = FALSE
+)
+
+df_pcf_env <- as.data.frame(env_pcf)
+
+# Gráfico optimizado con leyenda interpretativa libre de solapamientos
+ggplot(df_pcf_env, aes(x = r)) +
+# 1. Bandas de confianza de Monte Carlo
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "grey80", alpha = 0.5) +
+  
+  # 2. Línea de Independencia Teórica (g = 1) - Mapeada a la leyenda
+  geom_hline(aes(yintercept = 1, color = "Independencia Teórica (g = 1)"), linetype = "dashed", linewidth = 0.8) +
+  
+  # 3. Media simulada - Mapeada a la leyenda
+  geom_line(aes(y = mmean, color = "Media Simulada (Poisson Inhom.)"), linetype = "dotted", linewidth = 0.8) + 
+  
+  # 4. Línea observada real - Mapeada a la leyenda
+  geom_line(aes(y = obs, color = "Sismicidad Observada g_inhom(r)"), linewidth = 1) +
+  
+  # Control de zoom vertical
+  coord_cartesian(ylim = c(0, 2.5)) + 
+  
+# Estética manual simplificada para la leyenda
+scale_color_manual(
+    name = "Identificación de Líneas",
+    values = c(
+      "Sismicidad Observada g_inhom(r)" = "black",
+      "Independencia Teórica (g = 1)"   = "red",
+      "Media Simulada (Poisson Inhom.)" = "grey40"
+    ),
+    breaks = c(
+      "Sismicidad Observada g_inhom(r)", 
+      "Independencia Teórica (g = 1)", 
+      "Media Simulada (Poisson Inhom.)"
+    ) # Forzar el orden de aparición en la leyenda
+  ) +
+  
+  # 5. Títulos y Nota explicativa al pie
+  labs(
+    title = "Función de Correlación por Pares\nInhomogénea g_inhom(r)", 
+    subtitle = "Análisis de patrones de segundo orden",
+    x = "Distancia (r)", 
+    y = expression(g[inhom](r)),
+    caption = "Nota: Valores de g(r) > 1 indican agrupamiento (atracción espacial);\nvalores de g(r) < 1 indican regularidad (inhibición entre sismos)."
+  ) +
+  
+  # 6. Consistencia en el formato del tema
+theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, color = "grey40"),
+    plot.caption = element_text(size = 8, face = "italic", color = "grey30", hjust = 0),
+    legend.position = "bottom",          
+    legend.title = element_text(size = 9, face = "bold"),
+    legend.text = element_text(size = 8),
+    panel.grid.minor = element_blank()
+  ) 
+```
+
+
+La función $g_{inhom}(r)$ en \@ref(fig:segundo-orden-pcf) muestra un pico localizado en distancias cortas (aproximadamente entre 25 y 40 km), alcanzando un valor de aproximadamente 1.7. Dado que este pico se mantiene dentro de la envolvente superior de Monte Carlo, concluimos que no existe una interacción de segundo orden significativa a esa escala específica, la cual podría estar asociada a fluctuaciones esperadas por el azar bajo un modelo no homogéneo.
+
+El análisis de segundo orden revela que la aparente agregación del patrón sísmico está principalmente explicada por la heterogeneidad de la intensidad de primer orden (zonas tectónicas activas y concentración de fallas geológicas como el nido de Bucaramanga). Al controlar esta inhomogeneidad espacial a través del suavizado kernel, el comportamiento residual de los sismos no muestra desviaciones estadísticamente significativas respecto a una distribución condicionalmente aleatoria (Poisson no homogéneo) en ninguna de las escalas de distancia evaluadas.
+
+---
