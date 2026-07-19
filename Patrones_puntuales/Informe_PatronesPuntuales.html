@@ -1706,6 +1706,7 @@ margin-right: -30px;
 
 
 
+<style type="text/css">h1, h2, h3 {color: #1a4a60; font-weight: 500;margin-top: 30px;margin-bottom: 15px;}span.header-section-number {color: #95a5a6; font-weight: 300;margin-right: 10px;}strong {color: #1a5a60; }.table {margin-top: 20px;margin-bottom: 25px;font-size: 14px;border-radius: 4px;overflow: hidden;}.table caption {font-style: italic;font-size: 13px;color: #7f8c8d;padding: 8px;caption-side: top; }</style>
 
 
 
@@ -3284,10 +3285,117 @@ Figure 5.4: Variograma de marcas con envolventes de Monte Carlo (999 permutacion
 <hr />
 </div>
 </div>
-<div id="ejercicios-de-clase-prueba-de-homogeneidad-con-índice-de-clark-evans" class="section level1" number="6">
-<h1><span class="header-section-number">6</span> Ejercicios de clase: Prueba de Homogeneidad con Índice de Clark-Evans</h1>
-<div id="section" class="section level2" number="6.1">
-<h2><span class="header-section-number">6.1</span> <strong>6.</strong></h2>
+<div id="ejercicios-de-clase" class="section level1" number="6">
+<h1><span class="header-section-number">6</span> Ejercicios de clase</h1>
+<div id="ejercicio-1" class="section level2" number="6.1">
+<h2><span class="header-section-number">6.1</span> <strong>Ejercicio 1</strong></h2>
+<p>Ejercicios sugeridos: 1,2,3. [], página 129</p>
+<p>###<strong>Problema 3.1</strong></p>
+<p>Sea <span class="math inline">\(N(A)\)</span> la medida de conteo en la región <span class="math inline">\(A \subset D\)</span> de un proceso de Poisson homogéneo. La distribución de dimensión finita del proceso para intervalos disjuntos (que no se traslapan) <span class="math inline">\(A_1, \dots, A_k\)</span> viene dada por</p>
+<p><span class="math display">\[\begin{aligned}
+\Pr(N(A_1) = n_1, \dots, N(A_k) = n_k) &amp;= \frac{\lambda^{n_1} \nu(A_1)^{n_1} \cdot \dots \cdot \nu(A_k)^{n_k}}{n_1! \cdot \dots \cdot n_k!} \\
+&amp;\times \exp\left\{ - \sum_{i=1}^k \lambda \nu(A_i) \right\}.
+\end{aligned}\]</span></p>
+<p>Demuestre que al condicionar sobre <span class="math inline">\(N(D) = n_1 + \dots + n_k \equiv n\)</span>, la distribución de dimensión finita es igual a la de un proceso Binomial (es decir, (3.2)).</p>
+<div id="problema-3.2" class="section level3" number="6.1.1">
+<h3><span class="header-section-number">6.1.1</span> <strong>Problema 3.2</strong></h3>
+<p>Para el proceso de Poisson homogéneo, encuentre estimadores insesgados de <span class="math inline">\(\lambda\)</span> y <span class="math inline">\(\lambda^2\)</span>.</p>
+</div>
+<div id="problema-3.3" class="section level3" number="6.1.2">
+<h3><span class="header-section-number">6.1.2</span> <strong>Problema 3.3</strong></h3>
+<p>Se toman muestras de datos de forma independiente a partir de dos poblaciones Gaussianas respectivas con varianza <span class="math inline">\(\sigma^2 = 1.5^2\)</span>. Se extraen cinco observaciones de cada población. Los valores observados son:</p>
+<table class="table table-striped table-hover table-condensed" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:tabla-poblaciones">Table 6.1: </span><span id="tab:tabla-poblaciones">Table 6.2: </span>Valores observados muestreados de manera independiente para ambas poblaciones Gaussianas.
+</caption>
+<thead>
+<tr>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+Población
+</th>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+<span class="math inline">\(y_{i1}\)</span>
+</th>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+<span class="math inline">\(y_{i2}\)</span>
+</th>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+<span class="math inline">\(y_{i3}\)</span>
+</th>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+<span class="math inline">\(y_{i4}\)</span>
+</th>
+<th style="text-align:center;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;">
+<span class="math inline">\(y_{i5}\)</span>
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;font-weight: bold;background-color: rgba(248, 249, 250, 255) !important;">
+i = 1
+</td>
+<td style="text-align:center;">
+9.7
+</td>
+<td style="text-align:center;">
+10.2
+</td>
+<td style="text-align:center;">
+10.9
+</td>
+<td style="text-align:center;">
+8.6
+</td>
+<td style="text-align:center;">
+10.3
+</td>
+</tr>
+<tr>
+<td style="text-align:center;font-weight: bold;background-color: rgba(248, 249, 250, 255) !important;">
+i = 2
+</td>
+<td style="text-align:center;">
+8.2
+</td>
+<td style="text-align:center;">
+6.1
+</td>
+<td style="text-align:center;">
+9.6
+</td>
+<td style="text-align:center;">
+8.2
+</td>
+<td style="text-align:center;">
+8.9
+</td>
+</tr>
+</tbody>
+</table>
+<p>Calcule el valor <span class="math inline">\(p\)</span> para <span class="math inline">\(H_0 : \mu_1 = \mu_2\)</span> frente a la alternativa bilateral utilizando la prueba estándar apropiada. Luego, realice pruebas de Monte Carlo con <span class="math inline">\(s = 19, 49, 99\)</span> y <span class="math inline">\(s = 999\)</span> repeticiones. Compare los valores <span class="math inline">\(p\)</span> simulados frente al valor <span class="math inline">\(p\)</span> calculado con la prueba estándar.</p>
+</div>
+</div>
+<div id="ejercicio-2" class="section level2" number="6.2">
+<h2><span class="header-section-number">6.2</span> <strong>Ejercicio 2</strong></h2>
+<p>Demostrar, <span class="math inline">\(\pi y^2 \sim \exp(\lambda) \Leftrightarrow 2\pi\lambda y^2 \sim \chi_2^2\)</span></p>
+</div>
+<div id="ejercicio-3" class="section level2" number="6.3">
+<h2><span class="header-section-number">6.3</span> <strong>Ejercicio 3</strong></h2>
+<p>Se conoce como índice del patrón puntual al cociente</p>
+<p><span class="math display">\[0 \le \frac{HS}{HS + 1} \le 1\]</span></p>
+<p>Calcule este número para algunos casos de los tres tipos de patrones puntuales y establezca una regla de interpretación.</p>
+</div>
+<div id="ejercicio-4" class="section level2" number="6.4">
+<h2><span class="header-section-number">6.4</span> Ejercicio 4</h2>
+<p>Encontrar <span class="math inline">\(\hat{\lambda}\)</span> via ML</p>
+</div>
+<div id="ejercicio-5" class="section level2" number="6.5">
+<h2><span class="header-section-number">6.5</span> Ejercicio 5</h2>
+<p>Leer sobre teselación de Dirichlet, polígonos de Voronoi, triangulación de Delaunay. Estos métodos se usan como algoritmos alternativos para optimizar el proceso de computo y así evitar llevar a cabo todos los cálculos de todas las distancias entre eventos. Además, las particiones generadas con éstas técnicas sirven como un suavizamiento de la zona base para el posterior suavizamiento. Si se tiene una variable auxiliar se puede poner altura sobre cada vértice para unir las alturas y generar una aproximación de la superficie.</p>
+</div>
+<div id="section" class="section level2" number="6.6">
+<h2><span class="header-section-number">6.6</span> <strong>6.</strong></h2>
 <p>Para 3 eventos en una región de área <span class="math inline">\(16u^2\)</span> , sin eventos en el borde:</p>
 <ol style="list-style-type: decimal">
 <li>¿Cuál es la probabilidad de que un evento esté dentro de la distancia <span class="math inline">\(4u\)</span> de un evento específico?</li>
@@ -3305,8 +3413,8 @@ P = \frac{\text{Área del círculo de radio } 4u}{\text{Área total}} = \frac{\p
 \lambda = \frac{n}{A} = \frac{3}{16} = 0.1875,\hspace{1cm}\text{eventos por unidad de área}.
 \]</span></p>
 </div>
-<div id="section-1" class="section level2" number="6.2">
-<h2><span class="header-section-number">6.2</span> <strong>7.</strong></h2>
+<div id="section-1" class="section level2" number="6.7">
+<h2><span class="header-section-number">6.7</span> <strong>7.</strong></h2>
 <p>Con base en el enunciado anterior, si este es el patrón observado:</p>
 <table>
 <thead>
@@ -3347,8 +3455,7 @@ R = \frac{\bar{r}_{\text{obs}}}{\bar{r}_{\text{esp}}},
 <p><span class="math display">\[
 \bar{r}_{\text{esp}} = \frac{1}{2\sqrt{\lambda}} = \frac{1}{2\sqrt{0.1875}} \approx 1.1547.
 \]</span></p>
-<div id="cálculo-de-barr_textobs" class="section level3" number="6.2.1">
-<h3><span class="header-section-number">6.2.1</span> Cálculo de <span class="math inline">\(bar{r}_{\text{obs}}\)</span></h3>
+<p><strong>Cálculo de <span class="math inline">\(bar{r}_{\text{obs}}\)</span></strong></p>
 <p>Datos observados:</p>
 <table>
 <thead>
@@ -3380,14 +3487,14 @@ R = \frac{\bar{r}_{\text{obs}}}{\bar{r}_{\text{esp}}},
 <ul>
 <li><strong>Punto A (2.3, 3.8):</strong>
 <ul>
-<li>a Punto 2: <span class="math inline">\(sqrt{(3.9-2.3)^2 + (2.4-3.8)^2} = \sqrt{1.6^2 + (-1.4)^2} = \sqrt{2.56 + 1.96} = \sqrt{4.52} \approx 2.126\)</span></li>
-<li>a Punto 3: <span class="math inline">\(sqrt{(1.8-2.3)^2 + (3.5-3.8)^2} = \sqrt{(-0.5)^2 + (-0.3)^2} = \sqrt{0.25 + 0.09} = \sqrt{0.34} \approx 0.583\)</span></li>
+<li>a Punto 2: <span class="math inline">\(\sqrt{(3.9-2.3)^2 + (2.4-3.8)^2} = \sqrt{1.6^2 + (-1.4)^2} = \sqrt{2.56 + 1.96} = \sqrt{4.52} \approx 2.126\)</span></li>
+<li>a Punto 3: <span class="math inline">\(\sqrt{(1.8-2.3)^2 + (3.5-3.8)^2} = \sqrt{(-0.5)^2 + (-0.3)^2} = \sqrt{0.25 + 0.09} = \sqrt{0.34} \approx 0.583\)</span></li>
 <li><strong>Mínimo:</strong> 0.583</li>
 </ul></li>
 <li><strong>Punto B (3.9, 2.4):</strong>
 <ul>
 <li>a Punto 1: 2.126</li>
-<li>a Punto 3: <span class="math inline">\(sqrt{(1.8-3.9)^2 + (3.5-2.4)^2} = \sqrt{(-2.1)^2 + 1.1^2} = \sqrt{4.41 + 1.21} = \sqrt{5.62} \approx 2.371\)</span></li>
+<li>a Punto 3: <span class="math inline">\(\sqrt{(1.8-3.9)^2 + (3.5-2.4)^2} = \sqrt{(-2.1)^2 + 1.1^2} = \sqrt{4.41 + 1.21} = \sqrt{5.62} \approx 2.371\)</span></li>
 <li><strong>Mínimo:</strong> 2.126</li>
 </ul></li>
 <li><strong>Punto C (1.8, 3.5):</strong>
@@ -3405,10 +3512,8 @@ R = \frac{\bar{r}_{\text{obs}}}{\bar{r}_{\text{esp}}},
 <p><span class="math display">\[
 R = \frac{1.0973}{1.1547} \approx 0.9503.
 \]</span></p>
-</div>
-<div id="prueba-de-hipótesis-bajo-normalidad" class="section level3" number="6.2.2">
-<h3><span class="header-section-number">6.2.2</span> Prueba de hipótesis bajo normalidad</h3>
-<p>El estadístico de prueba ( Z ) se aproxima como:</p>
+<p><strong>Prueba de hipótesis bajo normalidad</strong></p>
+<p>El estadístico de prueba <span class="math inline">\(Z\)</span> se aproxima como:</p>
 <p><span class="math display">\[
 Z = \frac{R - 1}{\text{SE}(R)},
 \]</span></p>
@@ -3423,9 +3528,9 @@ Z = \frac{0.9503 - 1}{0.3485} = \frac{-0.0497}{0.3485} \approx -0.1426.
 <p>Con un nivel de significancia <span class="math inline">\(\alpha = 0.05\)</span>, el valor crítico para una prueba bilateral es <span class="math inline">\(\pm 1.96\)</span>. Como <span class="math inline">\(-0.1426\)</span> se encuentra dentro del intervalo <span class="math inline">\([-1.96, 1.96]\)</span>, no se rechaza la hipótesis de homogeneidad.</p>
 <hr />
 </div>
-</div>
-<div id="prueba-de-clark-evans-usando-montecarlo" class="section level2" number="6.3">
-<h2><span class="header-section-number">6.3</span> 4. Prueba de Clark-Evans usando Montecarlo</h2>
+<div id="section-2" class="section level2" number="6.8">
+<h2><span class="header-section-number">6.8</span> <strong>4.</strong></h2>
+<p>Prueba de Clark-Evans usando Montecarlo</p>
 <p>Resultados de la simulación (19 valores):</p>
 <p><span class="math display">\[
 \begin{aligned}
@@ -3434,27 +3539,21 @@ Z = \frac{0.9503 - 1}{0.3485} = \frac{-0.0497}{0.3485} \approx -0.1426.
 &amp;4.086589,\ 4.031859,\ 1.993797.
 \end{aligned}
 \]</span></p>
-<div id="cálculo-del-r-observado" class="section level3" number="6.3.1">
-<h3><span class="header-section-number">6.3.1</span> Cálculo del <span class="math inline">\(R\)</span> observado</h3>
+<p><strong>Cálculo del <span class="math inline">\(R\)</span> observado</strong></p>
 <p>Ya calculamos:</p>
 <p><span class="math display">\[
 R_{\text{obs}} \approx 0.9503.
 \]</span></p>
-</div>
-<div id="determinación-del-p-valor-empírico" class="section level3" number="6.3.2">
-<h3><span class="header-section-number">6.3.2</span> Determinación del p-valor empírico</h3>
+<p><strong>Determinación del p-valor empírico</strong></p>
 <p>Para obtener el p-valor, comparamos <span class="math inline">\(R_{\text{obs}}\)</span> con los valores simulados bajo homogeneidad. Observamos que todos los valores simulados son mayores que 1.99, mientras que <span class="math inline">\(R_{\text{obs}} \approx 0.95\)</span>, que es considerablemente menor.</p>
 <p>Contamos cuántos valores simulados son menores o iguales a <span class="math inline">\(R_{\text{obs}}\)</span>:</p>
-<p>Ninguno de los 19 valores es menor que 0.9503. Por lo tanto, el p-valor empírico es:</p>
+<p>Ninguno de los 19 valores es menor que <span class="math inline">\(0.9503\)</span>. Por lo tanto, el p-valor empírico es:</p>
 <p><span class="math display">\[
 p = \frac{0 + 1}{19 + 1} = \frac{1}{20} = 0.05.
 \]</span></p>
 <p>Esto indica que, al nivel <span class="math inline">\(\alpha = 0.05\)</span>, el valor observado está en el límite de la región de rechazo. Si se usa un nivel de significancia estricto de <span class="math inline">\(0.05\)</span>, se rechaza la hipótesis de homogeneidad (pues <span class="math inline">\(p \leq 0.05\)</span>).</p>
 <hr />
-</div>
-</div>
-<div id="resumen-de-resultados" class="section level2" number="6.4">
-<h2><span class="header-section-number">6.4</span> Resumen de resultados</h2>
+<p><strong>Resumen de resultados</strong></p>
 <table>
 <colgroup>
 <col width="38%" />

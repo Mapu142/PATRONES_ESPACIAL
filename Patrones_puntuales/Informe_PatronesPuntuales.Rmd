@@ -23,6 +23,7 @@ output:
     mathjax: default
     fig_caption: true
     highlight: tango
+    css: style.css
     
 editor_options:
   chunk_output_type: inline
@@ -1149,7 +1150,90 @@ Esta conclusión es coherente con el análisis de segundo orden de la Sección 4
 ---
 
 
-# Ejercicios de clase: Prueba de Homogeneidad con Índice de Clark-Evans
+# Ejercicios de clase
+
+## **Ejercicio 1** 
+
+Ejercicios sugeridos: 1,2,3. [], página 129
+
+### **Problema 3.1** 
+
+Sea $N(A)$ la medida de conteo en la región $A \subset D$ de un proceso de Poisson homogéneo. La distribución de dimensión finita del proceso para intervalos disjuntos (que no se traslapan) $A_1, \dots, A_k$ viene dada por
+
+$$\begin{aligned}
+\Pr(N(A_1) = n_1, \dots, N(A_k) = n_k) &= \frac{\lambda^{n_1} \nu(A_1)^{n_1} \cdot \dots \cdot \nu(A_k)^{n_k}}{n_1! \cdot \dots \cdot n_k!} \\
+&\times \exp\left\{ - \sum_{i=1}^k \lambda \nu(A_i) \right\}.
+\end{aligned}$$
+
+Demuestre que al condicionar sobre $N(D) = n_1 + \dots + n_k \equiv n$, la distribución de dimensión finita es igual a la de un proceso Binomial (es decir, (3.2)).
+
+### **Problema 3.2** 
+
+Para el proceso de Poisson homogéneo, encuentre estimadores insesgados de $\lambda$ y $\lambda^2$.
+
+### **Problema 3.3** 
+
+Se toman muestras de datos de forma independiente a partir de dos poblaciones Gaussianas respectivas con varianza $\sigma^2 = 1.5^2$. Se extraen cinco observaciones de cada población. Los valores observados son:
+
+
+```{r tabla-poblaciones, echo=FALSE, message=FALSE, warning=FALSE}
+# Crear el dataframe con los datos
+datos_pob <- data.frame(
+  Población = c("i = 1", "i = 2"),
+  y_i1 = c(9.7, 8.2),
+  y_i2 = c(10.2, 6.1),
+  y_i3 = c(10.9, 9.6),
+  y_i4 = c(8.6, 8.2),
+  y_i5 = c(10.3, 8.9)
+)
+
+# Renderizar la tabla con diseño académico
+kable(datos_pob, 
+      align = "c", 
+      col.names = c("Población", "$y_{i1}$", "$y_{i2}$", "$y_{i3}$", "$y_{i4}$", "$y_{i5}$"),
+      escape = FALSE, # Permite que LaTeX se renderice correctamente en las cabeceras
+      caption = "Valores observados muestreados de manera independiente para ambas poblaciones Gaussianas.") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE, 
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#2c3e50") %>% # Combina con el azul de Flatly
+  column_spec(1, bold = TRUE, background = "#f8f9fa")
+```
+
+Calcule el valor $p$ para $H_0 : \mu_1 = \mu_2$ frente a la alternativa bilateral utilizando la prueba estándar apropiada. Luego, realice pruebas de Monte Carlo con $s = 19, 49, 99$ y $s = 999$ repeticiones. Compare los valores $p$ simulados frente al valor $p$ calculado con la prueba estándar. 
+
+## **Ejercicio 2** 
+
+Demostrar, $\pi y^2 \sim \exp(\lambda) \Leftrightarrow 2\pi\lambda y^2 \sim \chi_2^2$
+
+## **Ejercicio 3** 
+
+Se conoce como índice del patrón puntual al cociente
+
+$$0 \le \frac{HS}{HS + 1} \le 1$$
+
+Calcule este número para algunos casos de los tres tipos de patrones puntuales y establezca una regla de interpretación.
+
+## Ejercicio 4 
+
+Encontrar $\hat{\lambda}$ via ML
+
+## Ejercicio 5
+
+Leer sobre teselación de Dirichlet, polígonos de Voronoi, triangulación de Delaunay. Estos métodos se usan como algoritmos alternativos para optimizar el proceso de computo y así evitar llevar a cabo todos los cálculos de todas las distancias entre eventos. Además, las particiones generadas con éstas técnicas sirven como un suavizamiento de la zona base para el posterior suavizamiento. Si se tiene una variable auxiliar se puede poner altura sobre cada vértice para unir las alturas y generar una aproximación de la superficie.
+
+## Ejercicio 6
+
+* Leer capítulo 3, Interactive Spatial Data Analysis.
+* Leer sobre espacio-producto.
+* Verificar que el momento de orden $p$ de un proceso de Poisson es la media sobre $(D_s), \mathbf{B}(D_s)^k$ definida para los productos $B_1 \times \dots \times B_k$ por:
+
+$$\mu_p(B_1 \times \dots \times B_k) = E(N(B_1)\dots N(B_k))$$
+
+
+* Relación definición de proceso Gaussiano, con un proceso NHP
+* Revisar e interpretar la relación entre $K(h)$ y $\lambda_2$
+
 
 ## **6.**
 
@@ -1208,7 +1292,7 @@ $$
 \bar{r}_{\text{esp}} = \frac{1}{2\sqrt{\lambda}} = \frac{1}{2\sqrt{0.1875}} \approx 1.1547.
 $$
 
-### Cálculo de $bar{r}_{\text{obs}}$
+**Cálculo de $bar{r}_{\text{obs}}$**
 
 Datos observados:
 
@@ -1247,7 +1331,7 @@ $$
 R = \frac{1.0973}{1.1547} \approx 0.9503.
 $$
 
-### Prueba de hipótesis bajo normalidad
+**Prueba de hipótesis bajo normalidad**
 
 El estadístico de prueba $Z$ se aproxima como:
 
@@ -1271,7 +1355,9 @@ Con un nivel de significancia $\alpha = 0.05$, el valor crítico para una prueba
 
 ---
 
-## 4. Prueba de Clark-Evans usando Montecarlo
+## **4.** 
+
+Prueba de Clark-Evans usando Montecarlo
 
 Resultados de la simulación (19 valores):
 
@@ -1283,7 +1369,7 @@ $$
 \end{aligned}
 $$
 
-### Cálculo del $R$ observado
+**Cálculo del $R$ observado**
 
 Ya calculamos:
 
@@ -1291,7 +1377,7 @@ $$
 R_{\text{obs}} \approx 0.9503.
 $$
 
-### Determinación del p-valor empírico
+**Determinación del p-valor empírico**
 
 Para obtener el p-valor, comparamos $R_{\text{obs}}$ con los valores simulados bajo homogeneidad. Observamos que todos los valores simulados son mayores que 1.99, mientras que $R_{\text{obs}} \approx 0.95$, que es considerablemente menor.
 
@@ -1307,7 +1393,7 @@ Esto indica que, al nivel $\alpha = 0.05$, el valor observado está en el límit
 
 ---
 
-## Resumen de resultados
+**Resumen de resultados**
 
 | Prueba                        | Estadístico | Conclusión                          |
 |-------------------------------|-------------|-------------------------------------|
