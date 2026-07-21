@@ -189,44 +189,51 @@ ventana_grados <- st_transform(ventana_sf, crs = 4326)
 # ==============================================================================
 #  VISUALIZACIÓN CON GGPlot2 (Mapa profesional)
 ggplot() +
-  # Capa 1: Polígono de Colombia (Corregido 'size' por 'linewidth')
-  geom_sf(data = colombia_map, 
-          fill = "#f0f0f0",         # Gris muy claro y limpio para el fondo
-          color = "#2c3e50",        # Borde azul oscuro elegante
-          linewidth = 0.3) +        
+  # Capa 1: Países vecinos (Fondo gris neutro y bordes sutiles)
+  geom_sf(data = paises_vecinos, 
+          fill = "#f1f2f6",         
+          color = "#bdc3c7",        
+          linewidth = 0.3) +
   
-  # Capa 2: Puntos Sísmicos (Mapeamos color y tamaño según la magnitudd)
-  geom_sf(data = sismos_sf, 
-          alpha = 0.65,             # Transparencia para ver sismos superpuestos
-          shape = 19) +             # Círculo sólido
+  # Capa 2: Resaltar la frontera de Colombia (Línea más gruesa y azul oscuro)
+  geom_sf(data = colombia_map, 
+          fill = "#f8f9fa",         # Un gris más limpio para diferenciarlo de los vecinos
+          color = "#1f3a60",        # Tu azul oscuro elegante original
+          linewidth = 0.8) +        
+  
+  # Capa 4: Los sismos puros (Puntos rojos translúcidos)
+geom_sf(data = sismos_sf, 
+          aes(color = magnitudd, size = magnitudd), 
+          shape = 20,                             # Círculo sólido    
+          alpha = 0.7) +
   
   # Escala de colores: Paleta Magma (Amarillo = Alto, Negro/Morado = Bajo)
   scale_color_viridis_c(option = "magma", 
-                        name = "magnitudd") +
+                        name = "magnitud") +
   
   # Escala de tamaño: Los sismos más fuertes se ven más grandes en el mapa
-  scale_size_continuous(range = c(0.15, 6.5), 
-                        name = "Tamaño") +
+  scale_size_continuous(range = c(2, 8), 
+                        name = "magnitud") +
   
-  # Capa de Proyección y límites visuales (Explicado abajo)
+  # AJUSTE CRUCIAL: El zoom se abre un poco más (de -86 a -63) para poder ver la ventana flotando
   coord_sf(crs = st_crs(4326), 
-           xlim = c(-82, -66),      
-           ylim = c(-5, 13)) + 
+           xlim = c(-82, -66),   
+           ylim = c(-5, 14)) +
   
-  # Etiquetas informativas
+  # Etiquetas y títulos adaptados
   labs(title = "Sismicidad Histórica de Colombia",
        subtitle = "Fuente: Servicio Geológico Colombiano (SGC)",
        x = "Longitud", 
        y = "Latitud") +
   
-  # Estética general limpia
+  # Estética profesional de fondo de océano
   theme_minimal() +
   theme(
-    panel.grid.major = element_line(color = "gray90"),
-    plot.title = element_text(face = "bold", size = 14),
-    legend.position = "right"
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 13, color = "#2c3e50"),
+    plot.subtitle = element_text(size = 10, italic = TRUE, color = "#555555"),
+    panel.background = element_rect(fill = "#eef2f7", color = NA) # Océano azul claro
   )
-
 
 
 ```
@@ -291,8 +298,8 @@ ggplot() +
   
   # AJUSTE CRUCIAL: El zoom se abre un poco más (de -86 a -63) para poder ver la ventana flotando
   coord_sf(crs = st_crs(4326), 
-           xlim = c(-86, -63),   
-           ylim = c(-6.5, 15.5)) +
+           xlim = c(-82, -66),   
+           ylim = c(-5, 14)) +
   
   # Etiquetas y títulos adaptados
   labs(title = "Patrón Puntual Sísmico e Influencia Regional",
@@ -414,9 +421,11 @@ g_3x3 <- ggplot() +
           linetype = "dashed") + 
   # Etiquetas numéricas dentro de los cuadrantes
   geom_text(data = sf_3x3, aes(x = lon_c, y = lat_c, label = etiqueta), 
-            size = 2.8, fontface = "bold", color = "#2c3e50", bg.color = "white", bg.r = 0.15) +
-  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +            
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+            size = 2, fontface = "bold", color = "#2c3e50", bg.color = "white", bg.r = 0.15) +
+  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +   
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "Prueba por Cuadrantes (3x3)", subtitle = "Evaluación de Homogeneidad CSR", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
@@ -440,9 +449,11 @@ g_4x4 <- ggplot() +
           linetype = "dashed") + 
   # Etiquetas numéricas dentro de los cuadrantes
   geom_text(data = sf_4x4, aes(x = lon_c, y = lat_c, label = etiqueta), 
-            size = 2.8, fontface = "bold", color = "#2c3e50", bg.color = "white", bg.r = 0.15) +
-  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +            
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+            size = 2, fontface = "bold", color = "#2c3e50", bg.color = "white", bg.r = 0.15) +
+  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +         
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "Prueba por Cuadrantes (4x4)", subtitle = "Evaluación de Homogeneidad CSR", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
@@ -465,9 +476,11 @@ g_5x5 <- ggplot() +
           linetype = "dashed") + 
   # Etiquetas numéricas más pequeñas debido a la densidad de celdas
   geom_text(data = sf_5x5, aes(x = lon_c, y = lat_c, label = etiqueta), 
-            size = 2.0, fontface = "bold", color = "#2c3e50") +
-  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +            
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+            size = 1.5, fontface = "bold", color = "#2c3e50") +
+  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +   
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "Prueba por Cuadrantes (5x5)", subtitle = "Resolución Fina de Residuos", x = "Longitud", y = "") +
   theme_minimal() +
   theme(
@@ -490,9 +503,11 @@ g_6x6 <- ggplot() +
           linetype = "dashed") + 
   # Etiquetas numéricas más pequeñas debido a la densidad de celdas
   geom_text(data = sf_6x6, aes(x = lon_c, y = lat_c, label = etiqueta), 
-            size = 2.0, fontface = "bold", color = "#2c3e50") +
-  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +            
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+            size = 1.5, fontface = "bold", color = "#2c3e50") +
+  geom_sf(data = sismos_sf, color = "#e74c3c", size = 1.2, alpha = 0.4) +   
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "Prueba por Cuadrantes (6x6)", subtitle = "Resolución Fina de Residuos", x = "Longitud", y = "") +
   theme_minimal() +
   theme(
@@ -729,7 +744,9 @@ g_1_vecino  <- ggplot() +
                 max.overlaps = Inf,
                   segment.color = NA) +  # Oculta las líneas conectoras para evitar desorden visual
   
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "A. Proximidad al 1° Vecino", subtitle = "Distancia al evento más inmediato", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
@@ -762,7 +779,9 @@ g_2_vecino <- ggplot() +
                 max.overlaps = Inf,
                   segment.color = NA) +
   
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "B. Proximidad al 2° Vecino", subtitle = "Distancia al segundo evento más cercano", x = "Longitud", y = "") +
   theme_minimal() +
   theme(
@@ -825,7 +844,9 @@ g_stienen <- ggplot() +
   # Puntos de los sismos reales
   geom_sf(data = sismos_sf, color = "#2c3e50", size = 0.8, alpha = 0.9) +
   geom_sf(data = colombia_map, fill = NA, color = "#1f3a60", linewidth = 0.7) +
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "A. Diagrama de Stienen", subtitle = "Esferas de exclusión inter-evento", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
@@ -875,7 +896,9 @@ g_dirichlet <- ggplot() +
   geom_sf(data = sf_dirichlet_grados, fill = "#3498db", alpha = 0.03, color = "#e67e22", linewidth = 0.4, linetype = "solid") +
   geom_sf(data = sismos_sf, color = "#2c3e50", size = 0.8, alpha = 0.9) +
   geom_sf(data = colombia_map, fill = NA, color = "#1f3a60", linewidth = 0.7) +
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "B. Teselación de Dirichlet", subtitle = "Polígonos de Voronoi / Áreas de influencia", x = "Longitud", y = "") +
   theme_minimal() +
   theme(
@@ -1055,7 +1078,9 @@ ggplot() +
   geom_sf(data = sismos_sf, color = "#000000", size = 0.8, alpha = 0.3) +
   
   # Ajuste de encuadre oficial del SGC
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   
   # Títulos y etiquetas solicitadas (Actualizado el período a tu caso)
   labs(title = "Estimación de la Intensidad de Sismos en Colombia",
@@ -1316,30 +1341,36 @@ Analizar la magnitud (marca) de los sismos es importante porque no solo importa 
 # ==============================================================================
 #  VISUALIZACIÓN CON GGPlot2 (Mapa profesional)
 ggplot() +
-  # Capa 1: Polígono de Colombia (Corregido 'size' por 'linewidth')
-  geom_sf(data = colombia_map, 
-          fill = "#f0f0f0",         # Gris muy claro y limpio para el fondo
-          color = "#2c3e50",        # Borde azul oscuro elegante
-          linewidth = 0.3) +        
+  # Capa 1: Países vecinos (Fondo gris neutro y bordes sutiles)
+  geom_sf(data = paises_vecinos, 
+          fill = "#f1f2f6",         
+          color = "#bdc3c7",        
+          linewidth = 0.3) +
   
-  # Capa 2: Puntos Sísmicos (Mapeamos color y tamaño según la magnitudd)
-  geom_sf(data = sismos_sf, 
+  # Capa 2: Resaltar la frontera de Colombia (Línea más gruesa y azul oscuro)
+  geom_sf(data = colombia_map, 
+          fill = "#f8f9fa",         # Un gris más limpio para diferenciarlo de los vecinos
+          color = "#1f3a60",        # Tu azul oscuro elegante original
+          linewidth = 0.8) +        
+  
+  # Capa 4: Los sismos puros (Puntos rojos translúcidos)
+ geom_sf(data = sismos_sf, 
           aes(color = magnitudd, size = magnitudd), 
-          alpha = 0.65,             # Transparencia para ver sismos superpuestos
-          shape = 19) +             # Círculo sólido
+          shape = 20,                             # Círculo sólido    
+          alpha = 0.7) +
   
   # Escala de colores: Paleta Magma (Amarillo = Alto, Negro/Morado = Bajo)
   scale_color_viridis_c(option = "magma", 
-                        name = "magnitudd") +
+                        name = "magnitud") +
   
   # Escala de tamaño: Los sismos más fuertes se ven más grandes en el mapa
-  scale_size_continuous(range = c(0.15, 6.5), 
-                        name = "Tamaño") +
+  scale_size_continuous(range = c(1, 8.5), 
+                        name = "magnitud") +
   
   # Capa de Proyección y límites visuales (Explicado abajo)
   coord_sf(crs = st_crs(4326), 
-           xlim = c(-82, -66),      
-           ylim = c(-5, 13)) + 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   
   # Etiquetas informativas
   labs(title = "Sismicidad Histórica de Colombia",
@@ -1350,18 +1381,18 @@ ggplot() +
   # Estética general limpia
   theme_minimal() +
   theme(
-    panel.grid.major = element_line(color = "gray90"),
-    plot.title = element_text(face = "bold", size = 14),
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 13, color = "#2c3e50"),
+    plot.subtitle = element_text(size = 10, italic = TRUE, color = "#555555"),
+    panel.background = element_rect(fill = "#eef2f7", color = NA), # Océano azul claro
     legend.position = "right"
   )
-
-
 
 ```
 
 ## Correlación 
 
-```{r}
+```{r correlacion, fig.cap="Correlación de pearson entre la variable magnitud y las coordenadas"}
 
 coords <- st_coordinates(sismos_sf)
 datos <- cbind(sismos_sf$magnitudd, coords[,c(1,2)])
@@ -1374,13 +1405,13 @@ mat_cor <- cor(
 
 ```
 
-```{r corrplot, fig.align='center',fig.cap="Correlación de pearson entre la variable magnitud y las coordenadas"}
+```{r corrplot, fig.align='center', fig.cap="Correlación de pearson entre la variable magnitud y las coordenadas", fig.height=4, fig.width=5}
 corrplot(
   mat_cor,
   method = "color",
   addCoef.col = "black",
   tl.col = "black",
-  number.cex = 0.8
+  number.cex = 0.9
 )
 ```
 
@@ -1421,10 +1452,10 @@ ggplot() +
   scale_color_viridis_c(option = "magma", 
                         name = "magnitudd") +
   
-  # AJUSTE CRUCIAL: El zoom se abre un poco más (de -86 a -63) para poder ver la ventana flotando
+  # Capa de Proyección y límites visuales (Explicado abajo)
   coord_sf(crs = st_crs(4326), 
-           xlim = c(-86, -63),   
-           ylim = c(-6.5, 15.5)) +
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   
   # Etiquetas y títulos adaptados
   labs(title = "Patrón Puntual Sísmico e Influencia Regional",
@@ -1523,7 +1554,10 @@ g_3x3 <- ggplot() +
   # Escala de colores: Paleta Magma (Amarillo = Alto, Negro/Morado = Bajo)
   scale_color_viridis_c(option = "magma", 
                         name = "magnitudd") +            
-  coord_sf(crs = st_crs(4326), xlim = c(-86, -63), ylim = c(-6.5, 15.5)) +
+  # Capa de Proyección y límites visuales (Explicado abajo)
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
   labs(title = "Distribución espacial de la magnitud por cuadrantes", subtitle = "Partición espacial empleada en el análisis.", x = "Longitud", y = "Latitud") +
   theme_minimal() +
   theme(
@@ -1599,11 +1633,10 @@ g_magnitud <- ggplot() +
     stroke = 0.2
   ) +
 
-  coord_sf(
-    crs = st_crs(4326),
-    xlim = c(-86, -63),
-    ylim = c(-6.5, 15.5)
-  ) +
+  # Capa de Proyección y límites visuales (Explicado abajo)
+  coord_sf(crs = st_crs(4326), 
+           xlim = c(-81, -69.5),   
+           ylim = c(-1.5, 13.5)) +
 
   labs(
     title = "Superficie suavizada de la magnitud sísmica",
@@ -1632,6 +1665,7 @@ g_magnitud <- ggplot() +
   )
 
 ```
+
 ```{r estimacion-magnitud, fig.cap="Estimación Kernel de la magnitud media espacial"}
 g_magnitud
 ```

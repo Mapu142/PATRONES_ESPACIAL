@@ -1,0 +1,36 @@
+/* Estilo elegante para los títulos principales (H1, H2, H3) */
+h1, h2, h3 {
+  color: #1a4a60; /* El color azul oscuro característico de Flatly */
+  font-weight: 500;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+/* Modificar el número automático de sección para que sea sutil y elegante */
+span.header-section-number {
+  color: #95a5a6; /* Gris claro para que el número no compita con el texto */
+  font-weight: 300;
+  margin-right: 10px;
+}
+
+/* Estilizar los enunciados de los problemas */
+strong {
+  color: #1a5a60; /* Color verde turquesa de Flatly para resaltar "Problema X.X" */
+}
+
+/* Ajustes finos para las tablas kableExtra */
+.table {
+  margin-top: 20px;
+  margin-bottom: 25px;
+  font-size: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.table caption {
+  font-style: italic;
+  font-size: 13px;
+  color: #7f8c8d;
+  padding: 8px;
+  caption-side: top; /* Pone el título de la tabla arriba, estilo académico */
+}
