@@ -1,0 +1,370 @@
+---
+title: "Geoestadística para una variable"
+author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
+output: 
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    code_folding: hide
+    mathjax: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+```{r Librerias, include=FALSE}
+#setwd("C:/PERSONAL_MAPU/UNIVERSIDADES/NACIONAL/ESTADÍSTICA_ESPACIAL/PARCIAL_2")
+library(readxl)
+library(dplyr)
+library(stringr)
+library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
+library(tidyverse)
+library(corrplot)
+library(sf)
+library(ggplot2)
+library(kableExtra)
+library(measurements)
+library(gganimate) # para hacer película
+library(gifski) #para renderizar la película
+library(spdep)
+library(adespatial)
+library(gstat)
+library(sp)
+library(spacetime)
+library(RColorBrewer)
+
+```
+
+# Introducción
+
+
+##  Planteamiento del problema
+
+Las redes fijas de monitoreo, como la Red de Monitoreo de Calidad del Aire de Bogotá (RMCAB),  solo ofrecen datos puntuales, lo que dificulta evaluar la exposición real de la población a la contaminación. En el área metropolitana de Bogotá, las fuentes de emisión y la topografía generan una gran variabilidad espacial en el material particulado.
+
+El objetivo de este informe es aplicar un modelo de interpolación geoestadística (Kriging) a partir de 19 estaciones dispersas para reconstruir la superficie continua del Material Particulado ($\text{PM}_{10}$) en un instante determinado. Al fijar un corte temporal, aislamos la dependencia espacial intrínseca del fenómeno. 
+
+
+**Área de Estudio**
+
+El estudio abarca el perímetro urbano de Bogotá D. C., caracterizado por un marcado gradiente de uso del suelo y altitud: varía desde zonas residenciales en el norte hasta sectores industriales y de alto tráfico en el sur y occidente, dinamica que condiciona las emisiones de material particulado.
+
+**Variable de Interés**
+
+Se modelará la concentración horaria de $\text{PM}_{10}$ (partículas con diámetro aerodinámico $\le 10\ \mu\text{m}$), prioritarias en salud pública por su capacidad de penetración en el sistema respiratorio. Como marco de referencia legal, la Resolución 601 de 2006 del Ministerio de Ambiente establece un límite máximo permisible de $150\ \mu\text{m}/ \text{m}^3$ para un promedio móvil de 24 horas.
+
+
+
+
+```{r base-datos}
+#writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
+reporte_completo <- read_excel("reporte_completo.xlsx")
+dms_a_decimal <- function(x) {
+  nums <- str_extract_all(x, "\\d+\\.?\\d*")
+  decimal <- sapply(seq_along(nums), function(i) {
+    v <- as.numeric(nums[[i]])
+    dec <- v[1] + v[2] / 60 + v[3] / 3600
+    if (str_detect(x[i], "[WS]$")) {
+      dec <- -dec
+    }
+    dec
+  })
+  decimal
+}
+reporte_completo$Longitud <- dms_a_decimal(reporte_completo$Longitud)
+reporte_completo$Latitud  <- dms_a_decimal(reporte_completo$Latitud)
+reporte_completo <- reporte_completo  %>% 
+  rename(fecha_hora = `Fecha & Hora`)
+# str(reporte_completo)
+# summary(reporte_completo)
+tabla_conteos_NAS <- data.frame(
+  estaciones=names(reporte_completo)[-1],
+  conteos=colSums(is.na(reporte_completo))[-1],
+  row.names = NULL
+)
+
+# Mapa de Bogotá
+bogota <- st_read("Loca.shp") %>% 
+  filter(!grepl("SUMAPAZ", LocNombre, ignore.case = TRUE))  %>% 
+  filter(!grepl("USME", LocNombre, ignore.case = TRUE)) 
+
+estaciones_sf <- st_as_sf(
+  reporte_completo,
+  coords = c("Longitud", "Latitud"),
+  crs = 4326
+)
+
+
+```
+
+
+# Base de datos 
+<!-- {.tabset} -->
+
+La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra mediante agregación, aislando la señal espacial intrínseca de cada estación. 
+
+
+> La estructura de los datos y la naturaleza de las variables medidas en la red de monitoreo se detallan en Tabla \@ref(tab:tabla-diccionario).
+
+
+
+```{r tabla-diccionario, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+# 1. Definición del dataset
+diccionario <- data.frame(
+  Variable = c("Estacion", "Latitud", "Longitud", "Altitud (m)", "PM10", "Tipo de estación"),
+  Descripción = c(
+    "Nombre del sitio de monitoreo",
+    "Coordenada geográfica Norte-Sur",
+    "Coordenada geográfica Este-Oeste",
+    "Elevación sobre el nivel del mar",
+    "Concentración de material particulado <10µm",
+    "Clasificación del entorno de medición"
+  ),
+  `Tipo de Dato` = c(
+    "Categórica (Nominal)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Categórica (Ordinal)"
+  ),
+  `Ejemplo / Rango` = c(
+    '"Kennedy", "Suba"',
+    "4.53° a 4.78°",
+    "-74.17° a -74.03°",
+    "2547 m a 2688 m",
+    "1.00 a 1000.00 µg/m³",
+    '"Tráfico", "Residencial"'
+  ),
+  check.names = FALSE
+)
+
+# 2. Generación y formateo de la tabla
+kbl(
+  diccionario,
+  caption = "Diccionario de datos y muestra representativa de la red de monitoreo.",
+  booktabs = TRUE,
+  align = c("l", "l", "l", "l"),
+  escape = FALSE
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    latex_options = c("striped", "hold_position", "scale_down"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  column_spec(1, bold = TRUE, monospace = TRUE) %>% # Destaca los nombres de variables como código
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
+
+## Base de datos filtrada en fecha 2024-02-01
+
+```{r configuracion-fecha, message=FALSE, warning=FALSE}
+# 1. Definir la fecha y hora objetivo (Fácil de modificar)
+# Formato: "AAAA-MM-DD HH:MM:SS"
+fecha_buscada <- "2024-02-01"
+
+# 2. Filtrar
+datos_corte <- reporte_completo %>%
+  filter(
+    as.Date(fecha_hora) == as.Date(fecha_buscada),
+    hour(fecha_hora) == 12
+  )
+
+# 4. Verificación de calidad de datos para el corte seleccionado
+total_estaciones <- nrow(datos_corte)
+estaciones_con_pm10 <- datos_corte %>% filter(!is.na(PM10)) %>% nrow()
+porcentaje_faltantes <- round((1 - (estaciones_con_pm10 / total_estaciones)) * 100, 2)
+datos_corte%>% filter(is.na(PM10))
+
+cat("Fecha analizada:", as.character(fecha_buscada), "\n")
+cat("Total de estaciones registradas en esa hora:", total_estaciones, "\n")
+cat("Estaciones con medición válida de PM10:", estaciones_con_pm10, "\n")
+cat("Porcentaje de datos faltantes (NA):", porcentaje_faltantes, "%\n")
+
+
+```
+
+
+
+Dado dato faltante en USME se expluye de la base de datos a trabajar de la fecha 2024-02-01, al final se trabaja con 18 estaciones y datos
+
+```{r faltantes, tab.cap="Conteo de datos faltantes"}
+
+# 1. FILTRADO DE DATOS VÁLIDOS (Excluye NAs de PM10 para el análisis espacial)
+# Al filtrar PM10 no nulo, Usme (que tenía NA) queda fuera de la muestra automáticamente.
+datos_corte <- datos_corte %>% 
+  filter(!is.na(PM10))
+
+# 2. CONVERSIÓN A OBJETO ESPACIAL (sf)
+estaciones_sf <- st_as_sf(
+  datos_corte,
+  coords = c("Longitud", "Latitud"),
+  crs = 4326
+)
+
+```
+
+```{r primeras-filas}
+datos_corte %>% 
+  kableExtra::kbl(
+  caption = "Primeras 10 filas de la base de datos",
+  col.names = c(
+    "Fecha & Hora",
+    "Estación",
+    bquote(PM_10),
+    bquote(O_3),
+    "Sigla",
+    "Latitud",
+    "Longitud",
+    "Altitud (m)",
+    "Altura (m)",
+    "Localidad",
+    "Tipo de zona",
+    "Tipo de estación",
+    "Dirección"),
+  align = c("l", "l", "c", "c", "c",
+            "l", "l", "c", "c", "c",
+            "c", "c", "l")
+) %>%
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
+
+## Boxplot de $PM_{10}$
+
+Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 1 000 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
+
+```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=3, fig.width=7, message=FALSE, warning=FALSE}
+ggplot()+
+  geom_boxplot(data = datos_corte, aes(x = PM10),fill = "#41B7C4")
+```
+
+# Exploración espacial
+ <!-- {.tabset} -->
+
+## Distribución
+
+La distribución univariada del $PM_{10}$, una vez agregada espacialmente, exhibe asimetría positiva. La media aritmética (32.73 $\mu g/m^3$) supera a la mediana (27.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
+
+
+```{r exploratorio_p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=4, fig.width=10}
+ggplot(datos_corte, aes(x = PM10)) +
+  geom_histogram(binwidth = 5, fill = "#41B7C4", color = "black", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
+  labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
+  theme_minimal()
+```
+
+
+## Mapa de bogotá
+
+```{r mapa-bogota}
+# Graficar enfocado solo en el área urbana
+ggplot() +
+  geom_sf(data = bogota, fill = "gray96", color = "gray50", linewidth = 0.4) +
+  geom_sf(data = estaciones_sf, color = "#d95f02", size = 2.8, alpha = 0.8) +
+  # Enfocar el recuadro del mapa exactamente donde están el mapa urbano y sus estaciones
+  coord_sf(
+    xlim = c(st_bbox(bogota)["xmin"], st_bbox(bogota)["xmax"]),
+    ylim = c(st_bbox(bogota)["ymin"], st_bbox(bogota)["ymax"])
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Red de Monitoreo de Calidad del Aire - Área Urbana",
+    subtitle = "Ubicación de estaciones sobre el perímetro urbano de Bogotá D.C.",
+    x = "Longitud",
+    y = "Latitud"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    panel.grid.major = element_line(color = "gray90", linetype = "dashed")
+  )
+```
+
+
+# Relaciones entre variables 
+<!-- {.tabset} -->
+
+## Correlación con la variable de interés $PM_{10}$
+
+```{r correlacion-variable, fig.height=5, fig.width=7}
+mat_cor <- cor(
+  datos_corte %>% 
+    dplyr::select(PM10, O3, `Altitud (m)`, `Altura (m)`, Latitud, Longitud),
+  use = "complete.obs"
+)
+
+corrplot(
+  mat_cor,
+  method = "color",
+  addCoef.col = "black",
+  tl.col = "black",
+  number.cex = 0.8
+)
+```
+
+## Dispersión con longitud
+
+```{r dispm10lon, message=FALSE, warning=FALSE}
+ggplot(datos_corte,
+       aes(Longitud, PM10))+
+    geom_point(alpha=.3)+
+    geom_smooth(method="loess")
+```
+
+## Dispersión con latitud
+
+```{r disPM10lat, message=FALSE, warning=FALSE}
+ggplot(datos_corte,
+       aes(Latitud, PM10))+
+    geom_point(alpha=.3)+
+    geom_smooth(method="loess")
+```
+
+## Moran
+
+Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.354$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), donde estaciones cercanas registran niveles similares de $PM_{10}$. Lo cual justifica la implementación de la geoestadística.
+
+
+```{r moran}
+# 3. CONSTRUCCIÓN DE LA MATRIZ DE VECINOS (k-NN)
+coords  <- st_coordinates(estaciones_sf)
+vecinos <- knearneigh(coords, k = 4)
+vecinos <- knn2nb(vecinos)
+pesos   <- nb2listw(vecinos, style = "W")
+
+# 4. VISUALIZACIÓN DE LA RED DE VECINDAD (Deben correr juntos)
+plot(st_geometry(estaciones_sf), pch = 19, col = "#d95f02", main = "Red de Vecindad (k = 4)")
+plot(vecinos, coords, add = TRUE, col = "gray40", lty = 2)
+
+# 5. PRUEBA DEL ÍNDICE DE MORAN (Ahora no fallará)
+moran_result <- moran.test(
+  datos_corte$PM10,
+  listw = pesos
+)
+
+print(moran_result)
+```
