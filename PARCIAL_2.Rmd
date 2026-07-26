@@ -1,7 +1,7 @@
 ---
 title: "Patrones Puntuales"
 author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
-output:
+output: 
   bookdown::html_document2:
     theme: flatly
     toc: true
@@ -10,8 +10,8 @@ output:
     self_contained: true
     code_folding: hide
     mathjax: default
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: sentence
 ---
 
@@ -240,6 +240,15 @@ reporte_completo <- reporte_completo  %>%
 
 # Introducción
 
+
+##  Planteamiento del problema
+
+Las redes fijas de monitoreo solo ofrecen datos puntuales, lo que dificulta evaluar la exposición real de la población a la contaminación. En el área metropolitana de Bogotá, las fuentes de emisión y la topografía generan una gran variabilidad espacial en el material particulado.
+
+Por ello, este estudio utiliza geoestadística para estimar la distribución espacial de $PM_{10}$, un contaminante para la salud respiratoria. El objetivo principal es reconstruir la superficie continua de $PM_{10}$ a partir de 19 estaciones dispersas, reduciendo la incertidumbre de la interpolación y el ruido en los datos de los sensores.
+
+
+
 ```{r base-datos}
 #writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
 reporte_completo <- read_excel("reporte_completo.xlsx")
@@ -288,6 +297,71 @@ estaciones_sf <- st_as_sf(
 
 
 # Base de datos {.tabset}
+
+La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra mediante agregación, aislando la señal espacial intrínseca de cada estación. 
+
+
+> La estructura de los datos y la naturaleza de las variables medidas en la red de monitoreo se detallan en Tabla \@ref(tab:tabla-diccionario).
+
+
+
+```{r tabla-diccionario, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+# 1. Definición del dataset
+diccionario <- data.frame(
+  Variable = c("Estacion", "Latitud", "Longitud", "Altitud (m)", "PM10", "Tipo de estación"),
+  Descripción = c(
+    "Nombre del sitio de monitoreo",
+    "Coordenada geográfica Norte-Sur",
+    "Coordenada geográfica Este-Oeste",
+    "Elevación sobre el nivel del mar",
+    "Concentración de material particulado <10µm",
+    "Clasificación del entorno de medición"
+  ),
+  `Tipo de Dato` = c(
+    "Categórica (Nominal)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Categórica (Ordinal)"
+  ),
+  `Ejemplo / Rango` = c(
+    '"Kennedy", "Suba"',
+    "4.53° a 4.78°",
+    "-74.17° a -74.03°",
+    "2547 m a 2688 m",
+    "1.00 a 1000.00 µg/m³",
+    '"Tráfico", "Residencial"'
+  ),
+  check.names = FALSE
+)
+
+# 2. Generación y formateo de la tabla
+kbl(
+  diccionario,
+  caption = "Diccionario de datos y muestra representativa de la red de monitoreo.",
+  booktabs = TRUE,
+  align = c("l", "l", "l", "l"),
+  escape = FALSE
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    latex_options = c("striped", "hold_position", "scale_down"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  column_spec(1, bold = TRUE, monospace = TRUE) %>% # Destaca los nombres de variables como código
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
 
 ## Primeras 10 filas.
 
@@ -367,6 +441,10 @@ reporte_completo %>%
 
 ## Datos faltantes
 
+LSe encontro que la variable $PM_{10}$ tiene 1 911 datos faltantes (`NA`) sobre un total de 13 243 registros horarios, debido a fallas técnicas o mantenimiento de las estaciones.
+
+
+
 ```{r faltantes, tab.cap="Conteo de datos faltantes"}
 tabla_conteos_NAS %>% 
   kableExtra::kbl(
@@ -393,7 +471,9 @@ tabla_conteos_NAS %>%
   ) 
 ```
 
-## Boxplot de PM10
+## Boxplot de $PM_{10}$
+
+Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 1 000 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
 
 ```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=14, message=FALSE, warning=FALSE}
 ggplot()+
@@ -401,6 +481,21 @@ ggplot()+
 ```
 
 # Exploración espacial{.tabset}
+
+## Distribución
+
+La distribución univariada del $PM_{10}$, una vez agregada espacialmente, exhibe asimetría positiva. La media aritmética (32.73 $\mu g/m^3$) supera a la mediana (27.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
+
+
+```{r exploratorio_p10, echo=FALSE, fig.cap="Distribución empírica de la concentración de PM10.", out.width="80%", fig.align="center"}
+ggplot(reporte_completo, aes(x = PM10)) +
+  geom_histogram(binwidth = 5, fill = "#41B7C4", color = "black", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
+  labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
+  theme_minimal()
+```
+
 
 ## Mapa de bogotá
 
@@ -462,7 +557,9 @@ anim_save("PM10_Bogota.gif", anim)
 knitr::include_graphics("PM10_Bogota.gif")
 ```
 
-# Relaciones ente variables {.tabset}
+
+
+# Relaciones entre variables {.tabset}
 
 ## Correlación con la variable de interés $PM_{10}$
 
@@ -501,6 +598,9 @@ ggplot(reporte_completo,
 ```
 
 ## Moran
+
+Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.333$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), donde estaciones cercanas registran niveles similares de $PM_{10}$. Lo cual justifica la implementación de la geoestadística.
+
 
 ```{r moran}
 set.seed(1110)
