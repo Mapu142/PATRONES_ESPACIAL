@@ -3288,21 +3288,23 @@ Figure 5.4: Variograma de marcas con envolventes de Monte Carlo (999 permutacion
 <div id="ejercicios-de-clase" class="section level1" number="6">
 <h1><span class="header-section-number">6</span> Ejercicios de clase</h1>
 <div id="ejercicio-1" class="section level2" number="6.1">
-<h2><span class="header-section-number">6.1</span> <strong>Ejercicio 1</strong></h2>
+<h2><span class="header-section-number">6.1</span> Ejercicio 1</h2>
 <p>Ejercicios sugeridos: 1,2,3. [], página 129</p>
-<p>###<strong>Problema 3.1</strong></p>
+<div id="problema-3.1" class="section level3" number="6.1.1">
+<h3><span class="header-section-number">6.1.1</span> Problema 3.1</h3>
 <p>Sea <span class="math inline">\(N(A)\)</span> la medida de conteo en la región <span class="math inline">\(A \subset D\)</span> de un proceso de Poisson homogéneo. La distribución de dimensión finita del proceso para intervalos disjuntos (que no se traslapan) <span class="math inline">\(A_1, \dots, A_k\)</span> viene dada por</p>
 <p><span class="math display">\[\begin{aligned}
 \Pr(N(A_1) = n_1, \dots, N(A_k) = n_k) &amp;= \frac{\lambda^{n_1} \nu(A_1)^{n_1} \cdot \dots \cdot \nu(A_k)^{n_k}}{n_1! \cdot \dots \cdot n_k!} \\
 &amp;\times \exp\left\{ - \sum_{i=1}^k \lambda \nu(A_i) \right\}.
 \end{aligned}\]</span></p>
 <p>Demuestre que al condicionar sobre <span class="math inline">\(N(D) = n_1 + \dots + n_k \equiv n\)</span>, la distribución de dimensión finita es igual a la de un proceso Binomial (es decir, (3.2)).</p>
-<div id="problema-3.2" class="section level3" number="6.1.1">
-<h3><span class="header-section-number">6.1.1</span> <strong>Problema 3.2</strong></h3>
+</div>
+<div id="problema-3.2" class="section level3" number="6.1.2">
+<h3><span class="header-section-number">6.1.2</span> Problema 3.2</h3>
 <p>Para el proceso de Poisson homogéneo, encuentre estimadores insesgados de <span class="math inline">\(\lambda\)</span> y <span class="math inline">\(\lambda^2\)</span>.</p>
 </div>
-<div id="problema-3.3" class="section level3" number="6.1.2">
-<h3><span class="header-section-number">6.1.2</span> <strong>Problema 3.3</strong></h3>
+<div id="problema-3.3" class="section level3" number="6.1.3">
+<h3><span class="header-section-number">6.1.3</span> Problema 3.3</h3>
 <p>Se toman muestras de datos de forma independiente a partir de dos poblaciones Gaussianas respectivas con varianza <span class="math inline">\(\sigma^2 = 1.5^2\)</span>. Se extraen cinco observaciones de cada población. Los valores observados son:</p>
 <table class="table table-striped table-hover table-condensed" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
 <caption>
@@ -3377,11 +3379,11 @@ i = 2
 </div>
 </div>
 <div id="ejercicio-2" class="section level2" number="6.2">
-<h2><span class="header-section-number">6.2</span> <strong>Ejercicio 2</strong></h2>
+<h2><span class="header-section-number">6.2</span> Ejercicio 2</h2>
 <p>Demostrar, <span class="math inline">\(\pi y^2 \sim \exp(\lambda) \Leftrightarrow 2\pi\lambda y^2 \sim \chi_2^2\)</span></p>
 </div>
 <div id="ejercicio-3" class="section level2" number="6.3">
-<h2><span class="header-section-number">6.3</span> <strong>Ejercicio 3</strong></h2>
+<h2><span class="header-section-number">6.3</span> Ejercicio 3</h2>
 <p>Se conoce como índice del patrón puntual al cociente</p>
 <p><span class="math display">\[0 \le \frac{HS}{HS + 1} \le 1\]</span></p>
 <p>Calcule este número para algunos casos de los tres tipos de patrones puntuales y establezca una regla de interpretación.</p>
@@ -3394,8 +3396,23 @@ i = 2
 <h2><span class="header-section-number">6.5</span> Ejercicio 5</h2>
 <p>Leer sobre teselación de Dirichlet, polígonos de Voronoi, triangulación de Delaunay. Estos métodos se usan como algoritmos alternativos para optimizar el proceso de computo y así evitar llevar a cabo todos los cálculos de todas las distancias entre eventos. Además, las particiones generadas con éstas técnicas sirven como un suavizamiento de la zona base para el posterior suavizamiento. Si se tiene una variable auxiliar se puede poner altura sobre cada vértice para unir las alturas y generar una aproximación de la superficie.</p>
 </div>
-<div id="section" class="section level2" number="6.6">
-<h2><span class="header-section-number">6.6</span> <strong>6.</strong></h2>
+<div id="ejercicio-6" class="section level2" number="6.6">
+<h2><span class="header-section-number">6.6</span> Ejercicio 6</h2>
+<ul>
+<li>Leer capítulo 3, Interactive Spatial Data Analysis.</li>
+<li>Leer sobre espacio-producto.</li>
+<li>Verificar que el momento de orden <span class="math inline">\(p\)</span> de un proceso de Poisson es la media sobre <span class="math inline">\((D_s), \mathbf{B}(D_s)^k\)</span> definida para los productos <span class="math inline">\(B_1 \times \dots \times B_k\)</span> por:</li>
+</ul>
+<p><span class="math display">\[\mu_p(B_1 \times \dots \times B_k) = E(N(B_1)\dots N(B_k))\]</span></p>
+<ul>
+<li>Relación definición de proceso Gaussiano, con un proceso NHP</li>
+<li>Revisar e interpretar la relación entre <span class="math inline">\(K(h)\)</span> y <span class="math inline">\(\lambda_2\)</span></li>
+</ul>
+</div>
+<div id="ejercicios-de-tarea" class="section level2" number="6.7">
+<h2><span class="header-section-number">6.7</span> Ejercicios de tarea</h2>
+<div id="section" class="section level3" number="6.7.1">
+<h3><span class="header-section-number">6.7.1</span> 6.</h3>
 <p>Para 3 eventos en una región de área <span class="math inline">\(16u^2\)</span> , sin eventos en el borde:</p>
 <ol style="list-style-type: decimal">
 <li>¿Cuál es la probabilidad de que un evento esté dentro de la distancia <span class="math inline">\(4u\)</span> de un evento específico?</li>
@@ -3413,8 +3430,8 @@ P = \frac{\text{Área del círculo de radio } 4u}{\text{Área total}} = \frac{\p
 \lambda = \frac{n}{A} = \frac{3}{16} = 0.1875,\hspace{1cm}\text{eventos por unidad de área}.
 \]</span></p>
 </div>
-<div id="section-1" class="section level2" number="6.7">
-<h2><span class="header-section-number">6.7</span> <strong>7.</strong></h2>
+<div id="section-1" class="section level3" number="6.7.2">
+<h3><span class="header-section-number">6.7.2</span> 7.</h3>
 <p>Con base en el enunciado anterior, si este es el patrón observado:</p>
 <table>
 <thead>
@@ -3528,8 +3545,8 @@ Z = \frac{0.9503 - 1}{0.3485} = \frac{-0.0497}{0.3485} \approx -0.1426.
 <p>Con un nivel de significancia <span class="math inline">\(\alpha = 0.05\)</span>, el valor crítico para una prueba bilateral es <span class="math inline">\(\pm 1.96\)</span>. Como <span class="math inline">\(-0.1426\)</span> se encuentra dentro del intervalo <span class="math inline">\([-1.96, 1.96]\)</span>, no se rechaza la hipótesis de homogeneidad.</p>
 <hr />
 </div>
-<div id="section-2" class="section level2" number="6.8">
-<h2><span class="header-section-number">6.8</span> <strong>4.</strong></h2>
+<div id="section-2" class="section level3" number="6.7.3">
+<h3><span class="header-section-number">6.7.3</span> 4.</h3>
 <p>Prueba de Clark-Evans usando Montecarlo</p>
 <p>Resultados de la simulación (19 valores):</p>
 <p><span class="math display">\[
@@ -3581,6 +3598,7 @@ p = \frac{0 + 1}{19 + 1} = \frac{1}{20} = 0.05.
 </tbody>
 </table>
 <p><strong>Nota:</strong> La discrepancia entre ambas pruebas puede deberse a que la aproximación normal no es adecuada para muestras muy pequeñas (<span class="math inline">\(n = 3\)</span>), por lo que el método de Montecarlo es más fiable en este contexto.</p>
+</div>
 </div>
 </div>
 <div id="referencias" class="section level1" number="7">
