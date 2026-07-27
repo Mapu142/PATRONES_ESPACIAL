@@ -35,6 +35,8 @@ library(gstat)
 library(sp)
 library(spacetime)
 library(RColorBrewer)
+library(rnaturalearth)
+library(rnaturalearthdata)
 
 ```
 
@@ -50,11 +52,10 @@ El objetivo de este informe es aplicar un modelo de interpolación geoestadísti
 
 **Área de Estudio**
 
-El estudio abarca el perímetro urbano de Bogotá D. C., caracterizado por un marcado gradiente de uso del suelo y altitud: varía desde zonas residenciales en el norte hasta sectores industriales y de alto tráfico en el sur y occidente, dinamica que condiciona las emisiones de material particulado.
 
 **Variable de Interés**
 
-Se modelará la concentración horaria de $\text{PM}_{10}$ (partículas con diámetro aerodinámico $\le 10\ \mu\text{m}$), prioritarias en salud pública por su capacidad de penetración en el sistema respiratorio. Como marco de referencia legal, la Resolución 601 de 2006 del Ministerio de Ambiente establece un límite máximo permisible de $150\ \mu\text{m}/ \text{m}^3$ para un promedio móvil de 24 horas.
+Se modelará la concentración horaria de $\text{PM}_{10}$ (partículas con diámetro aerodinámico $\le 10\ \mu\text{m}$), prioritarias en salud pública por su capacidad de penetración en el sistema respiratorio. 
 
 
 
@@ -97,17 +98,16 @@ estaciones_sf <- st_as_sf(
   crs = 4326
 )
 
-
 ```
 
 
 # Base de datos 
 <!-- {.tabset} -->
 
-La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra mediante agregación, aislando la señal espacial intrínseca de cada estación. 
+La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra y se trabaja con los datos del día $2024-02-01$.
 
 
-> La estructura de los datos y la naturaleza de las variables medidas en la red de monitoreo se detallan en Tabla \@ref(tab:tabla-diccionario).
+> La estructura de los datos y la naturaleza de las variables medidas tomadas en cuenta se detallan en Tabla \@ref(tab:tabla-diccionario).
 
 
 
@@ -169,7 +169,6 @@ kbl(
 ```
 
 
-## Base de datos filtrada en fecha 2024-02-01
 
 ```{r configuracion-fecha, message=FALSE, warning=FALSE}
 # 1. Definir la fecha y hora objetivo (Fácil de modificar)
@@ -197,9 +196,7 @@ cat("Porcentaje de datos faltantes (NA):", porcentaje_faltantes, "%\n")
 
 ```
 
-
-
-Dado dato faltante en USME se expluye de la base de datos a trabajar de la fecha 2024-02-01, al final se trabaja con 18 estaciones y datos
+Dado dato faltante en USME se expluye de la base de datos a trabajar, al final se trabaja con datos de 18 estaciones.
 
 ```{r faltantes, tab.cap="Conteo de datos faltantes"}
 
@@ -217,27 +214,118 @@ estaciones_sf <- st_as_sf(
 
 ```
 
+
+## Mapa de bogotá
+
+```{r mapa-bogota}
+colores <- list(
+  azul_oscuro = "#2c3e50",
+  azul_medio = "#34495e",
+  gris_suave = "#f0f0f0",
+  gris_vecinos = "#e8e8e8",
+  borde_vecinos = "#bdc3c7",
+  gris_texto = "#7f8c8d",
+  oceano = "#eef2f5"
+)
+
+# Calcular centroides de cada localidad para las etiquetas
+bogota_centroides <- bogota %>%
+  mutate(
+    centroide = st_centroid(geometry),
+    cx = st_coordinates(centroide)[,1],
+    cy = st_coordinates(centroide)[,2]
+  )
+
+ggplot() +
+  # Capa 1: Localidades de Bogotá (con colores)
+  geom_sf(data = bogota, 
+          aes(fill = LocNombre), 
+          color = "gray50", 
+          linewidth = 0.3,
+          alpha = 0.7) +
+  # Capa 2: Etiquetas de localidades en los centroides
+  # geom_sf_label(
+  #   data = bogota_centroides,
+  #   aes(label = LocNombre, geometry = centroide),
+  #   stat = "sf_coordinates",
+  #   size = 2.8,
+  #   color = colores$azul_oscuro,
+  #   fontface = "bold",
+  #   label.padding = unit(0.1, "lines"),
+  #   label.size = 0.1,
+  #   fill = "white",
+  #   alpha = 0.8
+  # ) +
+  # Capa 3: Estaciones de monitoreo
+  geom_sf(data = estaciones_sf, 
+          color = "#d95f02", 
+          size = 5, 
+          shape = 20,
+          alpha = 0.9) +
+  # Capa 4: Etiquetas de estaciones
+  geom_sf_label(
+    data = estaciones_sf,
+    aes(label = Estacion),
+    size = 2.5,
+    nudge_x = 0.003,
+    nudge_y = 0.003,
+    label.padding = unit(0.1, "lines"),
+    label.size = 0.1,
+    fill = "white",
+    alpha = 0.7
+  ) +
+  # Escalas y coordenadas (zoom al área de Bogotá)
+  coord_sf(
+    xlim = c(st_bbox(bogota)["xmin"], st_bbox(bogota)["xmax"]),
+    ylim = c(st_bbox(bogota)["ymin"], st_bbox(bogota)["ymax"])
+  ) +
+  # Títulos
+  labs(
+    title = "Red de Monitoreo de Calidad del Aire - Bogotá D.C.",
+    subtitle = "Estaciones por localidad",
+    x = "Longitud",
+    y = "Latitud",
+    fill = "Localidad"
+  ) +
+  # Escala de colores para localidades
+  scale_fill_viridis_d(option = "plasma", alpha = 0.6) +
+  # Tema
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    panel.grid.minor = element_line(color = "gray95", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 14, color = colores$azul_medio),
+    plot.subtitle = element_text(size = 10, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA),
+    legend.position = "right",
+    legend.title = element_text(size = 9, color = colores$gris_texto),
+    legend.text = element_text(size = 8, color = colores$gris_texto),
+    axis.title = element_text(size = 10, color = colores$gris_texto),
+    axis.text = element_text(size = 8, color = colores$gris_texto)
+  ) +
+  # Ajustar la leyenda
+  guides(fill = guide_legend(
+    title = "Localidad", 
+    ncol = 1,
+    override.aes = list(alpha = 0.8)
+  ))
+
+```
+
 ```{r primeras-filas}
-datos_corte %>% 
+datos_corte %>%
+select( Estacion, Latitud, Longitud, `Altitud (m)`, PM10, `Tipo de estación`) %>% 
   kableExtra::kbl(
-  caption = "Primeras 10 filas de la base de datos",
   col.names = c(
-    "Fecha & Hora",
     "Estación",
-    bquote(PM_10),
-    bquote(O_3),
-    "Sigla",
     "Latitud",
     "Longitud",
     "Altitud (m)",
-    "Altura (m)",
-    "Localidad",
-    "Tipo de zona",
-    "Tipo de estación",
-    "Dirección"),
-  align = c("l", "l", "c", "c", "c",
-            "l", "l", "c", "c", "c",
-            "c", "c", "l")
+    bquote(PM_10),
+    "Tipo de estación"),
+  align = c("l", "c", "c", "c", "c",
+            "l"
+            )
 ) %>%
   kableExtra::kable_styling(
     full_width = FALSE,
@@ -251,58 +339,43 @@ datos_corte %>%
   ) 
 ```
 
+# Exploración espacial
+ <!-- {.tabset} -->
 
 ## Boxplot de $PM_{10}$
 
-Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 1 000 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
+Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 109 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
 
-```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=3, fig.width=7, message=FALSE, warning=FALSE}
+```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=3, fig.width=8, message=FALSE, warning=FALSE}
 ggplot()+
   geom_boxplot(data = datos_corte, aes(x = PM10),fill = "#41B7C4")
 ```
 
-# Exploración espacial
- <!-- {.tabset} -->
 
 ## Distribución
 
-La distribución univariada del $PM_{10}$, una vez agregada espacialmente, exhibe asimetría positiva. La media aritmética (32.73 $\mu g/m^3$) supera a la mediana (27.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
+La distribución del $PM_{10}$ evidencia asimetría positiva. La media (41.28 $\mu g/m^3$) supera a la mediana (33.50 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
 
 
-```{r exploratorio_p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=4, fig.width=10}
+```{r exploratorio_p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=3, fig.width=10}
 ggplot(datos_corte, aes(x = PM10)) +
-  geom_histogram(binwidth = 5, fill = "#41B7C4", color = "black", alpha = 0.8) +
+  geom_histogram(binwidth =7, fill = "#41B7C4", color = "white", alpha = 0.8) +
   geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
   geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
   labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
   theme_minimal()
+# 
+# 
+# ggplot(datos_corte, aes(x = log(PM10))) +
+#   geom_histogram(binwidth =1/4, fill = "#41B7C4", color = "white", alpha = 0.8) +
+#   geom_vline(aes(xintercept = mean(log(PM10), na.rm=T)), color = "red", linetype = "dashed") +
+#   geom_vline(aes(xintercept = median(log(PM10), na.rm=T)), color = "blue", linetype = "dotted") +
+#   labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
+#   theme_minimal()
+
 ```
 
 
-## Mapa de bogotá
-
-```{r mapa-bogota}
-# Graficar enfocado solo en el área urbana
-ggplot() +
-  geom_sf(data = bogota, fill = "gray96", color = "gray50", linewidth = 0.4) +
-  geom_sf(data = estaciones_sf, color = "#d95f02", size = 2.8, alpha = 0.8) +
-  # Enfocar el recuadro del mapa exactamente donde están el mapa urbano y sus estaciones
-  coord_sf(
-    xlim = c(st_bbox(bogota)["xmin"], st_bbox(bogota)["xmax"]),
-    ylim = c(st_bbox(bogota)["ymin"], st_bbox(bogota)["ymax"])
-  ) +
-  theme_minimal() +
-  labs(
-    title = "Red de Monitoreo de Calidad del Aire - Área Urbana",
-    subtitle = "Ubicación de estaciones sobre el perímetro urbano de Bogotá D.C.",
-    x = "Longitud",
-    y = "Latitud"
-  ) +
-  theme(
-    plot.title = element_text(face = "bold", size = 12),
-    panel.grid.major = element_line(color = "gray90", linetype = "dashed")
-  )
-```
 
 
 # Relaciones entre variables 
@@ -344,9 +417,9 @@ ggplot(datos_corte,
     geom_smooth(method="loess")
 ```
 
-## Moran
+## Autocorrelación Espacial  (Índice de Moran)
 
-Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.354$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), donde estaciones cercanas registran niveles similares de $PM_{10}$. Lo cual justifica la implementación de la geoestadística.
+Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.354$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), Lo cual justifica la implementación de la geoestadística.
 
 
 ```{r moran}
@@ -356,15 +429,120 @@ vecinos <- knearneigh(coords, k = 4)
 vecinos <- knn2nb(vecinos)
 pesos   <- nb2listw(vecinos, style = "W")
 
-# 4. VISUALIZACIÓN DE LA RED DE VECINDAD (Deben correr juntos)
-plot(st_geometry(estaciones_sf), pch = 19, col = "#d95f02", main = "Red de Vecindad (k = 4)")
-plot(vecinos, coords, add = TRUE, col = "gray40", lty = 2)
 
 # 5. PRUEBA DEL ÍNDICE DE MORAN (Ahora no fallará)
-moran_result <- moran.test(
+moran_test  <- moran.test(
   datos_corte$PM10,
   listw = pesos
 )
 
-print(moran_result)
+print(moran_test)
+
+
+
+
+
+
+
+# Extraer pares de conexiones entre estaciones
+conexiones <- list()
+for (i in 1:length(vecinos)) {
+  for (j in vecinos[[i]]) {
+    if (i < j) {  # Evitar duplicados
+      conexiones[[length(conexiones) + 1]] <- c(i, j)
+    }
+  }
+}
+
+# Convertir a dataframe con coordenadas
+conexiones_df <- do.call(rbind, conexiones)
+colnames(conexiones_df) <- c("origen", "destino")
+
+# Crear líneas entre pares de estaciones
+lineas <- data.frame()
+for (i in 1:nrow(conexiones_df)) {
+  orig <- conexiones_df[i, "origen"]
+  dest <- conexiones_df[i, "destino"]
+  
+  lineas <- rbind(lineas, data.frame(
+    x = c(coords[orig, 1], coords[dest, 1]),
+    y = c(coords[orig, 2], coords[dest, 2]),
+    group = i
+  ))
+}
+
+# 4. GRÁFICO MEJORADO CON GGPLOT2
+
+# Opción A: Gráfico sobre mapa de Bogotá (con localidades)
+ggplot() +
+  # Capa 1: Mapa de Bogotá con localidades
+  geom_sf(data = bogota, 
+          aes(fill = LocNombre), 
+          color = "gray50", 
+          linewidth = 0.3,
+          alpha = 0.5) +
+  # Capa 2: Conexiones de la red de vecindad
+  geom_line(
+    data = lineas,
+    aes(x = x, y = y, group = group),
+    color = colores$azul_oscuro,
+    linewidth = 0.6,
+    linetype = "dashed",
+    alpha = 0.7
+  ) +
+  # Capa 3: Estaciones (puntos)
+  geom_point(
+    data = as.data.frame(coords),
+    aes(x = X, y = Y),
+    color = colores$naranja,
+    size = 4,
+    shape = 20,
+    alpha = 0.9
+  ) +
+  # Capa 4: Etiquetas de las estaciones
+  geom_text(
+    data = as.data.frame(coords) %>%
+      mutate(Estacion = estaciones_sf$Estacion),
+    aes(x = X, y = Y, label = Estacion),
+    size = 2,
+    nudge_x = 0.003,
+    nudge_y = 0.009,
+    color = colores$azul_oscuro,
+    fontface = "bold",
+    check_overlap = TRUE
+  ) +
+  # Coordenadas
+  coord_sf(
+    xlim = c(st_bbox(bogota)["xmin"], st_bbox(bogota)["xmax"]),
+    ylim = c(st_bbox(bogota)["ymin"], st_bbox(bogota)["ymax"])
+  ) +
+  # Títulos
+  labs(
+    title = "Red de Vecindad de Estaciones de Monitoreo (k = 4)",
+    subtitle = paste0("Conexiones entre estaciones basadas en distancia | PM10: I = ", 
+                     round(moran_test$estimate[1], 3),
+                     ", p = ", round(moran_test$p.value, 4)),
+    x = "Longitud",
+    y = "Latitud",
+    fill = "Localidad"
+  ) +
+  # Escala de colores
+  scale_fill_viridis_d(option = "plasma", alpha = 0.6) +
+  # Tema
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+    panel.grid.minor = element_line(color = "gray95", linetype = "dotted"),
+    plot.title = element_text(face = "bold", size = 14, color = colores$azul_medio),
+    plot.subtitle = element_text(size = 10, color = colores$gris_texto),
+    panel.background = element_rect(fill = colores$oceano, color = NA),
+    legend.position = "right",
+    legend.title = element_text(size = 8, color = colores$gris_texto),
+    legend.text = element_text(size = 7, color = colores$gris_texto),
+    axis.title = element_text(size = 9, color = colores$gris_texto),
+    axis.text = element_text(size = 7, color = colores$gris_texto)
+  )
+
 ```
+
+
