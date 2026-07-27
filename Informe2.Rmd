@@ -89,8 +89,9 @@ tabla_conteos_NAS <- data.frame(
 
 # Mapa de Bogotá
 bogota <- st_read("Loca.shp") %>% 
-  filter(!grepl("SUMAPAZ", LocNombre, ignore.case = TRUE))  %>% 
-  filter(!grepl("USME", LocNombre, ignore.case = TRUE)) 
+  filter(!grepl("SUMAPAZ", LocNombre, ignore.case = TRUE)) 
+  # filter(!grepl("USME", LocNombre, ignore.case = TRUE))   
+  # filter(!grepl(19, LocCodigo, ignore.case = TRUE)) 
 
 estaciones_sf <- st_as_sf(
   reporte_completo,
@@ -173,7 +174,7 @@ kbl(
 ```{r configuracion-fecha, message=FALSE, warning=FALSE}
 # 1. Definir la fecha y hora objetivo (Fácil de modificar)
 # Formato: "AAAA-MM-DD HH:MM:SS"
-fecha_buscada <- "2024-02-01"
+fecha_buscada <- "2024-01-04"
 
 # 2. Filtrar
 datos_corte <- reporte_completo %>%
@@ -187,6 +188,7 @@ total_estaciones <- nrow(datos_corte)
 estaciones_con_pm10 <- datos_corte %>% filter(!is.na(PM10)) %>% nrow()
 porcentaje_faltantes <- round((1 - (estaciones_con_pm10 / total_estaciones)) * 100, 2)
 datos_corte%>% filter(is.na(PM10))
+# reporte_completo %>% filter(is.na(PM10))
 
 cat("Fecha analizada:", as.character(fecha_buscada), "\n")
 cat("Total de estaciones registradas en esa hora:", total_estaciones, "\n")
@@ -202,7 +204,7 @@ Dado dato faltante en USME se expluye de la base de datos a trabajar, al final s
 
 # 1. FILTRADO DE DATOS VÁLIDOS (Excluye NAs de PM10 para el análisis espacial)
 # Al filtrar PM10 no nulo, Usme (que tenía NA) queda fuera de la muestra automáticamente.
-datos_corte <- datos_corte %>% 
+datos_corte <- datos_corte %>%
   filter(!is.na(PM10))
 
 # 2. CONVERSIÓN A OBJETO ESPACIAL (sf)
@@ -212,6 +214,32 @@ estaciones_sf <- st_as_sf(
   crs = 4326
 )
 
+
+# Después de filtrar datos válidos (sin NA en PM10)
+# Calcular la latitud mínima entre las estaciones que sí tienen dato
+latitud_min_estaciones <- min(st_coordinates(estaciones_sf)[, "Y"])
+# Añadir un pequeño margen (por ejemplo 0.02°) para que el polígono incluya las estaciones
+limite_sur <- latitud_min_estaciones - 0.02
+cat("Límite sur propuesto:", limite_sur)
+
+
+# Recortar el shapefile de Bogotá usando un bounding box con límite sur modificado
+bbox_bogota <- st_bbox(bogota)
+bbox_recortado <- bbox_bogota
+bbox_recortado["ymin"] <- limite_sur
+
+# Crear un polígono a partir del bbox recortado
+poligono_recorte <- st_as_sfc(bbox_recortado)
+
+# Intersectar el mapa de Bogotá con el polígono de recorte
+bogota_recortada <- st_intersection(bogota, poligono_recorte)
+
+# Verificar que las estaciones queden dentro
+# (opcional) plot para comprobar
+ggplot() +
+  geom_sf(data = bogota_recortada, fill = "gray90") +
+  geom_sf(data = estaciones_sf, color = "red") +
+  coord_sf()
 ```
 
 
