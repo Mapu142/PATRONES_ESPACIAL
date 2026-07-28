@@ -232,14 +232,16 @@ bbox_recortado["ymin"] <- limite_sur
 poligono_recorte <- st_as_sfc(bbox_recortado)
 
 # Intersectar el mapa de Bogotá con el polígono de recorte
-bogota_recortada <- st_intersection(bogota, poligono_recorte)
+bogota <- st_intersection(bogota, poligono_recorte)
+st_geometry_type(bogota) # Opcional
+st_agr(bogota) <- "constant"
 
 # Verificar que las estaciones queden dentro
 # (opcional) plot para comprobar
-ggplot() +
-  geom_sf(data = bogota_recortada, fill = "gray90") +
-  geom_sf(data = estaciones_sf, color = "red") +
-  coord_sf()
+# ggplot() +
+#   geom_sf(data = bogota, fill = "gray90") +
+#   geom_sf(data = estaciones_sf, color = "red") +
+#   coord_sf()
 ```
 
 
@@ -298,7 +300,7 @@ ggplot() +
     nudge_x = 0.003,
     nudge_y = 0.003,
     label.padding = unit(0.1, "lines"),
-    label.size = 0.1,
+    linewidth = 0.1, # <- Cambiado aquí (antes label.size)
     fill = "white",
     alpha = 0.7
   ) +
@@ -372,7 +374,7 @@ select( Estacion, Latitud, Longitud, `Altitud (m)`, PM10, `Tipo de estación`) %
 
 ## Boxplot de $PM_{10}$
 
-Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 109 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
+
 
 ```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=3, fig.width=8, message=FALSE, warning=FALSE}
 ggplot()+
@@ -382,12 +384,12 @@ ggplot()+
 
 ## Distribución
 
-La distribución del $PM_{10}$ evidencia asimetría positiva. La media (41.28 $\mu g/m^3$) supera a la mediana (33.50 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
+La distribución del $PM_{10}$ evidencia asimetría positiva. La media (47.26 $\mu g/m^3$) supera a la mediana (43.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
 
 
 ```{r exploratorio_p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=3, fig.width=10}
 ggplot(datos_corte, aes(x = PM10)) +
-  geom_histogram(binwidth =7, fill = "#41B7C4", color = "white", alpha = 0.8) +
+  geom_histogram(binwidth =10, fill = "#41B7C4", color = "white", alpha = 0.8) +
   geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
   geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
   labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
@@ -572,5 +574,3 @@ ggplot() +
   )
 
 ```
-
-
