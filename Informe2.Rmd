@@ -39,7 +39,8 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(geoR)   # Para eyefit y análisis geoestadístico clásico
 library(MASS)
-
+library(performance)
+library(fields)
 ```
 
 # Introducción
@@ -576,11 +577,115 @@ ggplot() +
   )
 
 ```
+## Gráfico de objeto geodata
+
+```{r geodata_descriptivo, fig.height=7, fig.width=10}
+# Convertir a geodata especificando columnas de coordenadas y variable
+datos_geoR <- as.geodata(
+  datos_corte,
+  coords.col = c("Longitud", "Latitud"), # X (Longitud) primero, luego Y (Latitud)
+  data.col = "PM10"                      # O la columna de tus residuos
+)
+# summary(datos_corte)
+
+plot(
+  datos_geoR, 
+  qt.col = c("#2b83ba", "#abdda4", "#fdae61", "#d7191c")
+)
+plot(datos_geoR, scatter3d = T)
+plot(datos_geoR, trend = "1st")
+```
+## Gráficos descriptivos interpolación
+
+```{r fig.height=7, fig.width=10}
+# 1. Cargar librerías requeridas para interpolación 3D y drape.plot
+library(akima)   # Para interp()
+library(fields)  # Para drape.plot()
+
+# 2. Configurar cuadrícula de 2x2 para los gráficos
+par(mfrow = c(2, 2),
+    mar = c(3, 3, 2, 1),
+    mgp = c(2, 1, 0))
+
+# 3. Interpolar la superficie continua de PM10 a partir de los puntos discretos
+# Nota: Puedes cambiar Longitud/Latitud por Este/Norte si estás usando metros.
+grillas <- interp(
+  x = datos_corte$Longitud,
+  y = datos_corte$Latitud,
+  z = datos_corte$PM10,
+  duplicate = "mean" # Evita errores si hay coordenadas duplicadas
+)
+
+# --- Gráfico 1: Superficie 3D Monocromática (persp) ---
+persp(
+  grillas$x,
+  grillas$y,
+  grillas$z,
+  xlab = "Longitud",
+  ylab = "Latitud",
+  zlab = "PM10",
+  main = "Superficie 3D PM10 (Vista 1)",
+  phi = 30,
+  theta = 20,
+  col = "lightblue",
+  expand = 0.5,
+  ticktype = "detailed"
+)
+
+# --- Gráfico 2: Superficie 3D en Color (drape.plot - Vista Ángulo 45°) ---
+drape.plot(
+  grillas$x,
+  grillas$y,
+  grillas$z,
+  xlab = "Longitud",
+  ylab = "Latitud",
+  zlab = "PM10",
+  main = "Vista Ángulo 45°",
+  theta = 45,
+  col = topo.colors(64),
+  expand = 0.5,
+  ticktype = "detailed"
+)
+
+# --- Gráfico 3: Superficie 3D en Color (drape.plot - Vista Ángulo -10°) ---
+drape.plot(
+  grillas$x,
+  grillas$y,
+  grillas$z,
+  xlab = "Longitud",
+  ylab = "Latitud",
+  zlab = "PM10",
+  main = "Vista Ángulo -10°",
+  theta = -10,
+  col = topo.colors(64),
+  expand = 0.5,
+  ticktype = "detailed"
+)
+
+# --- Gráfico 4: Superficie 3D en Color (drape.plot - Vista Ángulo 60°) ---
+drape.plot(
+  grillas$x,
+  grillas$y,
+  grillas$z,
+  xlab = "Longitud",
+  ylab = "Latitud",
+  zlab = "PM10",
+  main = "Vista Ángulo 60°",
+  theta = 60,
+  col = topo.colors(64),
+  expand = 0.5,
+  ticktype = "detailed"
+)
+
+# Restablecer la configuración de gráficos por defecto
+par(mfrow = c(1, 1))
+```
 
 # Análisis de estacionariedad en media y Modelo para la media
 
 
-```{r ModeladoMedia}
+
+```{r SelecciónModeloMedia}
 # ==============================================================================
 # 1.2 Análisis de estacionariedad en media. Modelo para la media.
 # ==============================================================================
@@ -590,75 +695,42 @@ datos_modelo <- datos_corte %>%
   mutate(
     x = Longitud,
     y = Latitud
-  )
+  ) %>%
+  st_as_sf(coords = c("x", "y"), crs = 4326, remove = FALSE) # Convertimos a sf para mapeo de residuos
 
 # ------------------------------------------------------------------------------
-# 1. Ajuste de los modelos candidatos
+# 1. Ajuste de los modelos candidatos (Ya los tienes, los reutilizamos)
 # ------------------------------------------------------------------------------
-
-# Modelo 1: Tendencia Lineal (Superficie plana inclinada)
-# \mu(s) = \beta_0 + \beta_1 x + \beta_2 y
-mod_lineal <- lm(PM10 ~ x + y, data = datos_modelo)
+mod_lineal <- lm(PM10 ~ x + y, data = st_drop_geometry(datos_modelo))
 datos_modelo$resid_lineal <- residuals(mod_lineal)
 
-# Modelo 2: Tendencia Cuadrática (Superficie curva)
-# Usamos I() para indicar a R que eleve al cuadrado dentro de la fórmula
-# \mu(s) = \beta_0 + \beta_1 x + \beta_2 y + \beta_3 x^2 + \beta_4 y^2 + \beta_5 xy
-mod_cuadratico <- lm(PM10 ~ x + y + I(x^2) + I(y^2) + I(x*y), data = datos_modelo)
+mod_cuadratico <- lm(PM10 ~ x + y + I(x^2) + I(y^2) + I(x*y), data = st_drop_geometry(datos_modelo))
 datos_modelo$resid_cuad <- residuals(mod_cuadratico)
 
-# Modelo 3: Transformación Logarítmica
-mod_log <- lm(log(PM10) ~ x + y, data = datos_modelo)
-datos_modelo$resid_log <- residuals(mod_log)
+mod_3 <- lm(PM10 ~ x + I(x*y), data = st_drop_geometry(datos_modelo))
+datos_modelo$resid_3 <- residuals(mod_3)
 
-# Modelo 4: Transformación Box-Cox (obtiene el lambda óptimo)
-bc <- MASS::boxcox(mod_lineal, plotit = FALSE)
-lambda_opt <- bc$x[which.max(bc$y)]
 
-if (abs(lambda_opt) < 0.10) {
-  datos_modelo$PM10_trans <- log(datos_modelo$PM10)
-} else {
-  datos_modelo$PM10_trans <- (datos_modelo$PM10^lambda_opt - 1) / lambda_opt
-}
-
-mod_boxcox <- lm(PM10_trans ~ x + y, data = datos_modelo)
-datos_modelo$resid_bc <- residuals(mod_boxcox)
+mod_4 <- lm(PM10 ~  x, data = st_drop_geometry(datos_modelo))
+datos_modelo$resid_4 <- residuals(mod_4)
 
 # ------------------------------------------------------------------------------
-# 2. Comparación Estadística de Modelos
+# 2. Comparación Estadística (Tu tabla ya generada)
 # ------------------------------------------------------------------------------
-
-# Tabla comparativa de criterios de información (AIC) y R-cuadrado ajustado
-# Nota: AIC más bajo indica mejor ajuste penalizando por complejidad.
-# El R² ajustado es preferible sobre el R² normal porque penaliza el exceso de variables.
 resumen_modelos <- data.frame(
-  Modelo = c("Lineal", "Cuadrático", "Logarítmica", "Box-Cox" ),
-  AIC = c(AIC(mod_lineal), AIC(mod_cuadratico), AIC(mod_log), AIC(mod_boxcox)), 
+  Modelo = c("Lineal", "Cuadrático", "3", "4"),
+  AIC = c(AIC(mod_lineal), AIC(mod_cuadratico), AIC(mod_3), AIC(mod_4)), 
   R2_Ajustado = c(
     summary(mod_lineal)$adj.r.squared,
     summary(mod_cuadratico)$adj.r.squared,
-    summary(mod_log)$adj.r.squared,
-    summary(mod_boxcox)$adj.r.squared
-  ),
-  p_valor_global = c(
-    pf(summary(mod_lineal)$fstatistic[1], 
-       summary(mod_lineal)$fstatistic[2], 
-       summary(mod_lineal)$fstatistic[3], lower.tail = FALSE),
-    pf(summary(mod_cuadratico)$fstatistic[1], 
-       summary(mod_cuadratico)$fstatistic[2], 
-       summary(mod_cuadratico)$fstatistic[3], lower.tail = FALSE),
-    pf(summary(mod_log)$fstatistic[1], 
-       summary(mod_log)$fstatistic[2], 
-       summary(mod_log)$fstatistic[3], lower.tail = FALSE),
-    pf(summary(mod_boxcox)$fstatistic[1], 
-       summary(mod_boxcox)$fstatistic[2], 
-       summary(mod_boxcox)$fstatistic[3], lower.tail = FALSE)
+    summary(mod_3)$adj.r.squared,
+    summary(mod_4)$adj.r.squared
   ),
   Shapiro_p_value = c(
     shapiro.test(residuals(mod_lineal))$p.value,
     shapiro.test(residuals(mod_cuadratico))$p.value,
-    shapiro.test(residuals(mod_log))$p.value,
-    shapiro.test(residuals(mod_boxcox))$p.value
+    shapiro.test(residuals(mod_3))$p.value,
+    shapiro.test(residuals(mod_4))$p.value
   )
 )
 
@@ -666,17 +738,17 @@ knitr::kable(resumen_modelos,
              caption = "Comparación de modelos de tendencia para la media de PM10",
              digits = 4)
 
-# ------------------------------------------------------------------------------
-# 3. Validación Visual: ¿Se eliminó la tendencia?
-# ------------------------------------------------------------------------------
-# Según Bohórquez (2025), los residuos del modelo elegido NO deben mostrar 
-# patrones visibles cuando se grafican contra las coordenadas espaciales.
+check_model(mod_lineal)
 
-# Función auxiliar para graficar residuos
+```
+
+
+```{r}
+# Función auxiliar para graficar residuos (Adaptada de Bohórquez, 2025)
 plot_residuos <- function(datos, var_residuo, titulo) {
   p1 <- ggplot(datos, aes(x = x, y = .data[[var_residuo]])) +
     geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
-    geom_smooth(method = "loess", color = "red", se = FALSE, linetype = "dashed") +
+    geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
     labs(title = titulo, x = "Longitud", y = "Residuos") +
     theme_minimal() +
@@ -684,42 +756,62 @@ plot_residuos <- function(datos, var_residuo, titulo) {
   
   p2 <- ggplot(datos, aes(x = y, y = .data[[var_residuo]])) +
     geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
-    geom_smooth(method = "loess", color = "red", se = FALSE, linetype = "dashed") +
+    geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
     labs(title = "", x = "Latitud", y = "Residuos") +
     theme_minimal()
-  
+    
   gridExtra::grid.arrange(p1, p2, ncol = 2)
 }
 
-# Gráficos para el modelo Lineal
-plot_residuos(datos_modelo, "resid_lineal", "Residuos del Modelo Lineal")
+# Evaluar visualmente el mejor modelo (El logarítmico tuvo el menor AIC)
+plot_residuos(st_drop_geometry(datos_modelo), "resid_lineal", "Residuos del Modelo Logarítmico")
 
-# Gráficos para el modelo Cuadrático
-plot_residuos(datos_modelo, "resid_cuad", "Residuos del Modelo Cuadrático")
+anova(mod_lineal)
+summary(mod_lineal)
 
-# Gráficos para el modelo transformación logaritmica
-plot_residuos(datos_modelo, "resid_log", "Residuos del Modelo Transformación logaritmica")
+anova(mod_cuadratico)
+summary(mod_cuadratico)
 
-# Gráficos para el modelo Transformación Box-Cox
-plot_residuos(datos_modelo, "resid_bc", "Residuos del Modelo Transformación Box-Cox")
+anova(mod_4)
+summary(mod_4)
 ```
 
-```{r SelecciónModeloMedia}
-# ------------------------------------------------------------------------------
-# 4. Selección del modelo y creación del objeto espacial centrado
-# ------------------------------------------------------------------------------
-# Supongamos que el modelo Lineal es el mejor (por parsimonia y AIC). 
-# ¡Cambia "resid_lineal" por "resid_cuad" si el cuadrático es claramente mejor 
-# y la línea roja en los gráficos de residuos es completamente plana!
+# Estimación empírica y teórica del semivariograma.
 
-datos_centralizados_sf <- datos_modelo %>%
-  # Eliminamos la tendencia estimada
-  mutate(PM10_centralizado = resid_log) %>% 
-  # Conservamos solo las columnas necesarias para el análisis geoestadístico
-  dplyr::select(Estacion, x, y, PM10, PM10_centralizado, `Tipo de estación`) %>%
-  st_as_sf(coords = c("x", "y"), crs = 4326)
+```{r KrigingUniversal}
+# ------------------------------------------------------------------------------
+# 4. Kriging Universal (Tendencia + Autocorrelación simultánea)
+# ------------------------------------------------------------------------------
+library(gstat)
 
-# Verificación rápida: La media de los residuos debe ser cercanísima a 0
-cat("Media de los residuos (debe ser ~0):", mean(datos_centralizados_sf$PM10_centralizado), "\n")
+# 1. Definir el modelo geoestadístico con tendencia lineal en las coordenadas
+# gstat usa la fórmula: variable ~ predictores
+g_universal <- gstat(
+  formula = PM10 ~ x + y, 
+  data = datos_modelo, 
+  model = NULL # Dejamos NULL para calcular el variograma empírico de los residuos primero
+)
+
+# 2. Calcular el variograma empírico DE LOS RESIDUALES de la tendencia lineal
+v_empirico_universal <- variogram(g_universal)
+
+# 3. Ajustar un modelo teórico (por ejemplo, Esférico o Exponencial)
+# Usamos "Sph" (Esférico) como punto de partida. El ajuste se hace sobre los residuos.
+modelo_teorico_universal <- fit.variogram(v_empirico_universal, vgm("Sph"))
+
+print(modelo_teorico_universal)
+
+# 4. Visualizar el ajuste del variograma de los residuos
+plot(v_empirico_universal, modelo_teorico_universal, 
+     main = "Variograma de los Residuos (Kriging Universal)",
+     xlab = "Distancia (grados decimales)", 
+     ylab = "Semivarianza")
+
+# 5. Asignar el modelo ajustado al objeto gstat
+g_universal$model <- modelo_teorico_universal
+
+# NOTA: Para generar el mapa de predicción (Kriging Universal), necesitarías una grilla 
+# de predicción (newdata). Por ahora, hemos establecido y validado el modelo de la media 
+# y la estructura de covarianza de los residuos, que es el objetivo de esta sección.
 ```
