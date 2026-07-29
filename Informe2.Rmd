@@ -734,12 +734,6 @@ filled.contour(
 )
 ```
 
-## Funciones y gráficas a partir de la función outer
-
-```{r}
-
-
-```
 
 # Análisis de estacionariedad en media y Modelo para la media
 
@@ -839,39 +833,230 @@ summary(mod_4)
 
 # Estimación empírica y teórica del semivariograma.
 
-```{r KrigingUniversal}
+```{r fig.height=5, fig.width=11}
 # ------------------------------------------------------------------------------
-# 4. Kriging Universal (Tendencia + Autocorrelación simultánea)
+# 1. ESTIMACIÓN DEL SEMIVARIOGRAMA EMPÍRICO (DIFERENTES PRESENTACIONES)
 # ------------------------------------------------------------------------------
-library(gstat)
 
-# 1. Definir el modelo geoestadístico con tendencia lineal en las coordenadas
-# gstat usa la fórmula: variable ~ predictores
-g_universal <- gstat(
-  formula = PM10 ~ x + y, 
-  data = datos_modelo, 
-  model = NULL # Dejamos NULL para calcular el variograma empírico de los residuos primero
-)
+# a) Semivariograma promedio por intervalos (Binned) removiendo tendencia lineal
+vari2 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
 
-# 2. Calcular el variograma empírico DE LOS RESIDUALES de la tendencia lineal
-v_empirico_universal <- variogram(g_universal)
+# b) Nube de semivariograma (todos los pares de puntos)
+vari2Cloud <- variog(datos_geoR, op = "cloud", trend = "1st", max.dist = 0.15)
 
-# 3. Ajustar un modelo teórico (por ejemplo, Esférico o Exponencial)
-# Usamos "Sph" (Esférico) como punto de partida. El ajuste se hace sobre los residuos.
-modelo_teorico_universal <- fit.variogram(v_empirico_universal, vgm("Sph"))
+# c) Diagramas de caja (boxplots) de la nube por intervalos
+vari2BinCloud <- variog(datos_geoR, max.dist = 0.15, op = "cloud", bin.cloud = TRUE)
 
-print(modelo_teorico_universal)
+# d) Semivariograma suavizado (Kernel smoothing)
+vari2Sm <- variog(datos_geoR, trend = "1st", op = "sm", bandwidth = 0.02, max.dist = 0.15)
 
-# 4. Visualizar el ajuste del variograma de los residuos
-plot(v_empirico_universal, modelo_teorico_universal, 
-     main = "Variograma de los Residuos (Kriging Universal)",
-     xlab = "Distancia (grados decimales)", 
-     ylab = "Semivarianza")
 
-# 5. Asignar el modelo ajustado al objeto gstat
-g_universal$model <- modelo_teorico_universal
+# Visualización del Panel 2x2
+par(mfrow = c(2, 2), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
 
-# NOTA: Para generar el mapa de predicción (Kriging Universal), necesitarías una grilla 
-# de predicción (newdata). Por ahora, hemos establecido y validado el modelo de la media 
-# y la estructura de covarianza de los residuos, que es el objetivo de esta sección.
+plot(vari2$u, vari2$v, type = "b", pch = 19, col = "darkblue",
+     main = "Semivariograma Clásico (Binned)", xlab = "Distancia (h)", ylab = "Semivarianza γ(h)")
+
+plot(vari2Cloud$u, vari2Cloud$v, pch = 20, col = alpha("orange", 0.5),
+     main = "Nube de Semivariograma", xlab = "Distancia (h)", ylab = "Semivarianza γ(h)")
+
+plot(vari2BinCloud, main = "Nube por Intervalos (Boxplots)", xlab = "Distancia (h)", ylab = "Semivarianza γ(h)")
+
+plot(vari2Sm$u, vari2Sm$v, type = "l", col = "red", lwd = 2,
+     main = "Semivariograma Suavizado", xlab = "Distancia (h)", ylab = "Semivarianza γ(h)")
+
+par(mfrow = c(1, 1))
+
+
+# ------------------------------------------------------------------------------
+# 2. COMPARACIÓN DE TENDENCIAS (ESTACIONARIEDAD EN LA MEDIA)
+# ------------------------------------------------------------------------------
+
+# Sin remover tendencia (Asume media constante)
+vari1 <- variog(datos_geoR, max.dist = 0.15)
+
+# Removiendo tendencia lineal de 1er orden: \mu(s) = \beta_0 + \beta_1 x + \beta_2 y
+vari2 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
+
+# Removiendo tendencia cuadrática de 2do orden: \mu(s) = superficie cuadrática
+vari3 <- variog(datos_geoR, trend = "2nd", max.dist = 0.15)
+
+
+# Visualización comparativa
+par(mfrow = c(1, 3), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
+
+plot(vari1$u, vari1$v, type = "b", pch = 19, col = "black",
+     main = "Sin remover tendencia", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari2$u, vari2$v, type = "b", pch = 19, col = "blue",
+     main = "Tendencia Lineal (1st)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari3$u, vari3$v, type = "b", pch = 19, col = "darkgreen",
+     main = "Tendencia Cuadrática (2nd)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+par(mfrow = c(1, 1))
 ```
+
+## Explorando estimación resistente a datos atípicos y removiendo tendencia
+
+Reemplaza el estimador clásico de Matheron por el **estimador robusto de Cressie y Hawkins** ($\text{modulus}$).
+
+
+Si un solo par de puntos tiene una diferencia muy grande, distorsiona la semivarianza promedio. El estimador de módulo atenúa esos impactos desproporcionados.
+
+
+```{r fig.height=5, fig.width=10}
+# ==============================================================================
+# 1. ESTIMADOR RESISTENTE A ATÍPICOS (Cressie & Hawkins / Modulus)
+# ==============================================================================
+
+# Estimador modulado (robusto ante datos extremos de PM10)
+vari1_rob <- variog(datos_geoR, estimator.type = "modulus", max.dist = 0.15)
+vari2_rob <- variog(datos_geoR, trend = "1st", estimator.type = "modulus", max.dist = 0.15)
+vari3_rob <- variog(datos_geoR, trend = "2nd", estimator.type = "modulus", max.dist = 0.15)
+
+# Visualización comparativa del estimador robusto
+par(mfrow = c(1, 3), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
+
+plot(vari1_rob$u, vari1_rob$v, type = "b", pch = 19, col = "darkred",
+     main = "Robusto: Sin tendencia", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari2_rob$u, vari2_rob$v, type = "b", pch = 19, col = "darkblue",
+     main = "Robusto: Tendencia Lineal (1st)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari3_rob$u, vari3_rob$v, type = "b", pch = 19, col = "darkgreen",
+     main = "Robusto: Tendencia Cuadrática (2nd)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+par(mfrow = c(1, 1))
+
+```
+
+ Si la curva del variograma *modulus* es mucho más suave y tiene una varianza menor que la del variograma clásico (el que analizamos antes), significa que la contaminación por $\text{PM}_{10}$ tiene eventos o estaciones con valores extremos locales.
+
+## Explorando anisotropía
+
+En lugar de asumir que la variabilidad espacial es igual en todas las direcciones (**Isotropía**), calcula el semivariograma restringiendo los pares de puntos a ángulos específicos ($0^\circ, 45^\circ, 90^\circ, 135^\circ$) con una tolerancia angular (usualmente $\pm 22.5^\circ$).
+
+
+```{r fig.height=5, fig.width=11}
+
+# ==============================================================================
+# 2. EXPLORACIÓN DE ANISOTROPÍA (VARIOGRAMAS DIRECCIONALES)
+# ==============================================================================
+# Evaluamos si la autocorrelación espacial cambia según la dirección geográfica
+# 0° (Norte-Sur), 45° (NE-SO), 90° (Este-Oeste), 135° (NO-SE)
+
+vari_0   <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = 0)          # 0° / 180°
+vari_45  <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = pi / 4)    # 45°
+vari_90  <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = pi / 2)    # 90°
+vari_135 <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = 3 * pi / 4)# 135°
+
+# Visualización del panel 2x2 direccional
+par(mfrow = c(2, 2), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
+
+plot(vari_0$u, vari_0$v, type = "b", pch = 19, col = "purple",
+     main = "Variograma a 0° (N-S)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari_45$u, vari_45$v, type = "b", pch = 19, col = "orange",
+     main = "Variograma a 45° (NE-SO)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari_90$u, vari_90$v, type = "b", pch = 19, col = "brown",
+     main = "Variograma a 90° (E-O)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+plot(vari_135$u, vari_135$v, type = "b", pch = 19, col = "darkcyan",
+     main = "Variograma a 135° (NO-SE)", xlab = "Distancia (h)", ylab = "γ(h)")
+
+par(mfrow = c(1, 1))
+
+# --- Bonus: Gráfico súper opcional para ver las 4 direcciones superpuestas ---
+plot(vari_0$u, vari_0$v, type = "l", col = "purple", lwd = 2, ylim = c(0, max(vari_0$v, vari_90$v, na.rm=TRUE)),
+     main = "Superposición Direccional (Evaluación de Anisotropía)", xlab = "Distancia (h)", ylab = "γ(h)")
+lines(vari_45$u, vari_45$v, col = "orange", lwd = 2)
+lines(vari_90$u, vari_90$v, col = "brown", lwd = 2)
+lines(vari_135$u, vari_135$v, col = "darkcyan", lwd = 2)
+legend("bottomright", legend = c("0° (N-S)", "45° (NE-SO)", "90° (E-O)", "135° (NO-SE)"),
+       col = c("purple", "orange", "brown", "darkcyan"), lty = 1, lwd = 2, cex = 0.8)
+
+```
+
+
+* **Isotropía (Mismo comportamiento):** Si los 4 gráficos muestran la misma curvatura, el mismo Alcance (*Range*) y la misma Meseta (*Sill*), la variabilidad de $\text{PM}_{10}$ depende **únicamente de la distancia entre estaciones** y no de la dirección.
+* **Anisotropía Geometrica / Zonal:** En Bogotá es muy común encontrar anisotropía. Por ejemplo:
+  * **Dirección Norte-Sur ($0^\circ$):** Suele tener mayor autocorrelación espacial debido al flujo de los vientos y la orientación de la sabana/Cerros Orientales.
+  * **Dirección Este-Oeste ($90^\circ$):** Puede mostrar cambios muy abruptos (menor alcance o mayor pendiente) debido al cambio topográfico (de la sabana hacia los Cerros).
+
+
+# Estimación teórica del semivariograma
+
+
+```{r}
+library(geoR)
+
+# 1. Asegúrate de tener el semivariograma empírico calculado
+var1 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
+
+plot(var1, main = "Semivariograma Empírico de Residuales",
+     xlab = "Distancia (h)", ylab = "Semivarianza", pch = 19)
+
+# 3. Lanzar eyefit
+# Ahora la interfaz se abrirá en la ventana emergente y verás 
+# cómo se dibuja y cambia la curva en tiempo real al mover los controles.
+# ini_eye <- eyefit(var1)
+# > ini_eye
+#   cov.model sigmasq  phi tausq kappa kappa2 practicalRange
+# 1 spherical     190 0.04    70  <NA>   <NA>           0.05
+
+# Supongamos que del eyefit obtuviste estos valores aproximados para PM10:
+# sigmasq = 200, phi = 0.04, tausq (nugget) = 50
+ini1 <- c(190, 0.04)    # c(sigmasq, phi)
+nugget_ini <- 70       # tausq
+
+# ------------------------------------------------------------------------------
+# 3. AJUSTE DE MODELOS TEÓRICOS
+# ------------------------------------------------------------------------------
+
+# A. Mínimos Cuadrados Ordinarios (MCO / Equal)
+fitvar1 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+                    nugget = nugget_ini, wei = "equal")
+
+# B. Mínimos Cuadrados Ponderados por número de pares (MCPnpairs)
+fitvar2 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+                    nugget = nugget_ini, wei = "npairs")
+
+# C. Mínimos Cuadrados Ponderados de Cressie (MCPcressie - da más peso a h cortas)
+fitvar3 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+                    nugget = nugget_ini, wei = "cressie")
+
+# D. Máxima Verosimilitud (ML)
+fitvar4 <- likfit(datos_geoR, coords = datos_geoR$coords, data = datos_geoR$data,
+                  trend = "1st", ini.cov.pars = ini1, fix.nugget = FALSE,
+                  nugget = nugget_ini, cov.model = "exponential", lik.method = "ML")
+
+# E. Máxima Verosimilitud Restringida (REML - Recomendado si hay tendencia)
+fitvar5 <- likfit(datos_geoR, coords = datos_geoR$coords, data = datos_geoR$data,
+                  trend = "1st", ini.cov.pars = ini1, fix.nugget = FALSE,
+                  nugget = nugget_ini, cov.model = "exponential", lik.method = "REML")
+
+# ------------------------------------------------------------------------------
+# 4. GRAFICAR Y COMPARAR TODOS LOS MODELOS AJUSTADOS
+# ------------------------------------------------------------------------------
+plot(var1$u, var1$v,
+     xlab = "Distancia h (grados / km)",
+     ylab = "Semivarianza γ(h)",
+     main = "Ajustes Teóricos del Semivariograma de PM10",
+     pch = 19, col = "black")
+
+lines(fitvar1, col = "black", lty = 1, lwd = 2)     # MCO
+lines(fitvar2, col = "red", lty = 2, lwd = 2)       # MCPnpairs
+lines(fitvar3, col = "green3", lty = 3, lwd = 2)   # MCPcressie
+lines(fitvar4, col = "blue", lty = 4, lwd = 2)      # ML
+lines(fitvar5, col = "purple", lty = 5, lwd = 2)    # REML
+
+legend("bottomright",
+       legend = c("MCO", "MCP-npairs", "MCP-cressie", "ML", "REML"),
+       col = c("black", "red", "green3", "blue", "purple"),
+       lty = 1:5, lwd = 2, bty = "n")
+
+
+```
+
