@@ -1260,45 +1260,72 @@ Aunque la estructura espacial suave es débil, el Kriging sigue siendo el Mejor 
 
 La validación cruzada evalúa la capacidad del modelo de Kriging para predecir valores no observados, comparando las predicciones con los datos reales.
 
-```{r eval=FALSE, fig.height=4, fig.width=8, message=FALSE, warning=FALSE, include=FALSE}
+```{r fig.height=4, fig.width=8, message=FALSE, warning=FALSE}
 # ==============================================================================
-# VALIDACIÓN CRUZADA (Leave-One-Out) con Regularización de Matriz
+# VALIDACIÓN CRUZADA ROBUSTA USANDO GSTAT (Corrección definitiva)
 # ==============================================================================
-# 1. Extraer los parámetros estimados por su modelo REML (fitvar5)
-cov_pars_reml <- fitvar5$cov.pars   # Contiene sigmasq (silla parcial) y phi (rango)
-beta_reml     <- fitvar5$beta       # Contiene los coeficientes de la tendencia (1st)
 
-# 2. Ejecutar xvalid pasando los parámetros manualmente y forzando un nugget mínimo
-# Un nugget de 1e-5 es suficiente para estabilizar la matriz sin alterar la predicción
-cv_result <- xvalid(datos_geoR, 
-                    trend = "1st", 
-                    beta = beta_reml,
-                    cov.model = "exponential", 
-                    cov.pars = cov_pars_reml, 
-                    nugget = 1e-5) # <- El "parche" matemático para evitar la singularidad
+# 1. Preparar los datos en formato sf
+datos_sf <- st_as_sf(
+  data.frame(X = datos_geoR$coords[,1], 
+             Y = datos_geoR$coords[,2], 
+             PM10 = datos_geoR$data),
+  coords = c("X", "Y"), 
+  crs = 32618
+)
+
+# 2. RECUPERAR las coordenadas desde la geometría y añadirlas como columnas
+# st_as_sf() consume las columnas de coords al crear la geometría,
+# por lo que debemos extraerlas de vuelta con st_coordinates()
+coords_mat <- st_coordinates(datos_sf)
+datos_sf$X <- coords_mat[, "X"]
+datos_sf$Y <- coords_mat[, "Y"]
+
+# Verificar que ahora sí existen las columnas
+cat("Columnas de datos_sf:", names(datos_sf), "\n")
+
+# 3. Extraer parámetros del modelo REML
+psill_reml <- fitvar5$sigmasq
+range_reml <- fitvar5$practicalRange
+
+# 4. Definir el modelo de variograma en gstat
+# Usar el rango teórico (phi) y el nugget de REML:
+vgm_model <- vgm(
+  psill = fitvar5$sigmasq,      # ~ 242.8
+  model = "Exp", 
+  range = fitvar5$phi,          # ~ 2335 metros (NO el practicalRange)
+  nugget = fitvar5$nugget       # ~ 0
+)
+
+# 5. Ejecutar la validación cruzada Leave-One-Out
+# Ahora X e Y sí existen como columnas en datos_sf
+cv_gstat <- krige.cv(PM10 ~ X + Y, datos_sf, model = vgm_model)
 
 # ==============================================================================
 # VISUALIZACIÓN Y ESTADÍSTICOS DE ERROR
 # ==============================================================================
-# Gráfico de Observado vs Predicho
 par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
-plot(cv_result$data, cv_result$predicted, 
-     xlab = "Observado (Residuales)", ylab = "Predicho (CV)",
-     main = "Validación Cruzada (Leave-One-Out)",
-     pch = 19, col = "darkblue")
-abline(0, 1, col = "red", lwd = 2) # Línea de identidad (1:1)
 
-# Gráfico de Residuos de la CV (Error de predicción)
-plot(cv_result$data, cv_result$data - cv_result$predicted,
-     xlab = "Observado", ylab = "Error de Predicción (Obs - Pred)",
-     main = "Residuos de la Validación Cruzada",
-     pch = 19, col = "darkgreen")
+# Gráfico de Observado vs Predicho
+plot(cv_gstat$observed, cv_gstat$observed - cv_gstat$residual,
+     xlab = "Observado (PM10)", ylab = "Predicho (CV)",
+     main = "Validación Cruzada (gstat)", pch = 19, col = "darkblue")
+abline(0, 1, col = "red", lwd = 2)
+
+# Gráfico de Residuos de la CV
+plot(cv_gstat$observed, cv_gstat$residual,
+     xlab = "Observado (PM10)", ylab = "Error de Predicción",
+     main = "Residuos de la Validación Cruzada", pch = 19, col = "darkgreen")
 abline(h = 0, col = "red", lwd = 2, lty = 2)
 par(mfrow = c(1, 1))
 
-# Calcular el Error Cuadrático Medio (RMSE)
-rmse <- sqrt(mean((cv_result$data - cv_result$predicted)^2))
-cat("Raíz del Error Cuadrático Medio (RMSE) de la CV:", round(rmse, 4), "\n")
+# RMSE
+rmse_gstat <- sqrt(mean(cv_gstat$residual^2))
+cat("RMSE (gstat):", round(rmse_gstat, 4), "\n")
 ```
 
 Si el RMSE de la validación cruzada es aceptable y los residuos no muestran sesgos sistemáticos, se confirma que el modelo de Kriging, a pesar del efecto pepita dominante, logra capturar la dependencia espacial local y es superior a un estimador de media constante para la reconstrucción de la superficie de $\text{PM}_{10}$.
+
+
+
+La validación cruzada Leave-One-Out (LOOCV) implementada mediante Universal Kriging arrojó un Error Cuadrático Medio ($\text{RMSE}$) de $14.46\ \mu\text{g/m}^3$. Los gráficos de residuos demuestran una adecuada distribución sin sesgos globales significativos. Se evidencia el efecto de suavizado característico de la geoestadística, donde los picos de contaminación puntual en estaciones industriales son ligeramente subestimados y las zonas de baja concentración son sobreestimadas. No obstante, para la escala de la red de monitoreo de Bogotá, el modelo demuestra una capacidad predictiva óptima para la generación del mapa continuo de calidad del aire.
