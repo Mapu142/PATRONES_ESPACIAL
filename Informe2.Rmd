@@ -681,6 +681,66 @@ drape.plot(
 par(mfrow = c(1, 1))
 ```
 
+## Gráficos de contorno
+
+```{r fig.height=7, fig.width=10}
+# ------------------------------------------------------------------------------
+# PARTE 1: Contorno e Imagen (Mapa de calor básico)
+# ------------------------------------------------------------------------------
+
+# 1. Gráfico de isolíneas de PM10
+contour(
+  grillas, 
+  nlevels = 10, 
+  col = "darkblue",
+  main = "Mapa de Isolíneas de PM10 (Contorno)",
+  xlab = "Longitud", 
+  ylab = "Latitud"
+)
+
+# 2. Mapa de calor continuo
+image(
+  grillas$x, 
+  grillas$y, 
+  grillas$z, 
+  col = heat.colors(12),
+  main = "Mapa de Calor Interpolado de PM10 (Grilla)",
+  xlab = "Longitud", 
+  ylab = "Latitud"
+)
+
+# Restablecer panel gráfico
+
+
+
+# ------------------------------------------------------------------------------
+# PARTE 2: Contorno Relleno con Leyenda de Escala (filled.contour)
+# ------------------------------------------------------------------------------
+# Rango adaptado automáticamente a los valores mínimo y máximo de PM10
+rangos_pm10 <- seq(
+  min(grillas$z, na.rm = TRUE), 
+  max(grillas$z, na.rm = TRUE), 
+  length.out = 10
+)
+
+filled.contour(
+  grillas,
+  levels = rangos_pm10,
+  col = heat.colors(9),
+  main = "Superficie de PM10 con Escala de Niveles",
+  xlab = "Longitud",
+  ylab = "Latitud",
+  key.title = title(main = "PM10\n(µg/m³)", cex.title = 0.8)
+)
+```
+
+## Funciones y gráficas a partir de la función outer
+
+```{r}
+
+
+```
+
 # Análisis de estacionariedad en media y Modelo para la media
 
 
