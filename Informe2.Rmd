@@ -41,6 +41,7 @@ library(geoR)   # Para eyefit y análisis geoestadístico clásico
 library(MASS)
 library(performance)
 library(fields)
+library(patchwork)
 ```
 
 # Introducción
@@ -397,14 +398,13 @@ ggplot(datos_corte, aes(x = PM10)) +
   geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
   labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
   theme_minimal()
-# 
-# 
-# ggplot(datos_corte, aes(x = log(PM10))) +
-#   geom_histogram(binwidth =1/4, fill = "#41B7C4", color = "white", alpha = 0.8) +
-#   geom_vline(aes(xintercept = mean(log(PM10), na.rm=T)), color = "red", linetype = "dashed") +
-#   geom_vline(aes(xintercept = median(log(PM10), na.rm=T)), color = "blue", linetype = "dotted") +
-#   labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
-#   theme_minimal()
+
+ggplot(datos_corte, aes(x = log(PM10))) +
+  geom_histogram(binwidth =0.15, fill = "#41B7C4", color = "white", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(log(PM10), na.rm=T)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(log(PM10), na.rm=T)), color = "blue", linetype = "dotted") +
+  labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
+  theme_minimal()
 
 ```
 
@@ -416,10 +416,10 @@ ggplot(datos_corte, aes(x = PM10)) +
 
 ## Correlación con la variable de interés $PM_{10}$
 
-```{r correlacion-variable, fig.height=5, fig.width=7}
+```{r correlacion-variable, fig.height=3, fig.width=7}
 mat_cor <- cor(
   datos_corte %>% 
-    dplyr::select(PM10, O3, `Altitud (m)`, `Altura (m)`, Latitud, Longitud),
+    dplyr::select(PM10,  Latitud, Longitud),
   use = "complete.obs"
 )
 
@@ -434,25 +434,40 @@ corrplot(
 
 ## Dispersión con longitud
 
-```{r dispm10lon, message=FALSE, warning=FALSE}
+Si la línea roja (Loess) no es horizontal, viola el supuesto de Estacionariedad en la Media ($E[Z(s)] = \mu$). 
+
+Si existe tendencia en los datos, y esta no es eliminada antes de encontrar la estimación empírica del semivariograma, estos estimadores quedarán contaminados.
+
+
+```{r dispm10lon, fig.height=3, fig.width=10, message=FALSE, warning=FALSE}
 ggplot(datos_corte,
        aes(Longitud, PM10))+
     geom_point(alpha=.3)+
     geom_smooth(method="loess")
+
+# ggplot(datos_corte,
+#        aes(Longitud, log(PM10)))+
+#     geom_point(alpha=.3)+
+#     geom_smooth(method="loess")
 ```
 
 ## Dispersión con latitud
 
-```{r disPM10lat, message=FALSE, warning=FALSE}
+```{r disPM10lat, fig.height=3, fig.width=10, message=FALSE, warning=FALSE}
 ggplot(datos_corte,
        aes(Latitud, PM10))+
     geom_point(alpha=.3)+
     geom_smooth(method="loess")
+
+# ggplot(datos_corte,
+#        aes(Latitud, log(PM10)))+
+#     geom_point(alpha=.3)+
+#     geom_smooth(method="loess")
 ```
 
 ## Autocorrelación Espacial  (Índice de Moran)
 
-Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.354$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), Lo cual justifica la implementación de la geoestadística.
+Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.431$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), existe Autocorrelación espacial positiva.
 
 
 ```{r moran}
@@ -470,10 +485,6 @@ moran_test  <- moran.test(
 )
 
 print(moran_test)
-
-
-
-
 
 
 
@@ -579,13 +590,42 @@ ggplot() +
 ```
 ## Gráfico de objeto geodata
 
-```{r geodata_descriptivo, fig.height=7, fig.width=10}
+```{r geodata_descriptivo, fig.height=5, fig.width=10}
 # Convertir a geodata especificando columnas de coordenadas y variable
 datos_geoR <- as.geodata(
   datos_corte,
   coords.col = c("Longitud", "Latitud"), # X (Longitud) primero, luego Y (Latitud)
   data.col = "PM10"                      # O la columna de tus residuos
 )
+
+
+# 1. Transformar el objeto sf a un sistema proyectado en metros (UTM Zona 18N / MAGNA-SIRGAS)
+# EPSG 3116 es el origen Bogotá, pero 32618 (UTM 18N) es estándar para distancias euclidianas.
+# Primero le indicamos que son Grados Decimales (EPSG: 4326)
+estaciones_sf <- datos_corte %>%
+  st_as_sf(coords = c("Longitud", "Latitud"), crs = 4326, remove = FALSE) %>%
+  st_transform(crs = 32618) # Ahora SÍ transformamos a Metros (UTM 18N)
+
+# Extraer la matriz de coordenadas proyectadas en metros (X, Y)
+coords_utm <- st_coordinates(estaciones_sf)
+
+# ------------------------------------------------------------------------------
+# 2. CREAR EL OBJETO GEODATA EN METROS PARA geoR
+datos_geoR <- as.geodata(
+  cbind(coords_utm, PM10 = datos_corte$PM10),
+  coords.col = c("X", "Y"),
+  data.col = "PM10"
+)
+
+# 3. Recalcular el variograma empírico (la distancia máxima ahora será en metros, ej. 20000m)
+# En metros, Bogotá tiene una extensión aproximada de 30-40 km.
+# La regla general es usar max.dist como la mitad de la distancia máxima (~15,000 - 20,000 m).
+
+var1 <- variog(datos_geoR, trend = "1st", max.dist = 20000)
+
+# Para graficar o hacer binned (ahora en metros):
+plot(var1, main = "Semivariograma Empírico de PM10 (en Metros)",
+     xlab = "Distancia h (metros)", ylab = "Semivarianza γ(h)")
 # summary(datos_corte)
 
 plot(
@@ -595,6 +635,7 @@ plot(
 plot(datos_geoR, scatter3d = T)
 plot(datos_geoR, trend = "1st")
 ```
+
 ## Gráficos descriptivos interpolación
 
 ```{r fig.height=7, fig.width=10}
@@ -684,62 +725,54 @@ par(mfrow = c(1, 1))
 ## Gráficos de contorno
 
 ```{r fig.height=7, fig.width=10}
-# ------------------------------------------------------------------------------
-# PARTE 1: Contorno e Imagen (Mapa de calor básico)
-# ------------------------------------------------------------------------------
+library(fields) # Cargar para usar image.plot
 
-# 1. Gráfico de isolíneas de PM10
+# Configurar el panel 2x2
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1), mgp = c(2, 0.7, 0))
+
+# 1. Isolíneas (Contorno)
 contour(
   grillas, 
   nlevels = 10, 
   col = "darkblue",
-  main = "Mapa de Isolíneas de PM10 (Contorno)",
-  xlab = "Longitud", 
-  ylab = "Latitud"
+  main = "1. Isolíneas de PM10",
+  xlab = "Longitud", ylab = "Latitud"
 )
 
-# 2. Mapa de calor continuo
+# 2. Mapa de calor sin leyenda
 image(
-  grillas$x, 
-  grillas$y, 
-  grillas$z, 
+  grillas$x, grillas$y, grillas$z, 
   col = heat.colors(12),
-  main = "Mapa de Calor Interpolado de PM10 (Grilla)",
-  xlab = "Longitud", 
-  ylab = "Latitud"
+  main = "2. Mapa de Calor (Grilla)",
+  xlab = "Longitud", ylab = "Latitud"
 )
 
-# Restablecer panel gráfico
-
-
-
-# ------------------------------------------------------------------------------
-# PARTE 2: Contorno Relleno con Leyenda de Escala (filled.contour)
-# ------------------------------------------------------------------------------
-# Rango adaptado automáticamente a los valores mínimo y máximo de PM10
-rangos_pm10 <- seq(
-  min(grillas$z, na.rm = TRUE), 
-  max(grillas$z, na.rm = TRUE), 
-  length.out = 10
+# 3. Mapa con Leyenda de Escala (Sustituto perfecto de filled.contour)
+image.plot(
+  grillas$x, grillas$y, grillas$z,
+  col = heat.colors(12),
+  main = "3. Superficie con Escala",
+  xlab = "Longitud", ylab = "Latitud",
+  legend.width = 1
 )
 
-filled.contour(
-  grillas,
-  levels = rangos_pm10,
-  col = heat.colors(9),
-  main = "Superficie de PM10 con Escala de Niveles",
-  xlab = "Longitud",
-  ylab = "Latitud",
-  key.title = title(main = "PM10\n(µg/m³)", cex.title = 0.8)
+# 4. Cuarto gráfico (ej. Contorno sobrepuesto a mapa de calor)
+image(
+  grillas$x, grillas$y, grillas$z, 
+  col = terrain.colors(12),
+  main = "4. Calor + Isolíneas",
+  xlab = "Longitud", ylab = "Latitud"
 )
+contour(grillas, add = TRUE, col = "black")
+
+# Restaurar panel a 1x1
+par(mfrow = c(1, 1))
 ```
 
 
 # Análisis de estacionariedad en media y Modelo para la media
 
-
-
-```{r SelecciónModeloMedia}
+```{r fig.height=4, fig.width=10}
 # ==============================================================================
 # 1.2 Análisis de estacionariedad en media. Modelo para la media.
 # ==============================================================================
@@ -750,8 +783,37 @@ datos_modelo <- datos_corte %>%
     x = Longitud,
     y = Latitud
   ) %>%
-  st_as_sf(coords = c("x", "y"), crs = 4326, remove = FALSE) # Convertimos a sf para mapeo de residuos
+  st_as_sf(coords = c("x", "y"), crs = 32618, remove = FALSE) 
 
+g1 <- ggplot(datos_modelo, aes(x = x, y = PM10)) +
+  geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
+  geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
+  labs(
+    title = "Tendencia en el eje X (Este-Oeste)",
+    x = "Longitud (x)",
+    y = expression(paste("PM"[10], " (", mu, "g/m"^3, ")"))
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 11))
+
+g2 <- ggplot(datos_modelo, aes(x = y, y = PM10)) +
+  geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
+  geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
+  labs(
+    title = "Tendencia en el eje Y (Norte-Sur)",
+    x = "Latitud (y)",
+    y = expression(paste("PM"[10], " (", mu, "g/m"^3, ")"))
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 11))
+
+g1 + g2
+```
+
+
+
+
+```{r SelecciónModeloMedia, fig.height=8, fig.width=11}
 # ------------------------------------------------------------------------------
 # 1. Ajuste de los modelos candidatos (Ya los tienes, los reutilizamos)
 # ------------------------------------------------------------------------------
@@ -772,7 +834,7 @@ datos_modelo$resid_4 <- residuals(mod_4)
 # 2. Comparación Estadística (Tu tabla ya generada)
 # ------------------------------------------------------------------------------
 resumen_modelos <- data.frame(
-  Modelo = c("Lineal", "Cuadrático", "3", "4"),
+  Modelo = c("Lineal", "Cuadrático", "xy", "x"),
   AIC = c(AIC(mod_lineal), AIC(mod_cuadratico), AIC(mod_3), AIC(mod_4)), 
   R2_Ajustado = c(
     summary(mod_lineal)$adj.r.squared,
@@ -795,9 +857,14 @@ knitr::kable(resumen_modelos,
 check_model(mod_lineal)
 
 ```
+1. Existe una tendencia lineal clara (impulsada principalmente por la Longitud/X).
+2. El modelo lineal (`mod_lineal`) tiene el mejor AIC (161.79).
+3. Los residuales de este modelo lineal **sí cumplen normalidad** (Shapiro p-value = 0.5606).
+
+Dado que la regresión lineal en las coordenadas logró capturar la tendencia y normalizar los residuales, usar `trend="1st"` en `geoR` (que internamente hace esta misma regresión) es **matemáticamente correcto y suficiente**. El pulimiento de medianas se usa cuando la regresión falla; aquí la regresión funcionó.
 
 
-```{r}
+```{r fig.height=4, fig.width=10}
 # Función auxiliar para graficar residuos (Adaptada de Bohórquez, 2025)
 plot_residuos <- function(datos, var_residuo, titulo) {
   p1 <- ggplot(datos, aes(x = x, y = .data[[var_residuo]])) +
@@ -823,32 +890,35 @@ plot_residuos(st_drop_geometry(datos_modelo), "resid_lineal", "Residuos del Mode
 
 anova(mod_lineal)
 summary(mod_lineal)
-
-anova(mod_cuadratico)
-summary(mod_cuadratico)
-
-anova(mod_4)
-summary(mod_4)
+# 
+# anova(mod_cuadratico)
+# summary(mod_cuadratico)
+# 
+# anova(mod_3)
+# summary(mod_3)
+# 
+# anova(mod_4)
+# summary(mod_4)
 ```
 
 # Estimación empírica y teórica del semivariograma.
 
-```{r fig.height=5, fig.width=11}
+```{r fig.height=5, fig.width=11, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
 # 1. ESTIMACIÓN DEL SEMIVARIOGRAMA EMPÍRICO (DIFERENTES PRESENTACIONES)
 # ------------------------------------------------------------------------------
 
 # a) Semivariograma promedio por intervalos (Binned) removiendo tendencia lineal
-vari2 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
+vari2 <- variog(datos_geoR, trend = "1st", max.dist = 20000)
 
 # b) Nube de semivariograma (todos los pares de puntos)
-vari2Cloud <- variog(datos_geoR, op = "cloud", trend = "1st", max.dist = 0.15)
+vari2Cloud <- variog(datos_geoR, op = "cloud", trend = "1st", max.dist = 20000)
 
 # c) Diagramas de caja (boxplots) de la nube por intervalos
-vari2BinCloud <- variog(datos_geoR, max.dist = 0.15, op = "cloud", bin.cloud = TRUE)
+vari2BinCloud <- variog(datos_geoR, max.dist = 20000, op = "cloud", bin.cloud = TRUE)
 
 # d) Semivariograma suavizado (Kernel smoothing)
-vari2Sm <- variog(datos_geoR, trend = "1st", op = "sm", bandwidth = 0.02, max.dist = 0.15)
+vari2Sm <- variog(datos_geoR, trend = "1st", op = "sm", bandwidth = 3000, max.dist = 20000)
 
 
 # Visualización del Panel 2x2
@@ -873,15 +943,16 @@ par(mfrow = c(1, 1))
 # ------------------------------------------------------------------------------
 
 # Sin remover tendencia (Asume media constante)
-vari1 <- variog(datos_geoR, max.dist = 0.15)
+vari1 <- variog(datos_geoR, max.dist = 20000)
 
 # Removiendo tendencia lineal de 1er orden: \mu(s) = \beta_0 + \beta_1 x + \beta_2 y
-vari2 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
+vari2 <- variog(datos_geoR, trend = "1st", max.dist = 20000)
 
 # Removiendo tendencia cuadrática de 2do orden: \mu(s) = superficie cuadrática
-vari3 <- variog(datos_geoR, trend = "2nd", max.dist = 0.15)
+vari3 <- variog(datos_geoR, trend = "2nd", max.dist = 20000)
+```
 
-
+```{r fig.height=4, fig.width=10}
 # Visualización comparativa
 par(mfrow = c(1, 3), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
 
@@ -905,15 +976,15 @@ Reemplaza el estimador clásico de Matheron por el **estimador robusto de Cressi
 Si un solo par de puntos tiene una diferencia muy grande, distorsiona la semivarianza promedio. El estimador de módulo atenúa esos impactos desproporcionados.
 
 
-```{r fig.height=5, fig.width=10}
+```{r fig.height=4, fig.width=10}
 # ==============================================================================
 # 1. ESTIMADOR RESISTENTE A ATÍPICOS (Cressie & Hawkins / Modulus)
 # ==============================================================================
 
 # Estimador modulado (robusto ante datos extremos de PM10)
-vari1_rob <- variog(datos_geoR, estimator.type = "modulus", max.dist = 0.15)
-vari2_rob <- variog(datos_geoR, trend = "1st", estimator.type = "modulus", max.dist = 0.15)
-vari3_rob <- variog(datos_geoR, trend = "2nd", estimator.type = "modulus", max.dist = 0.15)
+vari1_rob <- variog(datos_geoR, estimator.type = "modulus", max.dist = 20000)
+vari2_rob <- variog(datos_geoR, trend = "1st", estimator.type = "modulus", max.dist = 20000)
+vari3_rob <- variog(datos_geoR, trend = "2nd", estimator.type = "modulus", max.dist = 20000)
 
 # Visualización comparativa del estimador robusto
 par(mfrow = c(1, 3), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
@@ -938,7 +1009,7 @@ par(mfrow = c(1, 1))
 En lugar de asumir que la variabilidad espacial es igual en todas las direcciones (**Isotropía**), calcula el semivariograma restringiendo los pares de puntos a ángulos específicos ($0^\circ, 45^\circ, 90^\circ, 135^\circ$) con una tolerancia angular (usualmente $\pm 22.5^\circ$).
 
 
-```{r fig.height=5, fig.width=11}
+```{r fig.height=5, fig.width=10}
 
 # ==============================================================================
 # 2. EXPLORACIÓN DE ANISOTROPÍA (VARIOGRAMAS DIRECCIONALES)
@@ -946,10 +1017,10 @@ En lugar de asumir que la variabilidad espacial es igual en todas las direccione
 # Evaluamos si la autocorrelación espacial cambia según la dirección geográfica
 # 0° (Norte-Sur), 45° (NE-SO), 90° (Este-Oeste), 135° (NO-SE)
 
-vari_0   <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = 0)          # 0° / 180°
-vari_45  <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = pi / 4)    # 45°
-vari_90  <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = pi / 2)    # 90°
-vari_135 <- variog(datos_geoR, trend = "1st", max.dist = 0.15, dir = 3 * pi / 4)# 135°
+vari_0   <- variog(datos_geoR, trend = "1st", max.dist = 20000, dir = 0)          # 0° / 180°
+vari_45  <- variog(datos_geoR, trend = "1st", max.dist = 20000, dir = pi / 4)    # 45°
+vari_90  <- variog(datos_geoR, trend = "1st", max.dist = 20000, dir = pi / 2)    # 90°
+vari_135 <- variog(datos_geoR, trend = "1st", max.dist = 20000, dir = 3 * pi / 4)# 135°
 
 # Visualización del panel 2x2 direccional
 par(mfrow = c(2, 2), mar = c(3, 3, 2, 1), mgp = c(2, 0.7, 0))
@@ -990,10 +1061,9 @@ legend("bottomright", legend = c("0° (N-S)", "45° (NE-SO)", "90° (E-O)", "135
 
 
 ```{r}
-library(geoR)
 
 # 1. Asegúrate de tener el semivariograma empírico calculado
-var1 <- variog(datos_geoR, trend = "1st", max.dist = 0.15)
+var1 <- variog(datos_geoR, trend = "1st", max.dist = 20000)
 
 plot(var1, main = "Semivariograma Empírico de Residuales",
      xlab = "Distancia (h)", ylab = "Semivarianza", pch = 19)
@@ -1002,29 +1072,29 @@ plot(var1, main = "Semivariograma Empírico de Residuales",
 # Ahora la interfaz se abrirá en la ventana emergente y verás 
 # cómo se dibuja y cambia la curva en tiempo real al mover los controles.
 # ini_eye <- eyefit(var1)
-# > ini_eye
-#   cov.model sigmasq  phi tausq kappa kappa2 practicalRange
-# 1 spherical     190 0.04    70  <NA>   <NA>           0.05
+# > ini_eye 
+#     cov.model sigmasq     phi  tausq kappa kappa2  practicalRange
+# 1 exponential  147.15 3006.04 129.84  <NA>   <NA> 9005.2910433848
 
 # Supongamos que del eyefit obtuviste estos valores aproximados para PM10:
 # sigmasq = 200, phi = 0.04, tausq (nugget) = 50
-ini1 <- c(190, 0.04)    # c(sigmasq, phi)
-nugget_ini <- 70       # tausq
+ini1 <- c(147.15, 3006.04)    # c(sigmasq, phi)
+nugget_ini <- 129.84       # tausq
 
 # ------------------------------------------------------------------------------
 # 3. AJUSTE DE MODELOS TEÓRICOS
 # ------------------------------------------------------------------------------
 
 # A. Mínimos Cuadrados Ordinarios (MCO / Equal)
-fitvar1 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+fitvar1 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = FALSE,        # <- FORZA A MANTENER EL NUGGET
                     nugget = nugget_ini, wei = "equal")
 
 # B. Mínimos Cuadrados Ponderados por número de pares (MCPnpairs)
-fitvar2 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+fitvar2 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = FALSE,        # <- FORZA A MANTENER EL NUGGET
                     nugget = nugget_ini, wei = "npairs")
 
 # C. Mínimos Cuadrados Ponderados de Cressie (MCPcressie - da más peso a h cortas)
-fitvar3 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = TRUE,        # <- FORZA A MANTENER EL NUGGET
+fitvar3 <- variofit(var1, cov.model = "exponential", ini.cov.pars = ini1, fix.nugget = FALSE,        # <- FORZA A MANTENER EL NUGGET
                     nugget = nugget_ini, wei = "cressie")
 
 # D. Máxima Verosimilitud (ML)
@@ -1041,7 +1111,7 @@ fitvar5 <- likfit(datos_geoR, coords = datos_geoR$coords, data = datos_geoR$data
 # 4. GRAFICAR Y COMPARAR TODOS LOS MODELOS AJUSTADOS
 # ------------------------------------------------------------------------------
 plot(var1$u, var1$v,
-     xlab = "Distancia h (grados / km)",
+     xlab = "Distancia h (metros)",    # Cambiado de grados/km a metros
      ylab = "Semivarianza γ(h)",
      main = "Ajustes Teóricos del Semivariograma de PM10",
      pch = 19, col = "black")
@@ -1057,6 +1127,10 @@ legend("bottomright",
        col = c("black", "red", "green3", "blue", "purple"),
        lty = 1:5, lwd = 2, bty = "n")
 
-
+summary(fitvar1)
+summary(fitvar2)
+summary(fitvar3)
+summary(fitvar4)
+summary(fitvar5)
 ```
 
