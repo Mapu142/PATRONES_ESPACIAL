@@ -1,7 +1,7 @@
 ---
 title: "Patrones Puntuales"
 author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
-output:
+output: 
   bookdown::html_document2:
     theme: flatly
     toc: true
@@ -10,8 +10,8 @@ output:
     self_contained: true
     code_folding: hide
     mathjax: default
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: sentence
 ---
 
@@ -240,7 +240,14 @@ reporte_completo <- reporte_completo  %>%
 
 # Introducción
 
-La calidad del aire es un tema que ha venido cogiendo fuerza y en ciudades suele ser más delicado, hay distintos contaminantes desde $O_3$ que es .... hasta $PM_{10}$ que es ...
+
+##  Planteamiento del problema
+
+Las redes fijas de monitoreo solo ofrecen datos puntuales, lo que dificulta evaluar la exposición real de la población a la contaminación. En el área metropolitana de Bogotá, las fuentes de emisión y la topografía generan una gran variabilidad espacial en el material particulado.
+
+Por ello, este estudio utiliza geoestadística para estimar la distribución espacial de $PM_{10}$, un contaminante para la salud respiratoria. El objetivo principal es reconstruir la superficie continua de $PM_{10}$ a partir de 19 estaciones dispersas, reduciendo la incertidumbre de la interpolación y el ruido en los datos de los sensores.
+
+
 
 ```{r base-datos}
 #writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
@@ -291,7 +298,70 @@ estaciones_sf <- st_as_sf(
 
 # Base de datos {.tabset}
 
-La base de datos fue construida a partir de la unión de varios datasets debido a que la página solo permitía descargar maximo 6 meses y una variable. Al final consta de 13243 observaciones (19 estaciones $\times$ 697 tiempos).
+La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra mediante agregación, aislando la señal espacial intrínseca de cada estación. 
+
+
+> La estructura de los datos y la naturaleza de las variables medidas en la red de monitoreo se detallan en Tabla \@ref(tab:tabla-diccionario).
+
+
+
+```{r tabla-diccionario, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+# 1. Definición del dataset
+diccionario <- data.frame(
+  Variable = c("Estacion", "Latitud", "Longitud", "Altitud (m)", "PM10", "Tipo de estación"),
+  Descripción = c(
+    "Nombre del sitio de monitoreo",
+    "Coordenada geográfica Norte-Sur",
+    "Coordenada geográfica Este-Oeste",
+    "Elevación sobre el nivel del mar",
+    "Concentración de material particulado <10µm",
+    "Clasificación del entorno de medición"
+  ),
+  `Tipo de Dato` = c(
+    "Categórica (Nominal)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Numérica (Continua)",
+    "Categórica (Ordinal)"
+  ),
+  `Ejemplo / Rango` = c(
+    '"Kennedy", "Suba"',
+    "4.53° a 4.78°",
+    "-74.17° a -74.03°",
+    "2547 m a 2688 m",
+    "1.00 a 1000.00 µg/m³",
+    '"Tráfico", "Residencial"'
+  ),
+  check.names = FALSE
+)
+
+# 2. Generación y formateo de la tabla
+kbl(
+  diccionario,
+  caption = "Diccionario de datos y muestra representativa de la red de monitoreo.",
+  booktabs = TRUE,
+  align = c("l", "l", "l", "l"),
+  escape = FALSE
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    latex_options = c("striped", "hold_position", "scale_down"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  column_spec(1, bold = TRUE, monospace = TRUE) %>% # Destaca los nombres de variables como código
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
 
 ## Primeras 10 filas.
 
@@ -303,7 +373,7 @@ reporte_completo %>%
   col.names = c(
     "Fecha & Hora",
     "Estación",
-    bquote(PM_{10}),
+    bquote(PM_10),
     bquote(O_3),
     "Sigla",
     "Latitud",
@@ -340,7 +410,7 @@ reporte_completo %>%
   col.names = c(
     "Fecha & Hora",
     "Estación",
-    bquote(PM_{10}),
+    bquote(PM_10),
     bquote(O_3),
     "Sigla",
     "Latitud",
@@ -369,9 +439,11 @@ reporte_completo %>%
 
 # Calidad de datos {.tabset}
 
-Cuenta con 1911 datos faltantes en la variable de interés $PM_{10}$ (véase la Tabla \@ref(tab:faltantes)). Además, en la Figura \@ref(fig:boxplot-pm10) se observa que la mayor parte de las concentraciones se encuentran aproximadamente entre 1 y 60 $μg/m^3$, aunque también se evidencian numerosos valores atípicos y algunos valores extremadamente altos. Esta presencia de valores extremos sugiere una distribución asimétrica y una alta variabilidad en los datos, lo que podría influir en la estimación del variograma y, en consecuencia, en el desempeño del kriging, al incrementar la sensibilidad de estos procedimientos a observaciones de gran magnitud.
-
 ## Datos faltantes
+
+LSe encontro que la variable $PM_{10}$ tiene 1 911 datos faltantes (`NA`) sobre un total de 13 243 registros horarios, debido a fallas técnicas o mantenimiento de las estaciones.
+
+
 
 ```{r faltantes, tab.cap="Conteo de datos faltantes"}
 tabla_conteos_NAS %>% 
@@ -399,9 +471,9 @@ tabla_conteos_NAS %>%
   ) 
 ```
 
+## Boxplot de $PM_{10}$
 
-
-## Boxplot de PM10
+Al evaluar puntualmente el $PM_{10}$ se observa un valor máximo de 1 000 $\mu g/m^3$, asociado a saturación o fallas del sensor. Mantener este valor atípico distorsiona la estimación del variograma al inflar la varianza e incrementar artificialmente el efecto pepita (*nugget effect*), distorsionando el cálculo del alcance espacial del $PM_{10}$.
 
 ```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=14, message=FALSE, warning=FALSE}
 ggplot()+
@@ -410,13 +482,24 @@ ggplot()+
 
 # Exploración espacial{.tabset}
 
-Podemos ver en la Figura \@ref(fig:mapa-bogota) que la distribución espacial de las estaciones de monitoreo no es homogénea, concentrándose principalmente en la zona urbana de Bogotá. Por otra parte, en el gif \@ref(fig:anim-bogota) se observa que, a lo largo del período de estudio, la mayoría de las estaciones presentan concentraciones de $PM_{10}$ dentro de rangos similares, evidenciado por la predominancia de colores y tamaños semejantes entre los puntos. Los episodios de concentraciones elevadas son poco frecuentes y se presentan únicamente en algunos instantes y estaciones específicas, lo que es consistente con la presencia de unos pocos valores extremos observados previamente en el diagrama de caja.
+## Distribución
+
+La distribución univariada del $PM_{10}$, una vez agregada espacialmente, exhibe asimetría positiva. La media aritmética (32.73 $\mu g/m^3$) supera a la mediana (27.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
+
+
+```{r exploratorio_p10, echo=FALSE, fig.cap="Distribución empírica de la concentración de PM10.", out.width="80%", fig.align="center"}
+ggplot(reporte_completo, aes(x = PM10)) +
+  geom_histogram(binwidth = 5, fill = "#41B7C4", color = "black", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(PM10, na.rm=T)), color = "blue", linetype = "dotted") +
+  labs(x = expression(PM[10]~(mu*g/m^3)), y = "Frecuencia") +
+  theme_minimal()
+```
 
 
 ## Mapa de bogotá
 
-
-```{r mapa-bogota, fig.cap="Visalización ed las 19 estaciones de Bogotá"}
+```{r mapa-bogota}
 ggplot() +
   geom_sf(
     data = bogota,
@@ -470,28 +553,23 @@ anim <- animate(
 anim_save("PM10_Bogota.gif", anim)
 ```
 
-```{r anim-bogota, fig.cap="Gif de las observaciones a través del tiempo", echo=FALSE, results='asis'}
+```{r anim-bogota, echo=FALSE, results='asis'}
 knitr::include_graphics("PM10_Bogota.gif")
 ```
 
-# Relaciones ente variables {.tabset}
 
 
-+ La Figura \@ref(fig:correlacion-variable) muestra que no se evidencia una correlación lineal entre la concentración de $PM_{10}$ y las variables geográficas Altitud (m) y Altura (m), con coeficientes de correlación de 0.04 y 0.03, respectivamente. Esto sugiere que, al menos desde una perspectiva lineal, la concentración del contaminante no presenta una relación directa con la elevación del terreno ni con la altura de la estación de monitoreo, por lo que otros factores ambientales o antrópicos podrían desempeñar un papel más importante en su variabilidad espacial.
-
-+ En la Figura \@ref(fig:dispm10lon) así como también en la figura \@ref(fig:disPM10lat) no se observa una tendencia clara entre la concentración de $PM_{10}$ y la longitud. La curva suavizada mediante LOESS permanece prácticamente horizontal a lo largo del dominio espacial, lo que sugiere que el valor esperado de la concentración no presenta un cambio sistemático en función de la longitud. Asimismo, se aprecia una alta dispersión de las observaciones para prácticamente todos los valores de longitud, lo que indica que esta coordenada, por sí sola, no explica una proporción importante de la variabilidad observada en las concentraciones.
+# Relaciones entre variables {.tabset}
 
 ## Correlación con la variable de interés $PM_{10}$
 
-```{r mat_cor}
+```{r correlacion-variable, fig.height=10, fig.width=10}
 mat_cor <- cor(
   reporte_completo  %>% 
     dplyr::select(PM10, O3, `Altitud (m)`, `Altura (m)`),
   use = "complete.obs"
 )
-```
 
-```{r correlacion-variable, fig.height=10, fig.width=10, fig.cap="Correlación lineal entre algunas variables"}
 corrplot(
   mat_cor,
   method = "color",
@@ -520,6 +598,9 @@ ggplot(reporte_completo,
 ```
 
 ## Moran
+
+Aunque los datos presentan variabilidad y ruido instrumental, existe una fuerte dependencia espacial. El test de Moran ($I = 0.333$, $p < 0.001$) rechaza la aleatoriedad espacial y confirma un patrón de agrupamiento (*clustering*), donde estaciones cercanas registran niveles similares de $PM_{10}$. Lo cual justifica la implementación de la geoestadística.
+
 
 ```{r moran}
 set.seed(1110)
@@ -859,7 +940,7 @@ donde $\mathbf{Z}(s,t)$ representa un proceso aleatorio de media cero que captur
 
 ## Estimación variograma
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 datos <- reporte_completo %>%
   arrange(fecha_hora, Estacion)
 estaciones <- datos %>%
@@ -1036,49 +1117,49 @@ modelo_prod <- fit.StVariogram(
   )
 )
 ```
-```{r eval=FALSE, fig.width=10, include=FALSE}
+```{r fig.width=10}
 plot(variograma)
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 plot(variograma, modelo_sep)
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_sep, "MSE")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_sep, "optim.output")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 plot(variograma, modelo_metric)
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_metric, "MSE")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_metric, "optim.output")
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 plot(variograma, modelo_sum)
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_sum, "MSE")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_sum, "optim.output")
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 plot(variograma, modelo_prod)
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_prod, "MSE")
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 attr(modelo_prod, "optim.output")
 ```
 
@@ -1086,7 +1167,7 @@ attr(modelo_prod, "optim.output")
 
 # Kriging espacio-temporal
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 bogota <- st_transform(bogota, 3116)
 
 # Malla de puntos cada 500 m
@@ -1101,7 +1182,7 @@ grilla <- st_sf(geometry = grilla)
 # Conservar únicamente los puntos dentro de Bogotá
 grilla <- st_intersection(grilla, bogota)
 ```
-```{r eval=FALSE, include=FALSE}
+```{r}
 plot(
   st_geometry(bogota),
   border = "black",
@@ -1117,7 +1198,7 @@ plot(
 )
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 datos_obs <- datos  %>% 
   dplyr::filter(!is.na(PM10))
 coordinates(datos_obs) <- ~Longitud + Latitud
@@ -1149,7 +1230,7 @@ krig_pm10 <- krigeST(
 )
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 pred_df <- as.data.frame(krig_pm10)
 head(pred_df)
 
@@ -1159,7 +1240,7 @@ pred1 <- subset(
 )
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 ggplot(pred1) +
   geom_raster(
     aes(
