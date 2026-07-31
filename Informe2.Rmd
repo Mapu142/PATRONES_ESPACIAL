@@ -1494,8 +1494,11 @@ kable(coef_table, align = c("l", "c", "c", "c", "c"), caption = "Resultados de l
 ### Grafique los modelos de covarianza y semivarianza:
 
 1. Fije la silla y varíe el rango.
+
 2. Fije el rango y varíe la silla.
+
 3. Fije silla y rango y varíe parámetro de suavidad cuando aplique.
+
 4. Compare los comportamientos de diferentes modelos de covarianza y semivarianza cuando para todos se usan los mismos parámetros.
 
 ---
@@ -1641,22 +1644,39 @@ kable(matriz_visual, align = "c", caption = "Tabla 2.3. Datos de sensación tér
 A continuación se sugieren los pasos para llevar a cabo un análisis de estacionariedad e isotropía así como de predicción espacial:
 
 1. Encuentre la matriz de correlación de la variable y sus coordenadas geográficas. Analice.
+
 2. Realice gráficos de dispersión de la variable contra cada una de las coordenadas geográficas. Analice.
+
 3. Realice gráficos de dispersión de la media (mediana) de cada columna con respecto a su coordenada horizontal.
+
 4. Realice gráficos de dispersión de la media (mediana) de cada fila con respecto a su coordenada vertical.
+
 5. Realice gráficos de dispersión de la varianza de cada columna con respecto a su coordenada horizontal.
+
 6. Realice gráficos de algunos dispersogramas. Encuentre el coeficiente de autocorrelación para cada caso. Analice.
+
 7. Realice gráficos de dispersión de la varianza de cada fila con respecto a su coordenada vertical.
+
 8. Realice al menos un gráfico de medias móviles que no sea ni por fila ni por columna.
+
 9. ¿Existe tendencia en alguna dirección? En caso afirmativo, explore varios modelos de regresión e intente mejoarla y posteriormente verifique que la tendencia fue eliminada realizando gráficos de dispersión de los residuales del modelo de regresión seleccionado.
+
 10. Grafique el semivariograma empírico horizontal de la variable centrada.
+
 11. Grafique el semivariograma empírico vertical de la variable centrada.
+
 12. Grafique el semivariograma empírico en dirección 45 grados de la variable centrada.
+
 13. Grafique el semivariograma empírico omnidireccional, esto es, sin tener en cuenta la dirección, sino únicamente la distancia de la variable centrada.
+
 14. Grafique, si es posible, un variograma con dirección diferente a las anteriores de la variable centrada.
+
 15. ¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?
+
 16. Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.
+
 17. Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.
+
 18. Realice la validación cruzada (al menos para 10 lugares observados) y calcule:
     a.  Media (mediana) de los errores. Media (mediana) estandarizada.
     b. Grafique observados Vs. predichos y calcule su coeficiente de correlación lineal de Pearson.
@@ -1665,4 +1685,134 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
 
 
+## Capitulo 3 {.tabset}
+
+
+
+### Realice una tabla comparativa entre el método de ecuaciones de estimación generalizada y el método de $CL$. Encuentre similitudes y diferencias.
+
+### Suponga que se tiene un modelo de covarianza y se requiere elegir entre dos vectores de parámetros, cuál de ellos es más verosímil con base en el vector de observaciones. Bajo el supuesto de normalidad, describa en general el procedimiento e ilustre para al menos un caso particular.
+
+### Plantee para cada método y para cada modelo de covarianza o semivarianza la expresión a minimizar:
+
+1. Mínimos cuadrados ordinarios (MCO),
+
+2. Mínimos cuadrados ponderados (MCP) considerando ambas ponderaciones:
+    a. La varianza del estimador empírico del semivariograma
+    b. $N(h)$, número de pares de datos para cada rezago espacial considerado $h$
+
+3. ML, con el supuesto de normalidad multivariada conjunta.
+
+4. REML, con el supuesto de normalidad multivariada conjunta.
+
+5. Pseudoverosimilitud ($CL$), con el supuesto de normalidad multivariada marginal.
+
+6. Diseñe el código para que estos procesos de optimización, funcionen desde la tabla de los datos originales. Puede usar, por ejemplo, la función `optim` de R cran project. Compare los resultados obtenidos con su código con los obtenidos por las funciones de `geoR`, `variofit`, `likfit` o de `gstat`, `fit.variogram`.
+
+7. Determine las dimensiones y la complejidad de cada uno de los métodos. ¿Cuál es la dimensión de las matrices invertidas en cada método? ¿En todos los casos el proceso es iterativo?
+
+
+
+### Para el problema 4 del capítulo 1, encuentre las matrices de covarianza, correlación y semivarianza, si existen. Si alguna no existe, justifique. Verifique las propiedades de las matrices obtenidas para que garanticen varianzas de predicción positivas.
+
+
+1. Si el modelo es un exponencial con rango 50 y silla 1600, sin pepita.
+
+2. Si el modelo es un seno cardinal con rango 50 y silla 1600, sin pepita.
+
+3. Si el modelo es un cúbico con pendiente 50 y potencia 1600, sin pepita.
+
+4. Si el modelo es un potencial con pendiente 50 y potencia 1.6, sin pepita.
+
+5. Calcule el valor de la función de verosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?
+
+6. En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de máxima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?
+
+7. En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de mínima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?
+
+8. Calcule el valor de la función de pseudoverosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?
+
+9. Escriba cada modelo con la corrección necesaria en presencia de anisotropía.
+
+
+### El levantamiento topográfico para la construcción de los Modelos de Elevación Digital (MED) o mapas de curvas de nivel, se realiza mediante el diseño de trayectorias distanciadas 60m, regularmente distribuidas por toda la zona de interés. Para redes hidrológicas, se eligen trayectorias perpendiculares a la dirección de drenaje. Se requiere llevar a cabo un análisis de anisotropía. Se detectó la existencia de una anisotropía de tipo geométrico cuya dirección principal es $25^\circ$ con un rango máximo de 105m y un rango mínimo de 35m.
+
+1. Escriba la matriz de rotación que usted usaría para incluir la anisotropía en el modelo de semivariograma.
+
+2. Describa cómo aplicaría la razón de anisotropía.
+
+3. Ilustre a través de un caso particular.
+
+
+
+
+## Capitulo 4 {.tabset}
+
+
+
+```{r tabla_4_1, echo=FALSE}
+tabla_4_1 <- data.frame(
+  ` ` = c("Intercepto", "y"),
+  `$\\hat{\\beta}$` = c("-1564", "0,0007581"),
+  `s.e $\\hat{\\beta}$` = c("600", "0,000279"),
+  `Valor p` = c("0,0161", "0,01259"),
+  check.names = FALSE
+)
+
+kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación del modelo de regresión $Y(s) = \\hat{\\beta}_0 + \\hat{\\beta}_1 y$ para la media.")
+
+```
+
+
+![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=100%}
+
+![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=100%}
+
+
+![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=100%}
+
+---
+
+
+### Suponga que $Z(s)$ es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto. Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son $z_1(0, 0) = 15$; $z_2(100, 0) = 16$; $z_3(0, 50) = 16$ y $z_4(70, 50) = 15$. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:
+
+1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
+
+2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
+
+3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
+
+4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
+
+5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
+
+
+
+### Suponga que
+
+$$\mathcal{W}(s) = \Psi(Y(s)) \quad s \in D$$
+
+Donde $Y(s)$ es una variable aleatoria con distribución de probabilidad normal y media constante y conocida $\mu_y$. Demuestre que
+
+$$\mathcal{W}^*(s_0) = \Psi(Y^*(s_0)) + \Psi''(\mu_y) \left\{ \frac{\text{Var}[Y(s) - Y^*(s_0)]}{2} \right\}$$
+
+Esto es, el predictor kriging aplicado a una transformación de la variable espacial es sesgado. *Sugerencia: Utilice el desarrollo en series de Taylor.*
+
+
+### Encuentre el predictor kriging si la media es constante y conocida y el modelo de covarianza es un modelo efecto pepita.
+
+### Encuentre el predictor kriging si la media es un polinomio de primer grado e incluye ambas coordenadas, $(x, y)$, y el modelo de covarianza es un modelo efecto pepita.
+
+### Suponga un campo aleatorio espacial normal multivariado, con observaciones en $n$ ubicaciones y media y covarianza conocidos. Encuentre la esperanza condicional y la respectiva varianza $Z(s_0)$ dado el vector $(Z(s_1), \dots, Z(s_n))$. Compare con las expresiones de predicción y varianza del error de predicción del kriging simple.
+
+### Para los datos de aquifer 
+que puede encontrar en [https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html](https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html), genere dos mapas de predicciones.
+
+Para el primer mapa utilice el predictor kriging y para el segundo mapa utilice predicción basada en modelos de regresión en términos de las coordenadas $(x, y) = (\text{Este}, \text{Norte})$, e incluyendo la dependencia espacial a través de la estimación de los parámetros del modelo, vía máxima verosimilitud. Compare el desempeño predictivo del modelo de regresión cuando se usan mínimos cuadrados ordinarios ignorando la dependencia espacial y cuando se usa máxima verosimilitud. Posteriormente, compare el desempeño de la regresión con el kriging.
+
+### Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial. Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
+
+### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.
+
+### Generalice el resultado encontrado en el problema anterior, al caso en el que se transforma la variable usando una transformación Box-Cox.
 
