@@ -1173,12 +1173,10 @@ par(mfrow = c(1, 1))
 
 
 
-# Ejercicios 
-<!-- {.tabset} -->
+# Ejercicios {.tabset}
 
 
-## Capitulo 1 
-<!-- {.tabset} -->
+## Capitulo 1 {.tabset}
 
 ### Se ha tomado una muestra de la altura en (cm) alcanzada por los árboles en un cultivo de mango (Ver Tabla 9.1).
 
@@ -1491,8 +1489,7 @@ kable(coef_table, align = c("l", "c", "c", "c", "c"), caption = "Resultados de l
 
 
 
-## Capitulo 2 
-<!-- .tabset} -->
+## Capitulo 2 {.tabset}
 
 ### Grafique los modelos de covarianza y semivarianza:
 
@@ -1653,12 +1650,105 @@ ggplot(df4, aes(x = h, y = Valor, color = Modelo)) +
 ---
 
 ### Demuestre o refute: 
+
 la covarianza entre un proceso espacial en la ubicación $s_i$ y el proceso valor promedio del fenómeno sobre el área $B$ es igual al promedio de las covarianzas entre el proceso espacial en la ubicación $s_i$ y los procesos espaciales existentes en todos los puntos dentro de $B$.
+
+**Demostración:**
+
+El valor promedio de un campo aleatorio $Y(s)$ sobre un área continua $B$ se define como:
+    $$\bar{Y}_B = \frac{1}{|B|} \int_B Y(s) ds$$
+
+Por la definición fundamental de covarianza (Sección 1.1.2 del libro), asumiendo media constante $\mu$:
+    $$Cov(Y(s_i), \bar{Y}_B) = E\left[ (Y(s_i) - \mu) (\bar{Y}_B - \mu) \right]$$
+
+ Dado que $\mu = \frac{1}{|B|} \int_B \mu ds$, se puede reescribir $(\bar{Y}_B - \mu)$ como:
+    $$(\bar{Y}_B - \mu) = \frac{1}{|B|} \int_B (Y(s) - \mu) ds$$
+
+Luego, sustituyendo en la expresión de covarianza:
+    $$Cov(Y(s_i), \bar{Y}_B) = E\left[ (Y(s_i) - \mu) \left( \frac{1}{|B|} \int_B (Y(s) - \mu) ds \right) \right]$$
+
+Puesto que la esperanza es un operador lineal. 
+    $$Cov(Y(s_i), \bar{Y}_B) = \frac{1}{|B|} \int_B E\left[ (Y(s_i) - \mu)(Y(s) - \mu) \right] ds$$
+El término dentro de la esperanza es, por definición, la función de autocovarianza entre el punto $s_i$ y cualquier punto $s$ dentro de $B$:
+    $$E\left[ (Y(s_i) - \mu)(Y(s) - \mu) \right] = C(s_i - s; \Theta)$$
+Sustituyendo en la integral:
+    $$Cov(Y(s_i), \bar{Y}_B) = \frac{1}{|B|} \int_B C(s_i - s; \Theta) ds$$
+Este es el promedio de las covarianzas entre el punto $s_i$ y todos los puntos $s$ que componen el área $B$. 
+
 
 ---
 
 ### Compare para varios conjuntos de datos los 3 estimadores empíricos del semivariograma.
-Existe alguna relación de orden entre los 3? ¿Existe alguna relación de orden entre 2 de ellos? o, definitivamente, ¿no existe ningún orden entre estos estimadores?
+
+¿Existe alguna relación de orden entre los 3? ¿Existe alguna relación de orden entre 2 de ellos? o, definitivamente, ¿no existe ningún orden entre estos estimadores?
+
+En el libro se definen tres estimadores: 
+
+* El **Clásico** (Matheron)  
+$$\hat{\gamma}(h) = \frac{1}{2\vert{}N(h)\vert{}} \sum_{N(h)} (z(s+h) - z(s))^2$$
+* El **Resistente** (Cressie & Hawkins) 
+$$\tilde{\gamma}(h) = \frac{1}{2 \left(0.457 + \frac{0.494}{\vert{}N(h)\vert{}} + \frac{0.045}{\vert{}N(h)\vert{}^2}\right)} \left( \frac{\sum_{N(h)} \vert{}z(s+h) - z(s)\vert{}^{1/2}}{\vert{}N(h)\vert{}} \right)^4$$
+* El de **Mediana**
+$$\breve{\gamma}(h) = \frac{\left( \text{me}\vert{}z(s+h) - z(s)\vert{}^{1/2} \right)^4}{2(0.457)}$$
+
+Los cuales en la práctica se selecciona el indicado según la presencia de valores atípicos, como se muestra en las estimaciones de las simulaciones:
+
+
+```{r ej_2_3}
+# 1. Función matemática robusta para calcular los 3 estimadores exactamente
+calcular_3_estimadores <- function(coords, data, max_dist = 2) {
+  # Matriz de distancias entre pares de puntos
+  dist_matrix <- as.matrix(dist(coords))
+  
+  # Extraer pares dentro de la distancia deseada (h <= max_dist)
+  indices <- which(dist_matrix > 0 & dist_matrix <= max_dist, arr.ind = TRUE)
+  indices <- indices[indices[, 1] < indices[, 2], ] # Evitar duplicados
+  
+  # Incrementos |z(s+h) - z(s)|
+  diffs <- abs(data[indices[, 1]] - data[indices[, 2]])
+  N_h <- length(diffs) # |N(h)|: Cantidad de pares
+  
+  # A. Estimador Clásico - Fórm. (2.2)
+  v_clasico <- (1 / (2 * N_h)) * sum(diffs^2)
+  
+  # B. Estimador Resistente (Cressie & Hawkins) - Fórm. (2.3)
+  correccion_cressie <- 2 * (0.457 + (0.494 / N_h) + (0.045 / (N_h^2)))
+  v_cressie <- (1 / correccion_cressie) * ((sum(diffs^(0.5)) / N_h)^4)
+  
+  # C. Estimador de Mediana - Fórm. (2.4)
+  v_mediana <- ((median(diffs^(0.5)))^4) / (2 * 0.457)
+  
+  return(c(Clásico = v_clasico, Cressie_Hawkins = v_cressie, Mediana = v_mediana))
+}
+
+# 2. Simulación de Campo aleatorio gaussiano (Sin atípicos)
+set.seed(731)
+coords <- cbind(runif(500, 0, 10), runif(500, 0, 10))
+data_normal <- rnorm(500, mean = 10, sd = 2)
+
+# 3. Inyección de valores atípicos extremos (Outliers)
+data_outliers <- data_normal
+data_outliers[c(5, 25, 50)] <- c(100, -50, 150) # Errores de medición
+
+# 4. Cálculo de los estimadores para ambos escenarios
+est_normal <- calcular_3_estimadores(coords, data_normal, max_dist = 2)
+est_outliers <- calcular_3_estimadores(coords, data_outliers, max_dist = 2)
+
+# 5. Creación de la tabla comparativa
+res_tabla <- data.frame(
+  Estimador = names(est_normal),
+  `Datos Normales (Sin Atípicos)` = round(as.numeric(est_normal), 4),
+  `Datos con Outliers Extremos` = round(as.numeric(est_outliers), 4),
+  check.names = FALSE
+)
+
+kable(res_tabla, align = "c", caption = "Comparación de Estimadores Empíricos del Semivariograma")
+```
+
+Esto se da porque la distribución de los incrementos tiene colas pesadas, el estimador Clásico se infla debido al cuadrado de las diferencias, se tiene el siguiente orden de preferencia $\hat{\gamma}_{clasico} > \breve{\gamma}_{mediana} \approx \tilde{\gamma}_{Cressie}$. Si los datos son normales y sin atípicos, los tres convergen, pero el Clásico se prefiere por ser el único insesgado bajo normalidad.
+
+
+
 
 ---
 
@@ -1834,8 +1924,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
 
 
-## Capitulo 3 
-<!-- {.tabset} -->
+## Capitulo 3 {.tabset}
 
 
 
@@ -1896,8 +1985,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
 
 
-## Capitulo 4 
-<!-- {.tabset} -->
+## Capitulo 4 {.tabset}
 
 
 
