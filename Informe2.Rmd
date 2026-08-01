@@ -1748,12 +1748,77 @@ kable(res_tabla, align = "c", caption = "Comparación de Estimadores Empíricos 
 Esto se da porque la distribución de los incrementos tiene colas pesadas, el estimador Clásico se infla debido al cuadrado de las diferencias, se tiene el siguiente orden de preferencia $\hat{\gamma}_{clasico} > \breve{\gamma}_{mediana} \approx \tilde{\gamma}_{Cressie}$. Si los datos son normales y sin atípicos, los tres convergen, pero el Clásico se prefiere por ser el único insesgado bajo normalidad.
 
 
-
-
 ---
 
 ### Deduzca la correlación entre dos estimaciones del semivariograma empírico $\gamma(h_k)$ y $\gamma(h_l)$ para el modelo exponencial.
 Use la información dada en la nota 5.
+
+Para deducir esta correlación, haciendo referencia a la **Nota 5**, la cual establece que bajo el supuesto de normalidad bivariada, la correlación de los cuadrados de las variables es igual al cuadrado de su correlación: $\rho^2(X_1, X_2) = \rho(X_1^2, X_2^2)$. 
+
+Dado que el estimador clásico se basa en los incrementos al cuadrado $Y^2 = (Z(s+h)-Z(s))^2$, la correlación entre las estimaciones en dos rezagos $h_k$ y $h_l$ depende de la correlación de sus incrementos.
+
+
+Luego sean los incrementos: $Y_1 = Z(s_i+h_k) - Z(s_i)$ y $Y_2 = Z(s_j+h_l) - Z(s_j)$.
+donde $Var(Y_1) = 2\gamma(h_k)$ y $Var(Y_2) = 2\gamma(h_l)$.
+
+Entonces la covarianza de los incrementos es: 
+   $Cov(Y_1, Y_2) = \frac{1}{2} [\gamma(s_i-s_j+h_k) + \gamma(s_i-s_j-h_l) - \gamma(s_i-s_j+h_k-h_l) - \gamma(s_i-s_j)]$
+
+Por lo tanto la correlación de los incrementos es $\rho(Y_1, Y_2) = \frac{Cov(Y_1, Y_2)}{\sqrt{Var(Y_1)Var(Y_2)}}$.
+
+
+Aplicando el resultado de la Nota 5, la correlación de las estimaciones (incrementos al cuadrado) es:
+   $$Cor[\hat{\gamma}(h_k), \hat{\gamma}(h_l)] = \left[ \frac{\gamma(s_i-s_j+h_k) + \gamma(s_i-s_j-h_l) - \gamma(s_i-s_j+h_k-h_l) - \gamma(s_i-s_j)}{2\sqrt{\gamma(h_k)\gamma(h_l)}} \right]^2$$
+
+> *Misma formula la cual esta mal digitada en el libro, pues le falta la raiz en el denominador*
+
+Para el modelo exponencial $\gamma(h) = C(0)(1 - e^{-\|h\|/a})$, se tiene
+   $$Cor[\hat{\gamma}(h_k), \hat{\gamma}(h_l)] = \left[ \frac{(1 - e^{-\|s_i-s_j+h_k\|/a}) + (1 - e^{-\|s_i-s_j-h_l\|/a}) - (1 - e^{-\|s_i-s_j+h_k-h_l\|/a}) - (1 - e^{-\|s_i-s_j\|/a})}{2\sqrt{(1 - e^{-\|h_k\|/a})(1 - e^{-\|h_l\|/a})}} \right]^2$$
+
+Al hacer la simulación con los incrementos, se puede observar que a medida que la distancia entre los pares de puntos crece, la correlación tiende a 0, demostrando la independencia espacial de los estimadores.
+
+```{r ej_2_4}
+# Función para calcular la correlación teórica de los estimadores (Nota 5)
+correlacion_estimadores <- function(dist_si_sj, hk, hl, sill, rango) {
+  # Modelo Exponencial: gamma(h) = sill * (1 - exp(-h/rango))
+  gamma_h <- function(h) sill * (1 - exp(-h / rango))
+  
+  # Numerador: Covarianza de los incrementos * 2
+  num <- gamma_h(dist_si_sj + hk) + gamma_h(dist_si_sj - hl) - 
+         gamma_h(dist_si_sj + hk - hl) - gamma_h(dist_si_sj) # Asumiendo colinealidad para simplificar
+  
+  # Denominador correcto (producto de desviaciones estándar de los incrementos)
+  den <- 2 * sqrt(gamma_h(hk) * gamma_h(hl))
+  
+  # Correlación de los incrementos al cuadrado (Nota 5)
+  rho_cuadrado <- (num / den)^2
+  return(rho_cuadrado)
+}
+
+# Ejemplo práctico: Correlación entre estimar el variograma a 10m y a 20m
+# si los pares de puntos están separados por 5m.
+sill <- 100; rango <- 30
+dist_pares <- 1
+hk <- 10; hl <- 20
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n",
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+# A medida que 'dist_pares' crece, la correlación tiende a 0, demostrando la independencia espacial.
+
+dist_pares <- 5
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n",
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+
+dist_pares <- 10
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n", 
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+```
+
 
 ---
 
@@ -1762,14 +1827,13 @@ Utilice el Teorema 1 para demostrar que una puede obtenerse a partir de la otra.
 
   * *Función de covarianza:*
   
-  $$C(h) = \sigma^2 \exp(-\alpha^2)$$
+  $$C(h) = \sigma^2 \exp\left(- \frac{||h||^2}{\alpha^2}\right)$$
   
+  > *Corrección del modelo gaussiano, en el libro se presenta $C(h) = \sigma^2 \exp(-\alpha^2)$*
   
   * *Función de densidad espectral:*
   
   $$f(\omega) = \frac{1}{2} \sigma^2 (\pi \alpha)^{-\frac{1}{2}} \exp\left( -\frac{\omega^2}{4\alpha} \right)$$
-
-
 
 
 > **Teorema 1 (Teorema Bochner).** *Una función continua es definida no-negativa si y solamente si puede ser representada como sigue:*
@@ -1779,7 +1843,33 @@ Utilice el Teorema 1 para demostrar que una puede obtenerse a partir de la otra.
 > *donde $F$ es una función real, acotada y no decreciente. Si $F$ es absolutamente continua (con respecto a la medida de Lebesgue):*
 > $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
 > 
-> 
+
+El Teorema de Bochner establece que la función de covarianza $C(h)$ y la densidad espectral $f(\omega)$ son un par de Transformadas de Fourier.
+
+La relación inversa para hallar $f(\omega)$ a partir de $C(h)$ es:
+$$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} C(h) e^{-i h \omega} dh$$ pues se supone $h \in \mathbb{R}^1$ 
+
+**Demostración:** Obtener la densidad $f(\omega)$ dada la covarianza $C(h)$.
+
+Sustituyendo en la densidad espectral
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(- \frac{h^2}{\alpha^2}\right) \exp(-i h \omega) dh$$
+   
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(-\frac{1}{\alpha^2} \left(h^2 + i h \omega \alpha^2 \right)\right) dh$$
+
+Para completar el cuadrado, sumamos y restamos $\left(\frac{i \omega \alpha^2}{2}\right)^2 = -\frac{\omega^2 \alpha^4}{4}$:
+   $$-\frac{1}{\alpha^2} \left[ \left( h + i \frac{\omega \alpha^2}{2} \right)^2 - \left(-\frac{\omega^2 \alpha^4}{4}\right) \right] = -\frac{1}{\alpha^2} \left( h + i \frac{\omega \alpha^2}{2} \right)^2 - \frac{\omega^2 \alpha^2}{4}$$
+
+Sustituimos en la integral y dado que el término $-\frac{\omega^2 \alpha^2}{4}$ no depende de $h$, se saca de la integral:
+   
+   $$f(\omega) = \frac{\sigma^2}{2\pi} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right) \int_{-\infty}^{\infty} \exp\left[ -\frac{1}{\alpha^2} \left( h + i \frac{\omega \alpha^2}{2} \right)^2 \right] dh$$
+
+   La integral es una integral gaussiana estándar de la forma $\int_{-\infty}^{\infty} e^{-a x^2} dx = \sqrt{\frac{\pi}{a}}$. En nuestro caso, $a = \frac{1}{\alpha^2}$, por lo que se tiene $\sqrt{\pi \alpha^2} = \alpha \sqrt{\pi}$.
+   
+   *(Nota: El desplazamiento complejo $i \frac{\omega \alpha^2}{2}$ no altera el valor de la integral en el contorno real por el teorema de Cauchy).*
+
+Finalmente se obtiene la función de densidad:
+   $$f(\omega) = \frac{\sigma^2}{2\pi} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right) \cdot \alpha \sqrt{\pi} = \frac{\sigma^2 \alpha}{2 \sqrt{\pi}} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right)$$
+
 
 ---
 
@@ -1793,7 +1883,33 @@ Utilice el Teorema 1 para demostrar que una puede obtenerse a partir de la otra.
 > *donde $F$ es una función real, acotada y no decreciente. Si $F$ es absolutamente continua (con respecto a la medida de Lebesgue):*
 > $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
 > 
-> 
+
+Seleccionemos el Modelo Exponencial 
+
+$$C(h) = \sigma^2 \exp\left(-\frac{|h|}{\alpha}\right)$$
+**Demostración** similar al caso anterior de la densidad espectral $f(\omega)$ a partir de la covarianza $C(h)$.
+
+Se tiene $f(\omega)$ reemplazando $C(h)$:
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(-\frac{|h|}{\alpha}\right) e^{-i h \omega} dh$$
+
+   Como $C(h)$ es una función par ($C(h) = C(-h)$) y la parte imaginaria de $e^{-ih\omega}$ (el seno) es impar, su producto se anula en la integral simétrica y queda de la forma: 
+   
+   $$f(\omega) = \frac{\sigma^2}{\pi} \int_{0}^{\infty} \exp\left(-\frac{h}{\alpha}\right) \cos(h \omega) dh$$
+
+
+Dado que se sabe que $\int_0^\infty e^{-ax} \cos(bx) dx = \frac{a}{a^2 + b^2}$.
+
+para $a = \frac{1}{\alpha}$ y $b = \omega$
+
+la función queda de la forma
+   $$f(\omega) = \frac{\sigma^2}{\pi} \left[ \frac{1/\alpha}{(1/\alpha)^2 + \omega^2} \right]$$
+
+   $$f(\omega) = \frac{\sigma^2 \alpha}{\pi (1 + \alpha^2 \omega^2)}$$
+
+En este caso la densidad espectral $f(\omega)$ no siempre existe, pues el Teorema de Bochner garantiza que para cualquier función de covarianza (definida positiva y continua), existe una medida $F(\omega)$ que es real, acotada y no decreciente (es decir, una Función de Distribución Acumulativa). 
+
+Sin embargo, el teorema establece que la densidad espectral $f(\omega)$ (la función que aparece en la integral) solo existe si la medida $F(\omega)$ es absolutamente continua con respecto a la medida de Lebesgue. Esto significa que $F(\omega)$ debe ser derivable casi en todas partes para que $f(\omega) = F'(\omega)$ exista.
+
 
 ---
 
