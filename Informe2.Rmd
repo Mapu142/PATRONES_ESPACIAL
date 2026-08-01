@@ -3593,5 +3593,135 @@ Se observa que el modelo de Kriging Universal con tendencia lineal proporciona u
 
 ### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.
 
+**R/** 
+
+Es posible, pero como **el predictor de kriging aplicado directamente sobre la escala lognormal no es insesgado**, hay que aplicar una corrección por sesgo.
+
+
+En ejercicios anteriores se demostró que
+
+$$
+W^*(s_0) = \Psi(Y^*(s_0)) + \frac{1}{2} \Psi''(\mu) \sigma_K^2.
+$$
+
+En este caso,
+
+$$
+\Psi(y) = e^y,
+$$
+
+por lo que
+
+$$
+\Psi''(y) = e^y.
+$$
+
+Evaluando en la media,
+
+$$
+\Psi''(\mu) = e^\mu.
+$$
+
+Entonces,
+
+$$
+W^*(s_0) = e^{Y^*(s_0)} + \frac{1}{2}e^{\mu}\sigma_K^2.
+$$
+
+Esta es una aproximación de segundo orden obtenida mediante Taylor.
+
+Como
+
+$$
+Y(s_0) \mid \text{datos} \sim N\left(Y^*(s_0), \sigma_K^2\right),
+$$
+
+se utiliza la propiedad de la distribución lognormal:
+
+
+$$
+X \sim N(m, v),
+\longrightarrow
+E(e^X) = e^{m + \frac{v}{2}}.
+$$
+
+Por lo tanto,
+
+$$
+E[Z(s_0) \mid \text{datos}] = E[e^{Y(s_0)} \mid \text{datos}] = e^{Y^*(s_0) + \frac{1}{2}\sigma_K^2}.
+$$
+
+Así, el predictor insesgado es
+
+$$
+Z^*(s_0) = \exp \left( Y^*(s_0) + \frac{1}{2} \sigma_K^2 \right),
+$$
+
+donde
+
+$$
+\sigma_K^2 = \text{Var}[Y(s_0) - Y^*(s_0)].
+$$
+
+Por lo tanto el estimador insesgado es:
+
+$$
+Z^*(s_0) = \exp \left( Y^*(s_0) + \frac{1}{2} \operatorname{Var}[Y(s_0) - Y^*(s_0)] \right),
+$$
+
 ### Generalice el resultado encontrado en el problema anterior, al caso en el que se transforma la variable usando una transformación Box-Cox.
+
+Del resultado obtenido en **9.4.2**
+
+$$
+W^*(s_0) = \Psi(Y^*(s_0)) + \frac{1}{2} \Psi''(\mu_y) \text{Var}[Y(s_0) - Y^*(s_0)].
+$$
+
+Para
+
+$$
+\Psi(y) = \frac{y^\lambda - 1}{\lambda}, \quad \lambda \neq 0,
+$$
+
+se tiene
+
+$$
+\Psi'(y) = y^{\lambda - 1},
+$$
+
+y
+
+$$
+\Psi''(y) = (\lambda - 1)y^{\lambda - 2}.
+$$
+
+Sustituyendo en la expresión anterior,
+
+$$
+W^*(s_0) = \frac{(Y^*(s_0))^\lambda - 1}{\lambda} + \frac{1}{2}(\lambda - 1)\mu_y^{\lambda - 2} \text{Var}[Y(s_0) - Y^*(s_0)].
+$$
+
+Cuando
+
+$$
+\lambda = 0,
+$$
+
+la transformación Box-Cox coincide con la transformación logarítmica,
+
+$$
+\Psi(y) = \ln(y).
+$$
+
+En este caso,
+
+$$
+\Psi''(y) = -\frac{1}{y^2},
+$$
+
+por lo que
+
+$$
+W^*(s_0) = \ln(Y^*(s_0)) - \frac{\text{Var}[Y(s_0) - Y^*(s_0)]}{2\mu_y^2}.
+$$
 
