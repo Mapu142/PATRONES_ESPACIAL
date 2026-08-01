@@ -46,6 +46,8 @@ library(patchwork)
 library(knitr)
 ```
 
+
+
 ## Capitulo 2 {.tabset}
 
 ### Grafique los modelos de covarianza y semivarianza:
@@ -733,26 +735,285 @@ p1 + p2
 
 8. Realice al menos un gráfico de medias móviles que no sea ni por fila ni por columna.
 
+    Calculamos la media móvil en dirección diagonal (Sureste-Noroeste).
+
+    ```{r paso_8_media_movil_diagonal, fig.height=3.5, fig.width=10}
+    # Calculamos una media móvil diagonal simple
+    datos_diag <- datos_validos %>%
+      mutate(Este_lag = Este + 1, Norte_lag = Norte - 2) %>%
+      inner_join(datos_validos, by = c("Este_lag" = "Este", "Norte_lag" = "Norte"), suffix = c("", "_diag")) %>%
+      mutate(media_diag = (Sensacion_Termica + Sensacion_Termica_diag) / 2)
+    
+    ggplot(datos_diag, aes(x = Este, y = media_diag)) +
+      geom_point(color = "darkorange", size = 2) +
+      geom_line(color = "darkorange", alpha = 0.5) +
+      theme_minimal() + labs(title = "Media Móvil Diagonal (Promedio de vecinos diagonales)", y = "Media Diagonal")
+    ```
+
 9. ¿Existe tendencia en alguna dirección? En caso afirmativo, explore varios modelos de regresión e intente mejoarla y posteriormente verifique que la tendencia fue eliminada realizando gráficos de dispersión de los residuales del modelo de regresión seleccionado.
+
+    Ajustamos modelos de regresión para eliminar la tendencia y trabajar con un proceso estacionario (media cero).
+    
+    ```{r paso_9_modelo_tendencia, fig.width=10, fig.height=4}
+    # Modelo Lineal
+    mod_lineal <- lm(Sensacion_Termica ~ Este + Norte, data = datos_validos)
+    datos_validos$resid_lin <- residuals(mod_lineal)
+    
+    # Modelo Cuadrático con interacción
+    mod_cuad <- lm(Sensacion_Termica ~ poly(Este, 2) + poly(Norte, 2) + Este:Norte, data = datos_validos)
+    datos_validos$resid_cuad <- residuals(mod_cuad)
+    
+    # Comparación
+    cat("AIC Lineal:", AIC(mod_lineal), "\n")
+    cat("AIC Cuadrático:", AIC(mod_cuad), "\n")
+    
+    #onvertimos datos_validos a un objeto sf declarando las columnas de coordenadas
+datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
+    
+    # Gráficos de residuales del mejor modelo (Cuadrático)
+    p_r1 <- ggplot(datos_validos, aes(x = Este, y = resid_cuad)) +
+      geom_point(color = "red") + geom_hline(yintercept = 0, linetype = "dashed") +
+      theme_minimal() + labs(title = "Residuos vs. Este")
+    
+    p_r2 <- ggplot(datos_validos, aes(x = Norte, y = resid_cuad)) +
+      geom_point(color = "red") + geom_hline(yintercept = 0, linetype = "dashed") +
+      theme_minimal() + labs(title = "Residuos vs. Norte")
+    
+    p_r1 + p_r2
+    ```
+
 
 10. Grafique el semivariograma empírico horizontal de la variable centrada.
 
+    Calculamos el semivariograma en la dirección 0° (Este).
+    
+    ```{r paso_10_vario_horizontal, fig.height=3, fig.width=8}
+    v_horiz <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 0, tol.hor = 22.5)
+    plot(v_horiz, main = "Semivariograma Empírico Horizontal (0°)", pch = 16, col = "blue")
+    ```
+
+
 11. Grafique el semivariograma empírico vertical de la variable centrada.
+
+    Calculamos el semivariograma en la dirección 90° (Norte).
+    
+    ```{r paso_11_vario_vertical, fig.height=3, fig.width=8}
+    v_vert <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 90, tol.hor = 22.5)
+    plot(v_vert, main = "Semivariograma Empírico Vertical (90°)", pch = 16, col = "darkgreen")
+    ```
+
 
 12. Grafique el semivariograma empírico en dirección 45 grados de la variable centrada.
 
+    ```{r paso_12_vario_45, fig.height=3, fig.width=8}
+    v_45 <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 45, tol.hor = 22.5)
+    plot(v_45, main = "Semivariograma Empírico Diagonal (45°)", pch = 16, col = "purple")
+    ```
+
+
 13. Grafique el semivariograma empírico omnidireccional, esto es, sin tener en cuenta la dirección, sino únicamente la distancia de la variable centrada.
 
+    Ignoramos la dirección y agrupamos solo por distancia (magnitud del rezago).
+    
+    ```{r paso_13_vario_omni, fig.height=3, fig.width=8}
+    v_omni <- variogram(resid_cuad ~ 1, datos_validos_sf)
+    plot(v_omni, main = "Semivariograma Empírico Omnidireccional", pch = 16, col = "black")
+    ```
+
+
 14. Grafique, si es posible, un variograma con dirección diferente a las anteriores de la variable centrada.
+
+    ```{r paso_14_vario_135, fig.height=3, fig.width=8}
+    v_135 <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 135, tol.hor = 22.5)
+    plot(v_135, main = "Semivariograma Empírico Diagonal (135°)", pch = 16, col = "darkorange")
+    ```
+
 
 15. ¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?
 
 16. Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.
 
+
+    
+    ```{r paso_16_ajuste_teoricoblack, fig.height=3, fig.width=8}
+    # Ajuste automático inicial (Esférico)
+    v_fit <- fit.variogram(v_omni, vgm(model = "Sph", psill = 2.5, range = 5, nugget = 1))
+    print(v_fit)
+    
+    # Gráfico del ajuste
+    plot(v_omni, v_fit, main = "Ajuste del Semivariograma Teórico (Esférico)", pch = 16, col = "black")
+    ```
+
+
 17. Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.
+
+    Aplicamos el método no paramétrico de Tukey para descomponer la superficie en efecto global, efecto fila, efecto columna y residual.
+    
+    ```{r paso_17_median_polish, fig.width=10, fig.height=4}
+    # 1. Reconstruir la matriz completa (15 filas x 9 columnas)
+    matriz_completa <- matrix(datos_t23$Sensacion_Termica, nrow = 15, ncol = 9, byrow = TRUE)
+    
+    # 2. Aplicar pulimiento de medianas (2 iteraciones como pide el enunciado, aunque el default converge)
+    med_pol <- medpolish(matriz_completa, na.rm = TRUE, trace.iter = FALSE)
+    
+    cat("Efecto Global:", med_pol$overall, "\n")
+    
+    # 3. Reconstruir el data.frame con los residuales del median polish
+    datos_mp <- datos_t23
+    datos_mp$residual_mp <- as.vector(med_pol$residuals)
+    datos_mp_valid <- na.omit(datos_mp)
+    datos_mp_sf <- st_as_sf(datos_mp_valid, coords = c("Este", "Norte"), crs = NA)
+    
+    # 4. Ajustar variograma a estos residuales (por consistencia)
+    v_mp <- variogram(residual_mp ~ 1, datos_mp_sf)
+    v_mp_fit <- fit.variogram(v_mp, vgm("Sph", psill = 1, range = 5, nugget = 0.5))
+    
+    # 5. Crear una grilla de predicción
+    grilla <- expand.grid(Este = seq(1, 9, by = 0.5), Norte = seq(29, 1, by = -0.5))
+    grilla_sf <- st_as_sf(grilla, coords = c("Este", "Norte"), crs = NA)
+    
+    # 6. Kriging Ordinario sobre los residuales
+    krig_res <- krige(residual_mp ~ 1, datos_mp_sf, grilla_sf, model = v_mp_fit)
+    
+    # 7. Devolver a la escala original: Predicción = Residual_Kriged + Efecto_Fila + Efecto_Columna + Global
+    # Necesitamos mapear los efectos de fila y columna a la grilla
+    # Función auxiliar para obtener el efecto de fila/columna más cercano
+    
+    coords_grilla <- st_coordinates(krig_res)
+    
+    # Secuencias originales usadas para crear la matriz de medpolish
+    columnas_orig <- 1:9
+    filas_orig    <- seq(29, 1, by = -2) # Filas 1 a 15 de la matriz corresponden a Norte = 29 a 1
+    
+    # Función corregida para mapear los efectos de Fila, Columna y Global
+    get_effects <- function(e, n, col_eff, row_eff, overall, cols_ref, rows_ref) {
+      # Columna más cercana (Este)
+      c_idx <- which.min(abs(cols_ref - e))
+      # Fila más cercana (Norte)
+      r_idx <- which.min(abs(rows_ref - n))
+      
+      # Tendencia determinística = Global + Efecto_Columna + Efecto_Fila
+      return(overall + col_eff[c_idx] + row_eff[r_idx])
+    }
+    
+    # Calcular la tendencia determinística en cada punto de la grilla
+    tendencia_grilla <- mapply(
+      get_effects, 
+      e = coords_grilla[, "X"], 
+      n = coords_grilla[, "Y"], 
+      MoreArgs = list(
+        col_eff   = med_pol$col, 
+        row_eff   = med_pol$row, 
+        overall   = med_pol$overall,
+        cols_ref  = columnas_orig,
+        rows_ref  = filas_orig
+      )
+    )
+    
+    # Sumar el residual interpolado (var1.pred) más la tendencia reconstruida
+    krig_res$Prediccion_Final <- krig_res$var1.pred + tendencia_grilla
+    
+    # Comprobación de éxito
+    head(krig_res)
+    
+
+    #  Creamos un data.frame limpio extrayendo X e Y de la geometría
+    krig_df <- data.frame(
+      Este = coords_grilla[, "X"],
+      Norte = coords_grilla[, "Y"],
+      Prediccion_Final = krig_res$Prediccion_Final,
+      Varianza_Kriging = krig_res$var1.var
+    )
+    
+    #  Gráfico de Predicción Final
+    ggplot(krig_df, aes(x = Este, y = Norte, fill = Prediccion_Final)) +
+      geom_tile() +
+      scale_fill_viridis_c(name = "Sensación\nTérmica (°C)") +
+      theme_minimal() +
+      labs(
+        title = "Predicción Final (Kriging de Residuales + Median Polish)",
+        x = "Este",
+        y = "Norte"
+      ) +
+      theme(
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        legend.position = "right"
+      )
+    ```
+
 
 18. Realice la validación cruzada (al menos para 10 lugares observados) y calcule:
     a.  Media (mediana) de los errores. Media (mediana) estandarizada.
     b. Grafique observados Vs. predichos y calcule su coeficiente de correlación lineal de Pearson.
 
+
+    Evaluamos la calidad del modelo kriging sobre los residuales del median polish (o directamente sobre la variable con tendencia, el resultado relativo es similar). Lo haremos sobre el modelo de residuos para ser coherentes con el paso 17.
+    
+    ```{r paso_18_validacion_cruzada, fig.width=10, fig.height=4}
+    # Validación cruzada sobre los residuales del median polish
+    cv_mp <- krige.cv(residual_mp ~ 1, datos_mp_sf, model = v_mp_fit)
+    
+    # Unir predicciones con efectos para tener la validación en la escala original
+    cv_datos <- datos_mp_valid
+    cv_datos$pred_cv <- cv_mp$var1.pred + med_pol$overall + 
+                        med_pol$col[match(cv_datos$Este, 1:9)] + 
+                        med_pol$row[match(cv_datos$Norte, seq(29, 1, -2))]
+    cv_datos$error <- cv_datos$Sensacion_Termica - cv_datos$pred_cv
+    # Error estandarizado (aproximado usando la desviación estándar de los errores)
+    cv_datos$error_std <- cv_datos$error / sd(cv_datos$error)
+    
+    # a. Estadísticos de error
+    cat("Media de los errores:", mean(cv_datos$error, na.rm = TRUE), "\n")
+    cat("Mediana de los errores:", median(cv_datos$error, na.rm = TRUE), "\n")
+    cat("Media de errores estandarizados:", mean(cv_datos$error_std, na.rm = TRUE), "\n")
+    cat("Mediana de errores estandarizados:", median(cv_datos$error_std, na.rm = TRUE), "\n")
+    
+    # b. Gráfico Observado vs. Predicho
+    p_obs_pred <- ggplot(cv_datos, aes(x = Sensacion_Termica, y = pred_cv)) +
+      geom_point(color = "darkblue", size = 2, alpha = 0.7) +
+      geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed", linewidth = 1) +
+      geom_smooth(method = "lm", color = "green", se = FALSE) +
+      theme_minimal() +
+      labs(title = "Validación Cruzada: Observado vs. Predicho", x = "Observado", y = "Predicho")
+    
+    # Cálculo de correlación de Pearson
+    cor_pearson <- cor(cv_datos$Sensacion_Termica, cv_datos$pred_cv, use = "complete.obs")
+    p_obs_pred + annotate("text", x = 16, y = 21, label = sprintf("Pearson r = %.3f", cor_pearson), color = "green", fontface = "bold")
+    
+    ggplot() +
+      # 1. Capa de la superficie interpolada
+      geom_tile(data = krig_df, aes(x = Este, y = Norte, fill = Prediccion_Final)) +
+      # 2. Contornos para dar textura y volumen al mapa
+      geom_contour(data = krig_df, aes(x = Este, y = Norte, z = Prediccion_Final), 
+                   color = "white", alpha = 0.25, linewidth = 0.3) +
+      # 3. Puntos observados reales superpuestos
+      geom_point(data = datos_mp_valid, aes(x = Este, y = Norte), 
+                 color = "black", fill = "white", shape = 21, size = 1.8, stroke = 0.8) +
+      # 4. Paleta de colores viridis (Option 'magma' o 'viridis' son muy elegantes)
+      scale_fill_viridis_c(
+        option = "C", 
+        name = "Sensación\nTérmica (°C)",
+        breaks = seq(16, 22, by = 1)
+      ) +
+      scale_x_continuous(breaks = 1:9, expand = c(0, 0)) +
+      scale_y_continuous(breaks = seq(1, 29, by = 4), expand = c(0, 0)) +
+      theme_minimal(base_size = 11) +
+      labs(
+        title = "Predicción Espacial de Sensación Térmica",
+        subtitle = "Kriging Ordinario de Residuales + Median Polish (Efectos de Borde)",
+        caption = "Nota: Los puntos blancos representan las ubicaciones de muestreo reales.",
+        x = "Coordenada Este",
+        y = "Coordenada Norte"
+      ) +
+      theme(
+        plot.title = element_text(face = "bold", size = 13, color = "#1A1A1A"),
+        plot.subtitle = element_text(size = 10, color = "#555555", margin = margin(b = 10)),
+        plot.caption = element_text(face = "italic", size = 8, color = "#666666", hjust = 0),
+        panel.grid.major = element_line(color = "gray90", linetype = "dotted"),
+        panel.grid.minor = element_blank(),
+        legend.position = "right",
+        legend.title = element_text(face = "bold", size = 9),
+        legend.key.height = unit(1.2, "cm")
+      )
+    ```
 

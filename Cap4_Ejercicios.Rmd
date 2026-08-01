@@ -1,0 +1,208 @@
+---
+title: "Geoestadística para una variable"
+author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
+output: 
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    code_folding: hide
+    mathjax: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+
+```{r Librerias, include=FALSE}
+#setwd("C:/PERSONAL_MAPU/UNIVERSIDADES/NACIONAL/ESTADÍSTICA_ESPACIAL/PARCIAL_2")
+library(readxl)
+library(dplyr)
+library(stringr)
+library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
+library(tidyverse)
+library(corrplot)
+library(sf)
+library(ggplot2)
+library(kableExtra)
+library(measurements)
+library(gganimate) # para hacer película
+library(gifski) #para renderizar la película
+library(spdep)
+library(adespatial)
+library(gstat) # Para ajuste automático de variogramas
+library(sp)
+library(spacetime)
+library(RColorBrewer)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(geoR)   # Para eyefit y análisis geoestadístico clásico
+library(MASS)
+library(performance)
+library(fields)
+library(patchwork)
+library(knitr)
+```
+
+
+
+## Capitulo 4 
+<!-- {.tabset} -->
+
+
+
+<!-- ```{r tabla_4_1, echo=FALSE} -->
+<!-- tabla_4_1 <- data.frame( -->
+<!--   ` ` = c("Intercepto", "y"), -->
+<!--   `$\\hat{\\beta}$` = c("-1564", "0,0007581"), -->
+<!--   `s.e $\\hat{\\beta}$` = c("600", "0,000279"), -->
+<!--   `Valor p` = c("0,0161", "0,01259"), -->
+<!--   check.names = FALSE -->
+<!-- ) -->
+
+<!-- kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación del modelo de regresión $Y(s) = \\hat{\\beta}_0 + \\hat{\\beta}_1 y$ para la media.") -->
+
+<!-- ``` -->
+
+
+<!-- ![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=60%} -->
+
+<!-- ![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=60%} -->
+
+
+<!-- ![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=60%} -->
+
+---
+
+
+### Suponga que $Z(s)$ es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto. 
+
+Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son $z_1(0, 0) = 15$; $z_2(100, 0) = 16$; $z_3(0, 50) = 16$ y $z_4(70, 50) = 15$. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:
+
+1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
+
+2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
+
+3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
+
+4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
+
+5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
+
+
+
+### Suponga que
+
+$$\mathcal{W}(s) = \Psi(Y(s)) \quad s \in D$$
+
+Donde $Y(s)$ es una variable aleatoria con distribución de probabilidad normal y media constante y conocida $\mu_y$. Demuestre que
+
+$$\mathcal{W}^*(s_0) = \Psi(Y^*(s_0)) + \Psi''(\mu_y) \left\{ \frac{\text{Var}[Y(s) - Y^*(s_0)]}{2} \right\}$$
+
+Esto es, el predictor kriging aplicado a una transformación de la variable espacial es sesgado. *Sugerencia: Utilice el desarrollo en series de Taylor.*
+
+
+### Encuentre el predictor kriging si la media es constante y conocida y el modelo de covarianza es un modelo efecto pepita.
+
+### Encuentre el predictor kriging si la media es un polinomio de primer grado e incluye ambas coordenadas, $(x, y)$, y el modelo de covarianza es un modelo efecto pepita.
+
+### Suponga un campo aleatorio espacial normal multivariado, con observaciones en $n$ ubicaciones y media y covarianza conocidos. 
+
+Encuentre la esperanza condicional y la respectiva varianza $Z(s_0)$ dado el vector $(Z(s_1), \dots, Z(s_n))$. Compare con las expresiones de predicción y varianza del error de predicción del kriging simple.
+
+
+Se sabe que el Kriging simple (media del proceso es conocida), el predictor se construye centrando la variable ($Z(s) = Y(s) - \mu(s)$) y buscando una combinación lineal de los datos observados $\mathbf{Z} = (Z(s_1), \dots, Z(s_n))^T$ que sea el Mejor Predictor Lineal Insesgado (BLUE). Sin embargo, si se asume normalidad, ¿el Mejor Predictor Insesgado (sin asumir linealidad) es la Esperanza Condicional? y ¿la varianza del error de predicción del kriging es igual a la varianza condicional?.
+
+**Demostración:**
+
+Formulas a tener en cuenta (Capítulo 4, Sección 4.2):
+
+1. **Vector de covarianza:** $\boldsymbol\sigma_0 = Cov[\mathbf{Z}, Z(s_0)]$ *(Definición en Ec. 4.8)*.
+2. **Matriz de covarianza:** $\boldsymbol\Sigma = Cov[\mathbf{Z}]$ *(Definición en Ec. 4.8)*.
+3. **Ponderaciones del Kriging Simple:** $\boldsymbol\lambda = \boldsymbol\Sigma^{-1} \boldsymbol\sigma_0$ *(Ecuación 4.8)*.
+4. **Varianza del error de predicción del Kriging Simple:** $Var[\boldsymbol\lambda^T \mathbf{Z} - Z(s_0)] = C(0; \Theta) - \boldsymbol\sigma_0^T \boldsymbol\Sigma^{-1} \boldsymbol\sigma_0$ *(Ecuación 4.9)*.
+
+De la Teoría de la Distribución Normal Multivariada:
+
+5. **Esperanza Condicional:** $E[X_1 | X_2] = \mu_1 + \Sigma_{12} \Sigma_{22}^{-1} (X_2 - \mu_2)$.
+6. **Varianza Condicional:** $Var(X_1 | X_2) = \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{21}$.
+
+Para una breve deducción de estas formulas se hace uso del siguiente teorema y propiedad:
+
+> 1. **Teorema:** El Mejor Predictor Lineal de $X_1$ en función de $X_2$ tiene la forma $\hat{X}_1 = A X_2 + b$, donde el error de estimación $e = X_1 - \hat{X}_1$ debe ser ortogonal a $X_2$.
+>
+> 2. **Propiedad** Para un vector Gaussiano conjunto, la no-correlación equivale a independencia, y la esperanza condicional es el mejor predictor lineal:
+>
+>$$E[X_1 \mid X_2] = \hat{X}_1$$
+
+Por lo tanto se busca una combinación lineal de la forma:
+
+$$\hat{X}_1 = \mu_1 + A (X_2 - \mu_2)$$
+
+El error de predicción es:
+
+$$e = X_1 - \hat{X}_1 = (X_1 - \mu_1) - A (X_2 - \mu_2)$$
+Para minimizar el error cuadrático medio se debe cumplir que  $Cov(e, X_2) = 0$
+
+Sustituyendo el error $e$:
+
+$$\begin{aligned} Cov\Big((X_1 - \mu_1) - A(X_2 - \mu_2), \; X_2\Big) &= 0 \\ Cov(X_1, X_2) - A \cdot Var(X_2) &= 0 \\ \Sigma_{12} - A \Sigma_{22} &= 0 \end{aligned}$$
+Despejando $A$:
+
+$$A = \Sigma_{12} \Sigma_{22}^{-1}$$
+
+Por lo tanto al sustituir $A$ en la ecuación del predictor, se tiene la Esperanza Condicional (Formula 5.):
+
+$$E[X_1 \mid X_2] = \mu_1 + \Sigma_{12} \Sigma_{22}^{-1} (X_2 - \mu_2) \quad \blacksquare$$
+
+
+Bajo la normalidad multivariada, la varianza condicional $Var(X_1 \mid X_2)$ es la misma varianza del error de predicción $Var(e)$:
+
+$$\begin{aligned} 
+Var(X_1 \mid X_2) &= Var\Big((X_1 - \mu_1) - \Sigma_{12} \Sigma_{22}^{-1} (X_2 - \mu_2)\Big)  \\ 
+ &= Var\Big(X_1 - \mu_1\Big) + Var\Big( \Sigma_{12} \Sigma_{22}^{-1} (X_2 - \mu_2)\Big) -2 Cov\Big(X_1 - \mu_1, \; \Sigma_{12} \Sigma_{22}^{-1} (X_2 - \mu_2)\Big) \\ 
+ &= \Sigma_{11} + \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{21} - 2 ( \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{21} ) \\
+ &= \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{21} \quad \blacksquare
+\end{aligned}
+$$
+y se obtiene la Fórmula 6.
+
+Dado que el campo aleatorio es normal multivariado, el vector de las observaciones $\mathbf{Z}$ y $Z(s_0)$ sigue una distribución normal. Como el proceso está centrado ($E[Z(s)] = 0$), se tiene:
+
+$$\begin{pmatrix} X_1 \\ X_2 \end{pmatrix} \sim N \left( \begin{pmatrix} \mu_1 \\ \mu_2 \end{pmatrix}, \begin{pmatrix} \Sigma_{11} & \Sigma_{12} \\ \Sigma_{21} & \Sigma_{22} \end{pmatrix} \right)$$
+
+$$\begin{pmatrix} \mathbf{Z} \\ Z(s_0) \end{pmatrix} \sim N \left( \begin{pmatrix} \mathbf{0} \\ 0 \end{pmatrix}, \begin{pmatrix} \boldsymbol\Sigma_{n \times n} & \boldsymbol{\sigma}_{0} \\ \boldsymbol{\sigma}_0^T & C(0; \Theta) \end{pmatrix} \right)$$
+
+Donde $C(0; \Theta)$ es la varianza del proceso (la silla total, $Var[Z(s_0)]$).
+
+Aplicando la Fórmula 5 de la normal multivariada :
+
+$$ \begin{aligned}
+E[Z(s_0) \mid \mathbf{Z}] &= \mu_1 + \boldsymbol{\Sigma}_{12} \boldsymbol{\Sigma}_{22}^{-1} (\mathbf{X}_2 - \boldsymbol{\mu}_2) \\
+&= 0 + \boldsymbol{\sigma}_0^T \boldsymbol{\Sigma}^{-1} (\mathbf{Z} - \mathbf{0}) \\
+&= \boldsymbol{\sigma}_0^T \boldsymbol{\Sigma}^{-1} \mathbf{Z} \quad \blacksquare
+\end{aligned} $$
+
+
+Aplicando la Fórmula 6:
+
+$$ \begin{aligned}
+Var[Z(s_0) | \mathbf{Z}]  &= \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{21} \\
+&= C(0; \Theta) - \sigma_0^T \Sigma^{-1} \sigma_0  \quad \blacksquare 
+\end{aligned}$$
+
+
+
+### Para los datos de aquifer 
+que puede encontrar en [https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html](https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html), genere dos mapas de predicciones.
+
+Para el primer mapa utilice el predictor kriging y para el segundo mapa utilice predicción basada en modelos de regresión en términos de las coordenadas $(x, y) = (\text{Este}, \text{Norte})$, e incluyendo la dependencia espacial a través de la estimación de los parámetros del modelo, vía máxima verosimilitud. Compare el desempeño predictivo del modelo de regresión cuando se usan mínimos cuadrados ordinarios ignorando la dependencia espacial y cuando se usa máxima verosimilitud. Posteriormente, compare el desempeño de la regresión con el kriging.
+
+### Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial. Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
+
+### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.
+
+### Generalice el resultado encontrado en el problema anterior, al caso en el que se transforma la variable usando una transformación Box-Cox.
+
