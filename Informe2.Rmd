@@ -2742,10 +2742,295 @@ Var[Z(s_0) | \mathbf{Z}]  &= \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{
 \end{aligned}$$
 
 
+
 ### Para los datos de aquifer 
 que puede encontrar en [https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html](https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html), genere dos mapas de predicciones.
 
 Para el primer mapa utilice el predictor kriging y para el segundo mapa utilice predicción basada en modelos de regresión en términos de las coordenadas $(x, y) = (\text{Este}, \text{Norte})$, e incluyendo la dependencia espacial a través de la estimación de los parámetros del modelo, vía máxima verosimilitud. Compare el desempeño predictivo del modelo de regresión cuando se usan mínimos cuadrados ordinarios ignorando la dependencia espacial y cuando se usa máxima verosimilitud. Posteriormente, compare el desempeño de la regresión con el kriging.
+
+```{r ej_4_6_base de datos}
+# ==============================================================================
+# 1. CARGA Y PREPARACIÓN DE DATOS
+# ==============================================================================
+# Lectura de datos (asegúrate de que 'aquifer.txt' esté en tu directorio de trabajo)
+aquifer <- read.table("aquifer.txt", header = TRUE, dec = ",")
+colnames(aquifer) <- c("Este", "Norte", "Profundidad")
+
+# Convertir a objeto geodata de geoR
+aquiferg <- as.geodata(aquifer, coords.col = c("Este", "Norte"), data.col = "Profundidad")
+
+# Crear una grilla regular para la predicción (mapas)
+# Se generan 50 puntos en cada eje para una resolución adecuada
+x_seq <- seq(min(aquifer$Este), max(aquifer$Este), length.out = 50)
+y_seq <- seq(min(aquifer$Norte), max(aquifer$Norte), length.out = 50)
+grid_pred <- expand.grid(Este = x_seq, Norte = y_seq)
+
+# Convertir la grilla a objeto geodata (con datos NA, solo nos interesan las coordenadas)
+grid_geodata <- as.geodata(data.frame(grid_pred, Profundidad = rep(NA, nrow(grid_pred))), 
+                           coords.col = 1:2, data.col = 3)
+summary(aquifer)
+summary(aquiferg)
+```
+
+**Mapa 1: Predictor Kriging (Ordinario)**
+
+El Kriging Ordinario asume media constante pero desconocida. Primero ajustamos un modelo de variograma para posteriormente realizar la predicción.
+
+```{r ej_4_6_Mapa1, fig.height=4.5, fig.width=10, message=FALSE, warning=FALSE, results='hide'}
+# a) Variograma empírico
+v_emp <- variog(aquiferg, max.dist = 150)
+
+# b) Ajuste del modelo por Máxima Verosimilitud (sin tendencia)
+ini_pars <- c(var(aquifer$Profundidad), 50) 
+fit_ok <- likfit(aquiferg, ini.cov.pars = ini_pars, cov.model = "exponential", trend = ~1)
+
+```
+```{r ej_4_6_Mapa1_grafico, fig.height=4.5, fig.width=10, message=FALSE, warning=FALSE}
+# Configuración del panel gráfico (1 fila, 2 columnas)
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 3, 1))
+
+# --- GRÁFICO IZQUIERDA: Variograma Empírico + Ajuste ML ---
+plot(
+  v_emp, 
+  main = "Variograma y Modelo Exponencial",
+  xlab = "Distancia (h)", 
+  ylab = "Semivarianza γ(h)",
+  pch = 19, 
+  col = "darkblue", 
+  cex = 1.2
+)
+
+lines(fit_ok, col = "red", lty = 1, lwd = 2.5)
+abline(h = var(aquifer$Profundidad), col = "darkgreen", lty = 2, lwd = 1.5)
+grid(col = "gray85", lty = 3)
+
+legend(
+  "bottomright", 
+  legend = c("Semivarianza Empírica", "Modelo Exponencial", "Sill Total"),
+  col = c("darkblue", "red", "darkgreen"), 
+  pch = c(19, NA, NA), 
+  lty = c(NA, 1, 2), 
+  lwd = c(NA, 2.5, 1.5), 
+  bty = "o", 
+  bg = "white",
+  cex = 0.8
+)
+
+# c) Predicción por Kriging Ordinario
+kc_ok <- krige.conv(
+  aquiferg, 
+  locations = grid_pred, 
+  krige = krige.control(
+    type.krige = "ok", 
+    cov.model  = fit_ok$cov.model, 
+    cov.pars   = fit_ok$cov.pars,
+    nugget     = fit_ok$nugget
+  )
+)
+# --- GRÁFICO DERECHA: Mapa de Kriging Ordinario ---
+image(
+  kc_ok, 
+  loc = grid_pred, 
+  col = terrain.colors(50), 
+  main = "Kriging Ordinario - Predicción",
+  xlab = "Este", 
+  ylab = "Norte"
+)
+contour(kc_ok, loc = grid_pred, add = TRUE, col = "gray30") # Corregido de kc_uk a kc_ok
+points(aquiferg$coords, pch = 21, bg = "red", col = "black", cex = 0.9)
+
+# Restaurar panel gráfico
+par(mfrow = c(1, 1))
+```
+
+**Mapa 2: Regresión con Dependencia Espacial (Máxima Verosimilitud)**
+
+Se modela la tendencia en función de las coordenadas $(x, y)$ y se estiman los parámetros por Máxima Verosimilitud (Kriging Universal).
+
+```{r ej_4_6_Mapa2, fig.height=4.5, fig.width=10, message=FALSE, warning=FALSE, results='hide'}
+# ==============================================================================
+# 3. MAPA 2: REGRESIÓN ESPACIAL / KRIGING UNIVERSAL (MÁXIMA VEROSIMILITUD)
+# ==============================================================================
+
+# a) Ajuste del modelo de verosimilitud con tendencia lineal (~coords)
+fit_ml <- likfit(
+  aquiferg, 
+  ini.cov.pars = ini_pars, 
+  cov.model    = "exponential", 
+  trend        = ~coords
+)
+
+# b) Variograma empírico de los RESIDUALES (removiendo la tendencia lineal)
+v_emp_res <- variog(aquiferg, trend = ~coords, max.dist = 150)
+
+# c) Predicción por Kriging Universal (UK) en la grilla
+kc_uk <- krige.conv(
+  aquiferg, 
+  locations = grid_pred, 
+  krige = krige.control(
+    type.krige = "ok",       # En geoR la presencia de trend activa el Kriging Universal
+    trend.d    = ~coords,    # Tendencia en los datos
+    trend.l    = ~coords,    # Tendencia en la grilla
+    cov.model  = fit_ml$cov.model, 
+    cov.pars   = fit_ml$cov.pars,
+    nugget     = fit_ml$nugget
+  )
+)
+```
+```{r ej_4_6_Mapa2_grafico, fig.height=4.5, fig.width=10, message=FALSE, warning=FALSE}
+# ------------------------------------------------------------------------------
+# VISUALIZACIÓN PANEL DOBLE (IZQUIERDA: VARIOGRAMA | DERECHA: MAPA)
+# ------------------------------------------------------------------------------
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 3, 1))
+
+# --- GRÁFICO IZQUIERDA: Variograma de Residuales + Ajuste ML ---
+plot(
+  v_emp_res, 
+  main = "Variograma de Residuales (Modelo ML)",
+  xlab = "Distancia (h)", 
+  ylab = "Semivarianza γ(h)",
+  pch = 19, 
+  col = "darkblue", 
+  cex = 1.2
+)
+
+# Superponer la curva del modelo ajustado por ML
+lines(fit_ml, col = "red", lty = 1, lwd = 2.5)
+
+# Línea de la varianza muestral de referencia
+abline(h = fit_ml$nugget + fit_ml$cov.pars[1], col = "darkgreen", lty = 2, lwd = 1.5)
+grid(col = "gray85", lty = 3)
+
+# Leyenda explicativa
+legend(
+  "bottomright", 
+  legend = c("Residuales Empíricos", "Modelo Exponencial", "Sill Total (Sill + Nugget)"),
+  col = c("darkblue", "red", "darkgreen"), 
+  pch = c(19, NA, NA), 
+  lty = c(NA, 1, 2), 
+  lwd = c(NA, 2.5, 1.5), 
+  bty = "o", 
+  bg = "white",
+  cex = 0.75
+)
+
+# --- GRÁFICO DERECHA: Mapa 2 - Predicción por Kriging Universal ---
+image(
+  kc_uk, 
+  loc = grid_pred, 
+  col = terrain.colors(50), 
+  main = "Kriging Universal - Predicción",
+  xlab = "Este", 
+  ylab = "Norte"
+)
+contour(kc_uk, loc = grid_pred, add = TRUE, col = "gray30")
+points(aquiferg$coords, pch = 21, bg = "red", col = "black", cex = 0.9)
+
+# Restaurar la configuración gráfica por defecto
+par(mfrow = c(1, 1))
+```
+
+
+ **Regresión por Mínimos Cuadrados Ordinarios (OLS) vs. Máxima Verosimilitud (ML)**
+ 
+Comparamos un modelo de regresión lineal (que ignora la autocorrelación espacial) con el modelo ajustado por `likfit` (que la incluye).
+
+```{r ej_4_6_Comparacion, message=FALSE, warning=FALSE}
+# --- A. Extracción de Métricas ---
+mod_ols <- lm(Profundidad ~ Este + Norte, data = aquifer)
+
+loglik_ols <- as.numeric(logLik(mod_ols))
+aic_ols    <- AIC(mod_ols)
+bic_ols    <- BIC(mod_ols)
+k_ols      <- length(coef(mod_ols)) + 1
+
+loglik_ml  <- fit_ml$loglik
+aic_ml     <- fit_ml$AIC
+bic_ml     <- fit_ml$BIC
+k_ml       <- fit_ml$npars
+
+# --- B. Construcción de la Tabla Estilizada ---
+tabla_comp <- data.frame(
+  Modelo     = c("OLS (Mínimos Cuadrados)", "ML (Espacial Exponencial)"),
+  Parámetros = c(k_ols, k_ml),
+  `Log-Lik`  = round(c(loglik_ols, loglik_ml), 2),
+  AIC        = round(c(aic_ols, aic_ml), 2),
+  BIC        = round(c(bic_ols, bic_ml), 2),
+  `Δ AIC`    = round(c(aic_ols - min(aic_ols, aic_ml), aic_ml - min(aic_ols, aic_ml)), 2)
+)
+
+kable(tabla_comp, caption = "Comparación de Criterios de Información (OLS vs. ML Espacial)", align = "lcccccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE) %>%
+  row_spec(2, bold = TRUE, background = "#E8F4F8") # Resalta el mejor modelo (ML)
+
+# --- C. Test de Razón de Verosimilitud (LRT) ---
+lrt_stat <- 2 * (loglik_ml - loglik_ols)
+p_value  <- pchisq(lrt_stat, df = k_ml - k_ols, lower.tail = FALSE)
+```
+**Resultado del Test de Razón de Verosimilitud (LRT):**
+
+* **Estadístico LR:** $22.113$
+* **Grados de Libertad:** $6-4=2$
+* **p-valor:** $<<0.001$
+
+El modelo con estructura de covarianza espacial (ML) superó significativamente al modelo OLS ($\Delta\text{AIC} = 18.11, p < 0.001$), lo que confirma la presencia de dependencia espacial en los residuos.
+
+**Comparación de la Regresión (ML) con el Kriging Ordinario**
+
+Se usa Validación Cruzada Leave-One-Out (LOOCV), que calcula el Error Cuadrático Medio (RMSE) de las predicciones.
+
+```{r validacion-cruzada, message=FALSE, results='hide'}
+# Se ocultan las salidas de consola redundantes de xvalid
+cv_ok <- xvalid(aquiferg, model = fit_ok, trend = ~1)
+cv_uk <- xvalid(aquiferg, model = fit_ml, trend = ~coords)
+```
+
+```{r tabla-metricas-cv}
+# --- Métricas de Desempeño Predictivo ---
+rmse_ok <- sqrt(mean(cv_ok$error^2))
+rmse_uk <- sqrt(mean(cv_uk$error^2))
+mae_ok  <- mean(abs(cv_ok$error))
+mae_uk  <- mean(abs(cv_uk$error))
+
+tabla_cv <- data.frame(
+  Método = c("Kriging Ordinario", "Kriging Universal"),
+  Tendencia = c("Constante (~1)", "Lineal (~Este + Norte)"),
+  RMSE = round(c(rmse_ok, rmse_uk), 3),
+  MAE  = round(c(mae_ok, mae_uk), 3)
+)
+
+kable(tabla_cv, caption = "Métricas de Error de Validación Cruzada (LOOCV)", align = "llcc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  column_spec(3, bold = TRUE, color = "#2B5C8F")
+```
+
+```{r graficos-cv, fig.width=9, fig.height=3.5, fig.cap="Validez de ajuste predicho vs. observado para Kriging Ordinario y Universal."}
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 2.5, 1))
+
+# Panel 1: Kriging Ordinario
+plot(
+  cv_ok$data, cv_ok$predicted, 
+  main = "Kriging Ordinario",
+  xlab = "Observado", ylab = "Predicho", 
+  pch = 19, col = "#2B5C8F", cex = 0.9
+)
+abline(0, 1, col = "red", lty = 2, lwd = 2)
+grid(col = "gray85", lty = 3)
+
+# Panel 2: Kriging Universal
+plot(
+  cv_uk$data, cv_uk$predicted, 
+  main = "Kriging Universal",
+  xlab = "Observado", ylab = "Predicho", 
+  pch = 19, col = "#D95F02", cex = 0.9
+)
+abline(0, 1, col = "red", lty = 2, lwd = 2)
+grid(col = "gray85", lty = 3)
+
+par(mfrow = c(1, 1))
+```
+
+Se observa que el modelo de Kriging Universal con tendencia lineal proporciona un mejor ajuste predictivo que el Kriging Ordinario, como se refleja en menores valores de RMSE y MAE. Esto indica que la inclusión de la dependencia espacial y la tendencia mejora la capacidad predictiva del modelo.
 
 ### Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial. Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
 
