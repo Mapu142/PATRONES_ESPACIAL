@@ -1173,10 +1173,12 @@ par(mfrow = c(1, 1))
 
 
 
-# Ejercicios {.tabset}
+# Ejercicios 
+<!-- {.tabset} -->
 
 
-## Capitulo 1 {.tabset}
+## Capitulo 1 
+<!-- {.tabset} -->
 
 ### Se ha tomado una muestra de la altura en (cm) alcanzada por los árboles en un cultivo de mango (Ver Tabla 9.1).
 
@@ -1346,7 +1348,7 @@ Ver Figura 1.4. A continuación, algunos resultados:
 
 
 
-![Figura 1.4: Análisis exploratorio y modelo de regresión para la elevación del terreno.](figura1_4.png){width=100%}
+![Figura 1.4: Análisis exploratorio y modelo de regresión para la elevación del terreno.](figura1_4.png){width=90%}
 
 
 
@@ -1489,17 +1491,164 @@ kable(coef_table, align = c("l", "c", "c", "c", "c"), caption = "Resultados de l
 
 
 
-## Capitulo 2 {.tabset}
+## Capitulo 2 
+<!-- .tabset} -->
 
 ### Grafique los modelos de covarianza y semivarianza:
 
 1. Fije la silla y varíe el rango.
 
+Al fijar la silla ($\sigma^2=10$) y aumentar el rango ($a \in \{ 1, 5, 10, 20, 30 \}$), la curva de semivarianza se "estira" horizontalmente, tardando más en alcanzar la meseta. En la covarianza, esto se refleja en un decaimiento más lento hacia cero. 
+Esto se muestra en los graficos a continuación, utilizando el modelo Exponencial.
+
+
+```{r ej_2_1_1, fig.height=5, fig.width=10, fig.align='center'}
+h <- seq(0, 40, length.out = 300)
+silla <- 10
+rangos <- c(1, 5, 10, 20, 30)
+
+df1 <- expand.grid(h = h, rango = rangos) %>%
+  mutate(
+    Semivarianza = silla * (1 - exp(-h / rango)),
+    Covarianza = silla * exp(-h / rango)
+  ) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+ggplot(df1, aes(x = h, y = Valor, color = factor(rango))) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  # scale_color_viridis_d(name = "Rango (a)") +
+  labs(x = "Distancia (h)", y = "Valor", title = "Efecto de variar el Rango (Silla fija)") +
+  theme_minimal() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
 2. Fije el rango y varíe la silla.
+
+Al mantener el rango constante ($a = 10$) y aumentar la silla ($\sigma^2 \in \{1, 5, 10, 15, 20\}$), las curvas experimentan un escalado vertical. La semivarianza alcanza mesetas más altas y la covarianza inicia en un punto de origen ($h=0$) superior, representando una varianza total del proceso mayor.
+
+Como se evidencia en los gráficos, la distancia a la cual las observaciones se vuelven independientes permanece constante, pero la magnitud de la variabilidad global del fenómeno aumenta.
+
+
+```{r ej_2_1_2, fig.height=5, fig.width=10, fig.align='center'}
+h <- seq(0, 40, length.out = 300)
+rango <- 10
+sillas <- c(1, 5, 10, 15, 20)
+
+df2 <- expand.grid(h = h, silla = sillas) %>%
+  mutate(
+    Semivarianza = silla * (1 - exp(-h / rango)),
+    Covarianza = silla * exp(-h / rango)
+  ) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+ggplot(df2, aes(x = h, y = Valor, color = factor(silla))) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  # scale_color_viridis_d(name = "Silla (σ²)") +
+  labs(x = "Distancia (h)", y = "Valor", title = "Efecto de variar la Silla (Rango fijo)") +
+  theme_minimal() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
 
 3. Fije silla y rango y varíe parámetro de suavidad cuando aplique.
 
+
+ El parámetro de suavidad ($\kappa \in \{0.1, 0.5, 1.5, 2.5, 3\}$) en el modelo Matérn controla el comportamiento de las funciones cerca del origen ($h \to 0$). Para valores bajos (ej. $\kappa = 0.5$, equivalente al exponencial), la semivarianza crece linealmente desde el origen, indicando un proceso espacial menos continuo. A medida que $\kappa$ aumenta, la curva se aplana en el origen (parabólico), lo que se ve reflejado en la covarianza, donde la correlación inicial se mantiene alta antes de decaer. 
+
+```{r ej_2_1_3, fig.height=5, fig.width=10, fig.align='center'}
+# 1. Definición de parámetros
+h <- seq(0.01, 30, length.out = 300) 
+silla <- 10
+rango <- 10
+suavidades <- c(0.1, 0.5, 1.5, 2.5, 3)
+
+# 2. Creación del data.frame vectorizando kappa
+df3 <- expand.grid(h = h, kappa = suavidades) %>%
+  rowwise() %>% # <--- Esta es la clave para que cov.spatial evalúe cada kappa individualmente
+  mutate(
+    Covarianza = cov.spatial(h, cov.model = "matern", cov.pars = c(silla, rango), kappa = kappa),
+    Semivarianza = silla - Covarianza
+  ) %>%
+  ungroup() %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor") %>%
+  mutate(kappa_factor = factor(kappa, labels = paste0("κ = ", suavidades)))
+
+# 3. Gráfica con ggplot2
+ggplot(df3, aes(x = h, y = Valor, color = kappa_factor)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Modelo de Matérn: Variación del Parámetro de Suavidad (κ)",
+    x = "Distancia (h)",
+    y = "Valor de la función",
+    color = "Suavidad (κ)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    strip.text = element_text(size = 12, face = "bold")
+  )
+
+```
+
 4. Compare los comportamientos de diferentes modelos de covarianza y semivarianza cuando para todos se usan los mismos parámetros.
+
+Al comparar los modelos teóricos utilizando exactamente los mismos parámetros de silla ($\sigma^2=100$) y rango ($a=10$), las diferencias fundamentales radican en la geometría de sus curvas y en su comportamiento en las zonas cerca del origen ($h \to 0$) y en la llegada a la meseta.
+
+```{r ej_2_1_4, fig.height=5, fig.width=10, fig.align='center'}
+# Parámetros
+h <- seq(0, 20, length.out = 300)
+sigma2 <- 100
+a <- 10
+
+# Data frame con los 5 modelos
+df4 <- data.frame(h = h) %>%
+  mutate(
+    Esférico = ifelse(h <= a, sigma2 * (1.5 * (h / a) - 0.5 * (h / a)^3), sigma2),
+    Exponencial = sigma2 * (1 - exp(-h / a)),
+    Gaussiano = sigma2 * (1 - exp(-(h^2) / (a^2))),
+    # Modelo Cúbico (Acotado, llega a la silla en h = a)
+    Cúbico = ifelse(h <= a, sigma2 * (7 * (h / a)^2 - 35/4 * (h / a)^3 + 7/2 * (h / a)^5 - 3/4 * (h / a)^7), sigma2),
+    # Modelo Pentasférico (Acotado, llega a la silla en h = a)
+    Pentasférico = ifelse(h <= a, sigma2 * (1.875 * (h / a) - 1.25 * (h / a)^3 + 0.375 * (h / a)^5), sigma2)
+  ) %>%
+  pivot_longer(
+    cols = c(Esférico, Exponencial, Gaussiano, Cúbico, Pentasférico), 
+    names_to = "Modelo", 
+    values_to = "Semivarianza"
+  ) %>%
+  mutate(Covarianza = sigma2 - Semivarianza) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+# Visualización con ggplot2
+ggplot(df4, aes(x = h, y = Valor, color = Modelo)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  scale_color_manual(
+    values = c(
+      "Esférico"     = "#377EB8", 
+      "Exponencial"  = "#E41A1C", 
+      "Gaussiano"    = "#4DAF4A",
+      "Cúbico"       = "#984EA3",
+      "Pentasférico" = "#FF7F00"
+    )
+  ) +
+  labs(
+    x = "Distancia (h)", 
+    y = "Valor", 
+    title = "Comparación de Modelos Teóricos (Mismos parámetros)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom", 
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 11, face = "bold")
+  )
+```
+
 
 ---
 
@@ -1685,7 +1834,8 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
 
 
-## Capitulo 3 {.tabset}
+## Capitulo 3 
+<!-- {.tabset} -->
 
 
 
@@ -1746,7 +1896,8 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
 
 
-## Capitulo 4 {.tabset}
+## Capitulo 4 
+<!-- {.tabset} -->
 
 
 
@@ -1764,12 +1915,12 @@ kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación
 ```
 
 
-![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=100%}
+![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=80%}
 
-![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=100%}
+![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=80%}
 
 
-![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=100%}
+![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=80%}
 
 ---
 
