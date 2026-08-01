@@ -1801,43 +1801,32 @@ border-radius: 0px;
 </div>
 
 
-<div id="capitulo-4" class="section level2" number="1">
+<div id="capitulo-4" class="section level2 tabset" number="1">
 <h2><span class="header-section-number">1</span> Capitulo 4</h2>
-<!-- {.tabset} -->
-<!-- ```{r tabla_4_1, echo=FALSE} -->
-<!-- tabla_4_1 <- data.frame( -->
-<!--   ` ` = c("Intercepto", "y"), -->
-<!--   `$\\hat{\\beta}$` = c("-1564", "0,0007581"), -->
-<!--   `s.e $\\hat{\\beta}$` = c("600", "0,000279"), -->
-<!--   `Valor p` = c("0,0161", "0,01259"), -->
-<!--   check.names = FALSE -->
-<!-- ) -->
-<!-- kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación del modelo de regresión $Y(s) = \\hat{\\beta}_0 + \\hat{\\beta}_1 y$ para la media.") -->
-<!-- ``` -->
-<!-- ![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=60%} -->
-<!-- ![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=60%} -->
-<!-- ![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=60%} -->
-<hr />
-<div id="suponga-que-zs-es-una-función-aleatoria-estacionaria-de-segundo-orden-que-representa-la-precipitación-en-los-cuatro-bordes-de-un-trapecio-recto." class="section level3" number="1.1">
-<h3><span class="header-section-number">1.1</span> Suponga que <span class="math inline">\(Z(s)\)</span> es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto.</h3>
-<p>Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son <span class="math inline">\(z_1(0, 0) = 15\)</span>; <span class="math inline">\(z_2(100, 0) = 16\)</span>; <span class="math inline">\(z_3(0, 50) = 16\)</span> y <span class="math inline">\(z_4(70, 50) = 15\)</span>. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:</p>
+<div id="suponga-que-zs-es-una-función-aleatoria-estacionaria-de-segundo-orden-que-representa-la-precipitación-en-los-cuatro-bordes-de-un-trapecio-recto.-las-realizaciones-registradas-del-fenómeno-en-estas-cuatro-ubicaciones-son-z_10-0-15-z_2100-0-16-z_30-50-16-y-z_470-50-15.-el-modelo-de-autocorrelación-del-fenómeno-es-exponencial-con-silla-4-y-rango-100-m.-encuentre" class="section level3" number="1.1">
+<h3><span class="header-section-number">1.1</span> Suponga que <span class="math inline">\(Z(s)\)</span> es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto. Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son <span class="math inline">\(z_1(0, 0) = 15\)</span>; <span class="math inline">\(z_2(100, 0) = 16\)</span>; <span class="math inline">\(z_3(0, 50) = 16\)</span> y <span class="math inline">\(z_4(70, 50) = 15\)</span>. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:</h3>
 <ol style="list-style-type: decimal">
 <li>La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación <span class="math inline">\(Z(75, 25)\)</span> si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.</li>
 </ol>
-<p>R/ como tenemos que la <strong>silla</strong> es 4, entonces <span class="math inline">\(C(0)=4=\sigma^2\)</span>, y el <strong>rango</strong> es 100, por ende <span class="math inline">\(C(h)\)</span> es</p>
-<p><span class="math display">\[
+<p><strong>R/</strong></p>
+<pre><code>como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
+
+$$
 C(h)=\sigma^2exp\left(-\frac{||h||}{a}\right)=4exp\left(-\frac{h}{100}\right)
-\]</span></p>
-<p>Y el semivariograma es</p>
-<p><span class="math display">\[
-\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
-\]</span></p>
-<p>Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza <span class="math inline">\(C(h)\)</span> con los puntos conocidos, los resultados seran guardados en una matriz <span class="math inline">\(\mathbb{C}\)</span>, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector <span class="math inline">\(\mathbf{c_0}\)</span></p>
-<p>La estimación de <span class="math inline">\(\lambda\)</span> es</p>
-<p><span class="math display">\[
-\lambda = C^{-1} c_0,
-\]</span></p>
-<pre class="r"><code># Coordenadas de los puntos muestreados
+$$
+
+
+Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza $C(h)$ con los puntos conocidos, los resultados seran guardados en una matriz $\mathbb{C}$, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector $\mathbf{c_0}$
+
+La estimación de $\lambda$ es
+
+$$
+\lambda = \Sigma^{-1} \sigma_0,
+$$
+
+
+``` r
+# Coordenadas de los puntos muestreados
 coords &lt;- data.frame(
   x = c(0, 100, 0, 70),
   y = c(0, 0, 50, 50)
@@ -1845,59 +1834,367 @@ coords &lt;- data.frame(
 
 # Matriz de distancias euclidianas
 d &lt;- as.matrix(dist(coords))
-d</code></pre>
-<pre><code>##           1         2        3        4
+
+d
+```
+
+```
+##           1         2        3        4
 ## 1   0.00000 100.00000  50.0000 86.02325
 ## 2 100.00000   0.00000 111.8034 58.30952
 ## 3  50.00000 111.80340   0.0000 70.00000
-## 4  86.02325  58.30952  70.0000  0.00000</code></pre>
-<pre class="r"><code>p0 &lt;- c(75, 25)
+## 4  86.02325  58.30952  70.0000  0.00000
+```
+
+``` r
+p0 &lt;- c(75, 25)
+
 d0 &lt;- sqrt((coords$x - p0[1])^2 + (coords$y - p0[2])^2)
-d0</code></pre>
-<pre><code>## [1] 79.05694 35.35534 79.05694 25.49510</code></pre>
-<pre class="r"><code># Matriz de covarianzas
+
+d0
+```
+
+```
+## [1] 79.05694 35.35534 79.05694 25.49510
+```
+
+``` r
+# Matriz de covarianzas
 C &lt;- 4 * exp(-d / 100)
-round(C, 4)</code></pre>
-<pre><code>##        1      2      3      4
+
+round(C, 4)
+```
+
+```
+##        1      2      3      4
 ## 1 4.0000 1.4715 2.4261 1.6923
 ## 2 1.4715 4.0000 1.3077 2.2327
 ## 3 2.4261 1.3077 4.0000 1.9863
-## 4 1.6923 2.2327 1.9863 4.0000</code></pre>
-<pre class="r"><code>c0 &lt;- 4*exp(-d0/100)
-round(c0, 4)</code></pre>
-<pre><code>## [1] 1.8143 2.8088 1.8143 3.0998</code></pre>
-<pre class="r"><code>lambda &lt;- solve(C)%*%c0
-round(lambda, 4)</code></pre>
-<pre><code>##     [,1]
+## 4 1.6923 2.2327 1.9863 4.0000
+```
+
+``` r
+c0 &lt;- 4*exp(-d0/100)
+
+round(c0, 4)
+```
+
+```
+## [1] 1.8143 2.8088 1.8143 3.0998
+```
+
+``` r
+lambda &lt;- solve(C)%*%c0
+#cat(&quot;$\lambda$&quot;)
+round(lambda, 4)
+```
+
+```
+##     [,1]
 ## 1 0.0817
 ## 2 0.3743
 ## 3 0.0236
-## 4 0.5198</code></pre>
-<p>Como la media es conocida y <strong>constante</strong>:</p>
-<p><span class="math display">\[
+## 4 0.5198
+```
+
+Como la media es conocida y **constante**:
+
+$$
 \hat{Z}(s_0) = \mu + \lambda^T (y - \mu \mathbf{1}),
-\]</span></p>
-<pre class="r"><code>y &lt;- c(15,16,16,15)
+$$
+
+``` r
+y &lt;- c(15,16,16,15)
 mu &lt;- 15.7
 z &lt;- y - mu
 
 # Estimación
-z_hat &lt;- mu + t(lambda) %*% z
+y_hat &lt;- mu + t(lambda) %*% z
 
-round(z_hat,4)</code></pre>
-<pre><code>##         [,1]
-## [1,] 15.3983</code></pre>
-<p>Obteniendo una estimación para <span class="math inline">\(Z(75,25)\)</span> aproximadamente de 15.3983.</p>
+round(y_hat,4)
+```
+
+```
+##         [,1]
+## [1,] 15.3983
+```
+
+
+Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3983.
+
+Para la varianza del error tenemos:
+
+$$
+Var(Y^{*}(s_0)-Y(s_0))=C(0)-\sigma_0 \Sigma^{-1}\sigma_0=4-\sigma_0 \Sigma^{-1}\sigma_0
+$$
+
+
+``` r
+(var1 &lt;- 4-c0%*%solve(C)%*%c0)
+```
+
+```
+##          [,1]
+## [1,] 1.146499
+```
+Por lo tanto la varianza del error es aproximadamente $1.15$</code></pre>
 <ol start="2" style="list-style-type: decimal">
 <li>Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.</li>
 </ol>
-<p>R/</p>
-<p>Primero debemos estimar la media</p>
+<p><strong>R/</strong></p>
+<pre><code>El predictor lineal es
+
+$$
+\hat{Y}(s_0) = \sum_{i=1}^4 \lambda_i Y(s_i),
+$$
+
+con la restricción de insesgamiento
+
+$$
+\sum_{i=1}^4 \lambda_i = 1.
+$$
+
+Como la media es desconocida, se incorpora un multiplicador de Lagrange $\eta$. El sistema es
+
+$$
+\begin{pmatrix}
+\Sigma &amp; \mathbf{1} \\
+\mathbf{1}^T &amp; 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\delta
+\end{pmatrix}
+=
+\begin{pmatrix}
+\sigma_0 \\
+\mathbf{1}
+\end{pmatrix},
+$$
+
+donde
+
+$$
+\mathbf{1} =
+\begin{pmatrix}
+1 \\
+1 \\
+1 \\
+1
+\end{pmatrix}.
+$$
+
+
+``` r
+unos &lt;- matrix(1, nrow = nrow(C), ncol = 1)
+
+A &lt;- rbind(
+  cbind(C, unos),
+  cbind(t(unos), 0)
+)
+
+A
+```
+
+```
+##          1        2        3        4  
+## 1 4.000000 1.471518 2.426123 1.692255 1
+## 2 1.471518 4.000000 1.307688 2.232672 1
+## 3 2.426123 1.307688 4.000000 1.986341 1
+## 4 1.692255 2.232672 1.986341 4.000000 1
+##   1.000000 1.000000 1.000000 1.000000 0
+```
+
+``` r
+b0 &lt;- c(c0,1)
+
+parametros &lt;- solve(A)%*%b0
+
+(y2 &lt;- t(parametros[-5])%*%y)
+```
+
+```
+##          [,1]
+## [1,] 15.39824
+```
+Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+
+Para la varianza del error tenemos:
+
+$$
+\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+$$
+
+
+``` r
+(var2 &lt;- 4-t(parametros[-5])%*%c0+parametros[5])
+```
+
+```
+##          [,1]
+## [1,] 1.143342
+```
+
+Por lo tanto la varianza del error es aproximadamente $1.14$</code></pre>
 <ol start="3" style="list-style-type: decimal">
-<li><p>Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.</p></li>
-<li><p>Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.</p></li>
-<li><p>Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.</p></li>
+<li>Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.</li>
 </ol>
+<p><strong>R/</strong></p>
+<pre><code>El sistema es
+
+$$
+\begin{pmatrix}
+\Gamma &amp; \mathbf{1} \\
+\mathbf{1}^T &amp; 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\delta
+\end{pmatrix}
+=
+\begin{pmatrix}
+\sigma_0 \\
+\mathbf{1}
+\end{pmatrix},
+$$
+
+El semivariograma es
+
+$$
+\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
+$$
+
+
+``` r
+gammah &lt;- 4*(1-exp(-(d/100))) 
+gamma0 &lt;- 4*(1-exp(-(d0/100)))
+
+A &lt;- rbind(
+  cbind(gammah, unos),
+  cbind(t(unos), 0)
+)
+
+A
+```
+
+```
+##          1        2        3        4  
+## 1 0.000000 2.528482 1.573877 2.307745 1
+## 2 2.528482 0.000000 2.692312 1.767328 1
+## 3 1.573877 2.692312 0.000000 2.013659 1
+## 4 2.307745 1.767328 2.013659 0.000000 1
+##   1.000000 1.000000 1.000000 1.000000 0
+```
+
+``` r
+b0 &lt;- c(gamma0,1)
+
+parametros &lt;- solve(A)%*%b0
+
+(y3 &lt;- t(parametros[-5])%*%y)
+```
+
+```
+##          [,1]
+## [1,] 15.39824
+```
+
+Obteniendo nuevamente una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+
+Para la varianza
+
+$$
+\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+$$
+
+
+``` r
+(var3 &lt;- t(parametros[-5])%*%gamma0+parametros[5])
+```
+
+```
+##        [,1]
+## [1,] 1.1465
+```
+
+Por lo tanto la varianza del error es aproximadamente $1.14$</code></pre>
+<ol start="4" style="list-style-type: decimal">
+<li>Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.</li>
+</ol>
+<p><strong>R/</strong></p>
+<pre><code>``` r
+# Intervalos de confianza
+li1 &lt;- y_hat - 1.96 * sqrt(var1)
+ls1 &lt;- y_hat + 1.96 * sqrt(var1)
+
+li2 &lt;- y2 - 1.96 * sqrt(var2)
+ls2 &lt;- y2 + 1.96 * sqrt(var2)
+
+li3 &lt;- y3 - 1.96 * sqrt(var3)
+ls3 &lt;- y3 + 1.96 * sqrt(var3)
+
+# Tabla resumen
+tabla &lt;- data.frame(
+  Punto = c(&quot;Punto 1&quot;, &quot;Punto 2&quot;, &quot;Punto 3&quot;),
+  Estimacion = c(y_hat, y2, y3),
+  Varianza = c(var1, var2, var3),
+  LI_95 = c(li1, li2, li3),
+  LS_95 = c(ls1, ls2, ls3)
+)
+
+tabla %&gt;% 
+  kableExtra::kbl(digits = 3) %&gt;% 
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = &quot;center&quot;
+  ) %&gt;%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = &quot;#2c3e50&quot;,
+    color = &quot;white&quot;
+  ) 
+```
+
+&lt;table class=&quot;table&quot; style=&quot;color: black; width: auto !important; margin-left: auto; margin-right: auto;&quot;&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style=&quot;text-align:left;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;&quot;&gt; Punto &lt;/th&gt;
+   &lt;th style=&quot;text-align:right;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;&quot;&gt; Estimacion &lt;/th&gt;
+   &lt;th style=&quot;text-align:right;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;&quot;&gt; Varianza &lt;/th&gt;
+   &lt;th style=&quot;text-align:right;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;&quot;&gt; LI_95 &lt;/th&gt;
+   &lt;th style=&quot;text-align:right;font-weight: bold;color: white !important;background-color: rgba(44, 62, 80, 255) !important;&quot;&gt; LS_95 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style=&quot;text-align:left;&quot;&gt; Punto 1 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 15.398 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 1.146 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 13.300 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 17.497 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style=&quot;text-align:left;&quot;&gt; Punto 2 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 15.398 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 1.143 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 13.302 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 17.494 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style=&quot;text-align:left;&quot;&gt; Punto 3 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 15.398 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 1.146 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 13.300 &lt;/td&gt;
+   &lt;td style=&quot;text-align:right;&quot;&gt; 17.497 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+<ol start="5" style="list-style-type: decimal">
+<li>Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.</li>
+</ol>
+<p><strong>R/</strong></p>
+<pre><code>Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.</code></pre>
 </div>
 <div id="suponga-que" class="section level3" number="1.2">
 <h3><span class="header-section-number">1.2</span> Suponga que</h3>
@@ -1905,15 +2202,304 @@ round(z_hat,4)</code></pre>
 <p>Donde <span class="math inline">\(Y(s)\)</span> es una variable aleatoria con distribución de probabilidad normal y media constante y conocida <span class="math inline">\(\mu_y\)</span>. Demuestre que</p>
 <p><span class="math display">\[\mathcal{W}^*(s_0) = \Psi(Y^*(s_0)) + \Psi&#39;&#39;(\mu_y) \left\{ \frac{\text{Var}[Y(s) - Y^*(s_0)]}{2} \right\}\]</span></p>
 <p>Esto es, el predictor kriging aplicado a una transformación de la variable espacial es sesgado. <em>Sugerencia: Utilice el desarrollo en series de Taylor.</em></p>
+<p><strong>R/</strong></p>
+<p>Sea</p>
+<p><span class="math display">\[
+W(s) = \Psi(Y(s)),
+\]</span></p>
+<p>donde <span class="math inline">\(Y(s)\)</span> es un proceso gaussiano con media constante y conocida</p>
+<p><span class="math display">\[
+E[Y(s)] = \mu_y.
+\]</span></p>
+<p>Sea</p>
+<p><span class="math display">\[
+Y^*(s_0)
+\]</span></p>
+<p>el predictor de kriging para <span class="math inline">\(Y(s_0)\)</span>.</p>
+<p>Queremos demostrar que</p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*(s_0)) + \Psi&#39;&#39;(\mu_y) \left\{ \frac{\text{Var}[Y(s_0) - Y^*(s_0)]}{2} \right\}.
+\]</span></p>
+<p>Definimos</p>
+<p><span class="math display">\[
+e = Y(s_0) - Y^*(s_0).
+\]</span></p>
+<p>Entonces</p>
+<p><span class="math display">\[
+Y(s_0) = Y^*(s_0) + e.
+\]</span></p>
+<p>Como el kriging es insesgado,</p>
+<p><span class="math display">\[
+E(e) = 0.
+\]</span></p>
+<p>Además,</p>
+<p><span class="math display">\[
+\text{Var}(e) = \text{Var}[Y(s_0) - Y^*(s_0)].
+\]</span></p>
+<p>Desarrollamos</p>
+<p><span class="math display">\[
+\Psi(Y(s_0)) = \Psi(Y^*(s_0) + e)
+\]</span></p>
+<p>alrededor de <span class="math inline">\(Y^*(s_0)\)</span>.</p>
+<p>Por Taylor de segundo orden,</p>
+<p><span class="math display">\[
+\Psi(Y^* + e) = \Psi(Y^*) + \Psi&#39;(Y^*)e + \frac{1}{2}\Psi&#39;&#39;(Y^*)e^2 + o(e^2).
+\]</span></p>
+<p>Como el predictor buscado es</p>
+<p><span class="math display">\[
+W^*(s_0) = E[W(s_0) | Z],
+\]</span></p>
+<p>se tiene</p>
+<p><span class="math display">\[
+W^*(s_0) = E[\Psi(Y^* + e) | Z].
+\]</span></p>
+<p>Aplicando esperanza,</p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*) + \Psi&#39;(Y^*)E(e) + \frac{1}{2}\Psi&#39;&#39;(Y^*)E(e^2)
+\]</span></p>
+<p><span class="math display">\[
+= \Psi(Y^*) + \frac{1}{2}\Psi&#39;&#39;(Y^*) \text{Var}(e),
+\]</span></p>
+<p>porque</p>
+<p><span class="math display">\[
+E(e) = 0.
+\]</span></p>
+<p>Como el proceso tiene media constante conocida,</p>
+<p><span class="math display">\[
+Y^*(s_0) \approx \mu_y,
+\]</span></p>
+<p>se aproxima</p>
+<p><span class="math display">\[
+\Psi&#39;&#39;(Y^*) \approx \Psi&#39;&#39;(\mu_y).
+\]</span></p>
+<p>Así,</p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*(s_0)) + \frac{1}{2} \Psi&#39;&#39;(\mu_y) \text{ Var}(e).
+\]</span></p>
+<p>Finalmente,</p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*(s_0)) + \Psi&#39;&#39;(\mu_y) \left\{ \frac{\text{Var}[Y(s_0) - Y^*(s_0)]}{2} \right\},
+\]</span></p>
+<p>Observemos que:</p>
+<p><span class="math display">\[
+W^*(s_0) \neq \Psi(Y^*(s_0)).
+\]</span></p>
+<p>La diferencia entre ambas cantidades es</p>
+<p><span class="math display">\[
+\frac{1}{2} \Psi&#39;&#39;(\mu_y) \text{ Var}[Y(s_0) - Y^*(s_0)].
+\]</span></p>
+<p>Este término es distinto de cero siempre que:</p>
+<ul>
+<li>la transformación sea <strong>no lineal</strong>, es decir,</li>
+</ul>
+<p><span class="math display">\[
+\Psi&#39;&#39;(\mu_y) \neq 0,
+\]</span></p>
+<ul>
+<li>exista incertidumbre en la predicción,</li>
+</ul>
+<p><span class="math display">\[
+\text{Var}[Y(s_0) - Y^*(s_0)] &gt; 0.
+\]</span></p>
 </div>
 <div id="encuentre-el-predictor-kriging-si-la-media-es-constante-y-conocida-y-el-modelo-de-covarianza-es-un-modelo-efecto-pepita." class="section level3" number="1.3">
 <h3><span class="header-section-number">1.3</span> Encuentre el predictor kriging si la media es constante y conocida y el modelo de covarianza es un modelo efecto pepita.</h3>
+<p><strong>R/</strong></p>
+<p>Se tiene un proceso espacial</p>
+<p><span class="math display">\[
+Z(s),
+\]</span></p>
+<p>cuya media es constante y conocida,</p>
+<p><span class="math display">\[
+E[Z(s)] = \mu,
+\]</span></p>
+<p>y cuya función de covarianza es de efecto pepita,</p>
+<p><span class="math display">\[
+C(h) =
+\begin{cases}
+\sigma^2, &amp; h = 0, \\
+0, &amp; h &gt; 0.
+\end{cases}
+\]</span></p>
+<p>Como la media es conocida, el predictor buscado es el <strong>kriging simple</strong>.</p>
+<p>En kriging simple, los pesos satisfacen</p>
+<p><span class="math display">\[
+C \lambda = c_0,
+\]</span></p>
+<p>donde<br />
+- <span class="math inline">\(C\)</span> es la matriz de covarianzas entre observaciones,<br />
+- <span class="math inline">\(c_0\)</span> es el vector de covarianzas entre las observaciones y el punto <span class="math inline">\(s_0\)</span>.</p>
+<p>Con un modelo de efecto pepita,</p>
+<p><span class="math display">\[
+C = \sigma^2 I.
+\]</span></p>
+<p>Además, si el punto a predecir no coincide con ningún punto observado,</p>
+<p><span class="math display">\[
+c_0 =
+\begin{pmatrix}
+0 \\
+0 \\
+\vdots \\
+0
+\end{pmatrix},
+\]</span></p>
+<p>ya que todas las covarianzas entre puntos distintos son cero.</p>
+<p>Por tanto,<br />
+<span class="math display">\[
+\sigma^2 I \lambda = 0,
+\]</span><br />
+de donde<br />
+<span class="math display">\[
+\lambda = 0.
+\]</span></p>
+<p>El predictor de kriging simple es</p>
+<p><span class="math display">\[
+Z^*(s_0) = \mu + \lambda^T (Z - \mu 1).
+\]</span></p>
+<p>Como</p>
+<p><span class="math display">\[
+\lambda = 0,
+\]</span></p>
+<p>se obtiene</p>
+<p><span class="math display">\[
+Z^*(s_0) = \mu.
+\]</span></p>
 </div>
 <div id="encuentre-el-predictor-kriging-si-la-media-es-un-polinomio-de-primer-grado-e-incluye-ambas-coordenadas-x-y-y-el-modelo-de-covarianza-es-un-modelo-efecto-pepita." class="section level3" number="1.4">
 <h3><span class="header-section-number">1.4</span> Encuentre el predictor kriging si la media es un polinomio de primer grado e incluye ambas coordenadas, <span class="math inline">\((x, y)\)</span>, y el modelo de covarianza es un modelo efecto pepita.</h3>
+<p><strong>R/</strong></p>
+<p>La media es un polinomio de primer grado en las coordenadas:</p>
+<p><span class="math display">\[
+m(s) = \beta_0 + \beta_1 x + \beta_2 y.
+\]</span></p>
+<p>Por tanto,</p>
+<p><span class="math display">\[
+E[Z(s)] = \beta_0 + \beta_1 x + \beta_2 y.
+\]</span></p>
+<p>La matriz de funciones base es</p>
+<p><span class="math display">\[
+F =
+\begin{pmatrix}
+1 &amp; x_1 &amp; y_1 \\
+1 &amp; x_2 &amp; y_2 \\
+\vdots &amp; \vdots &amp; \vdots \\
+1 &amp; x_n &amp; y_n
+\end{pmatrix},
+\]</span></p>
+<p>y para el punto a predecir,</p>
+<p><span class="math display">\[
+f(s_0) =
+\begin{pmatrix}
+1 \\
+x_0 \\
+y_0
+\end{pmatrix}.
+\]</span></p>
+<p>Si el modelo es <strong>efecto pepita puro</strong>,<br />
+<span class="math display">\[
+C(h) =
+\begin{cases}
+\sigma^2, &amp; h = 0, \\
+0, &amp; h &gt; 0.
+\end{cases}
+\]</span></p>
+<p>Esto significa que las observaciones son incorrelacionadas entre sí.</p>
+<p>La matriz de covarianzas es entonces<br />
+<span class="math display">\[
+C = \sigma^2 I_n,
+\]</span></p>
+<p>donde <span class="math inline">\(I_n\)</span> es la matriz identidad.</p>
+<p>Además,<br />
+<span class="math display">\[
+c_0 =
+\begin{pmatrix}
+0 \\
+0 \\
+\vdots \\
+0
+\end{pmatrix},
+\]</span></p>
+<p>si <span class="math inline">\(s_0\)</span> no coincide con ningún punto observado.</p>
+<p>El sistema es</p>
+<p><span class="math display">\[
+\begin{pmatrix}
+C &amp; F \\
+F^T &amp; 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\mu
+\end{pmatrix}
+=
+\begin{pmatrix}
+c_0 \\
+f(s_0)
+\end{pmatrix}.
+\]</span></p>
+<p>Como</p>
+<p><span class="math display">\[
+C = \sigma^2 I, \quad c_0 = 0,
+\]</span></p>
+<p>queda</p>
+<p><span class="math display">\[
+\begin{pmatrix}
+\sigma^2 I &amp; F \\
+F^T &amp; 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\mu
+\end{pmatrix}
+=
+\begin{pmatrix}
+0 \\
+f(s_0)
+\end{pmatrix}.
+\]</span></p>
+<p>De la primera ecuación,<br />
+<span class="math display">\[
+\sigma^2 \lambda + F \mu = 0,
+\]</span>
+por lo que<br />
+<span class="math display">\[
+\lambda = -\frac{1}{\sigma^2} F \mu.
+\]</span>
+Sustituyendo en la segunda,<br />
+<span class="math display">\[
+F^T \lambda = f(s_0),
+\]</span>
+se obtiene<br />
+<span class="math display">\[
+-\frac{1}{\sigma^2} F^T F \mu = f(s_0),
+\]</span>
+y por tanto<br />
+<span class="math display">\[
+\mu = -\sigma^2 (F^T F)^{-1} f(s_0).
+\]</span>
+Finalmente,</p>
+<p><span class="math display">\[
+\lambda = F(F^T F)^{-1} f(s_0).
+\]</span></p>
+<p>El predictor es</p>
+<p><span class="math display">\[
+Z^*(s_0) = \lambda^T Z.
+\]</span></p>
+<p>Sustituyendo la expresión anterior,</p>
+<p><span class="math display">\[
+Z^*(s_0) = f(s_0)^T (F^T F)^{-1} F^T Z.
+\]</span></p>
+<p>Como</p>
+<p><span class="math display">\[
+f(s_0)^T = (1, x_0, y_0),
+\]</span></p>
+<p>el predictor queda</p>
+<p><span class="math display">\[
+Z^*(s_0) = (1, x_0, y_0) (F^T F)^{-1} F^T Z.
+\]</span></p>
 </div>
 <div id="suponga-un-campo-aleatorio-espacial-normal-multivariado-con-observaciones-en-n-ubicaciones-y-media-y-covarianza-conocidos." class="section level3" number="1.5">
 <h3><span class="header-section-number">1.5</span> Suponga un campo aleatorio espacial normal multivariado, con observaciones en <span class="math inline">\(n\)</span> ubicaciones y media y covarianza conocidos.</h3>
+<p><strong>R/</strong></p>
 <p>Encuentre la esperanza condicional y la respectiva varianza <span class="math inline">\(Z(s_0)\)</span> dado el vector <span class="math inline">\((Z(s_1), \dots, Z(s_n))\)</span>. Compare con las expresiones de predicción y varianza del error de predicción del kriging simple.</p>
 <p>Se sabe que el Kriging simple (media del proceso es conocida), el predictor se construye centrando la variable (<span class="math inline">\(Z(s) = Y(s) - \mu(s)\)</span>) y buscando una combinación lineal de los datos observados <span class="math inline">\(\mathbf{Z} = (Z(s_1), \dots, Z(s_n))^T\)</span> que sea el Mejor Predictor Lineal Insesgado (BLUE). Sin embargo, si se asume normalidad, ¿el Mejor Predictor Insesgado (sin asumir linealidad) es la Esperanza Condicional? y ¿la varianza del error de predicción del kriging es igual a la varianza condicional?.</p>
 <p><strong>Demostración:</strong></p>
@@ -1977,6 +2563,7 @@ Var[Z(s_0) | \mathbf{Z}]  &amp;= \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sig
 <h3><span class="header-section-number">1.6</span> Para los datos de aquifer</h3>
 <p>que puede encontrar en <a href="https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html">https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html</a>, genere dos mapas de predicciones.</p>
 <p>Para el primer mapa utilice el predictor kriging y para el segundo mapa utilice predicción basada en modelos de regresión en términos de las coordenadas <span class="math inline">\((x, y) = (\text{Este}, \text{Norte})\)</span>, e incluyendo la dependencia espacial a través de la estimación de los parámetros del modelo, vía máxima verosimilitud. Compare el desempeño predictivo del modelo de regresión cuando se usan mínimos cuadrados ordinarios ignorando la dependencia espacial y cuando se usa máxima verosimilitud. Posteriormente, compare el desempeño de la regresión con el kriging.</p>
+<p><strong>R/</strong></p>
 <pre class="r"><code># ==============================================================================
 # 1. CARGA Y PREPARACIÓN DE DATOS
 # ==============================================================================
@@ -2195,7 +2782,7 @@ kable(tabla_comp, caption = &quot;Comparación de Criterios de Información (OLS
   row_spec(2, bold = TRUE, background = &quot;#E8F4F8&quot;) # Resalta el mejor modelo (ML)</code></pre>
 <table class="table table-striped table-hover table-condensed table-responsive" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
 <caption>
-<span id="tab:ej-4-6-Comparacion">Table 1: </span><span id="tab:ej-4-6-Comparacion">Table 2: </span>Comparación de Criterios de Información (OLS vs. ML Espacial)
+(#tab:ej_4_6_Comparacion)(#tab:ej_4_6_Comparacion)Comparación de Criterios de Información (OLS vs. ML Espacial)
 </caption>
 <thead>
 <tr>
@@ -2295,7 +2882,7 @@ kable(tabla_cv, caption = &quot;Métricas de Error de Validación Cruzada (LOOCV
   column_spec(3, bold = TRUE, color = &quot;#2B5C8F&quot;)</code></pre>
 <table class="table table-striped table-hover table-condensed" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
 <caption>
-<span id="tab:tabla-metricas-cv">Table 3: </span><span id="tab:tabla-metricas-cv">Table 4: </span>Métricas de Error de Validación Cruzada (LOOCV)
+<span id="tab:tabla-metricas-cv">Table 1: </span><span id="tab:tabla-metricas-cv">Table 2: </span>Métricas de Error de Validación Cruzada (LOOCV)
 </caption>
 <thead>
 <tr>
@@ -2377,6 +2964,7 @@ Figure 1: Validez de ajuste predicho vs. observado para Kriging Ordinario y Uni
 <div id="simule-campos-aleatorios-espaciales-bajo-el-supuesto-de-normalidad-multivariada-para-varios-tipos-de-autocovarianza-espacial." class="section level3" number="1.7">
 <h3><span class="header-section-number">1.7</span> Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial.</h3>
 <p>Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique <span class="math inline">\(Y(s)\)</span> Vs <span class="math inline">\(Y(s+h)\)</span>, para varios valores de <span class="math inline">\(h\)</span>. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.</p>
+<p><strong>R/</strong></p>
 <p>Si un campo aleatorio espacial <span class="math inline">\(Y(s)\)</span> es gaussiano, se tiene que cualquier conjunto finito de ubicaciones <span class="math inline">\(\{s_1, s_2, \dots, s_n\}\)</span> sigue una distribución normal multivariada. Esto garantiza que la dependencia espacial este definida por la media <span class="math inline">\(\mu\)</span> y la matriz de covarianza <span class="math inline">\(\Sigma\)</span>.</p>
 <blockquote>
 <p><strong>Nota sobre Estacionariedad:</strong><br />
@@ -2511,7 +3099,7 @@ Figure 3: Figura 2. Comparación de la estructura de dependencia entre modelos p
 <p>Esto se ve mejor en la siguiente tabla resumen, donde se comparan las correlaciones teóricas y empíricas para cada modelo y combinación de parámetros.</p>
 <table class="table table-striped table-hover table-condensed" style="color: black; width: auto !important; margin-left: auto; margin-right: auto;">
 <caption>
-<span id="tab:tabla-resumen">Table 5: </span><span id="tab:tabla-resumen">Table 6: </span>Comparación de correlaciones teóricas y empíricas.
+<span id="tab:tabla-resumen">Table 3: </span><span id="tab:tabla-resumen">Table 4: </span>Comparación de correlaciones teóricas y empíricas.
 </caption>
 <thead>
 <tr>
@@ -2841,9 +3429,95 @@ spherical
 </div>
 <div id="se-requiere-llevar-a-cabo-predicción-espacial-para-un-proceso-espacial-cuya-distribución-marginal-es-lognormal-con-media-conocida.-es-posible-encontrar-un-predictor-insesgado-demuestre-o-refute." class="section level3" number="1.8">
 <h3><span class="header-section-number">1.8</span> Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.</h3>
+<p><strong>R/</strong></p>
+<p>Es posible, pero como <strong>el predictor de kriging aplicado directamente sobre la escala lognormal no es insesgado</strong>, hay que aplicar una corrección por sesgo.</p>
+<p>En ejercicios anteriores se demostró que</p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*(s_0)) + \frac{1}{2} \Psi&#39;&#39;(\mu) \sigma_K^2.
+\]</span></p>
+<p>En este caso,</p>
+<p><span class="math display">\[
+\Psi(y) = e^y,
+\]</span></p>
+<p>por lo que</p>
+<p><span class="math display">\[
+\Psi&#39;&#39;(y) = e^y.
+\]</span></p>
+<p>Evaluando en la media,</p>
+<p><span class="math display">\[
+\Psi&#39;&#39;(\mu) = e^\mu.
+\]</span></p>
+<p>Entonces,</p>
+<p><span class="math display">\[
+W^*(s_0) = e^{Y^*(s_0)} + \frac{1}{2}e^{\mu}\sigma_K^2.
+\]</span></p>
+<p>Esta es una aproximación de segundo orden obtenida mediante Taylor.</p>
+<p>Como</p>
+<p><span class="math display">\[
+Y(s_0) \mid \text{datos} \sim N\left(Y^*(s_0), \sigma_K^2\right),
+\]</span></p>
+<p>se utiliza la propiedad de la distribución lognormal:</p>
+<p><span class="math display">\[
+X \sim N(m, v),
+\longrightarrow
+E(e^X) = e^{m + \frac{v}{2}}.
+\]</span></p>
+<p>Por lo tanto,</p>
+<p><span class="math display">\[
+E[Z(s_0) \mid \text{datos}] = E[e^{Y(s_0)} \mid \text{datos}] = e^{Y^*(s_0) + \frac{1}{2}\sigma_K^2}.
+\]</span></p>
+<p>Así, el predictor insesgado es</p>
+<p><span class="math display">\[
+Z^*(s_0) = \exp \left( Y^*(s_0) + \frac{1}{2} \sigma_K^2 \right),
+\]</span></p>
+<p>donde</p>
+<p><span class="math display">\[
+\sigma_K^2 = \text{Var}[Y(s_0) - Y^*(s_0)].
+\]</span></p>
+<p>Por lo tanto el estimador insesgado es:</p>
+<p><span class="math display">\[
+Z^*(s_0) = \exp \left( Y^*(s_0) + \frac{1}{2} \operatorname{Var}[Y(s_0) - Y^*(s_0)] \right),
+\]</span></p>
 </div>
 <div id="generalice-el-resultado-encontrado-en-el-problema-anterior-al-caso-en-el-que-se-transforma-la-variable-usando-una-transformación-box-cox." class="section level3" number="1.9">
 <h3><span class="header-section-number">1.9</span> Generalice el resultado encontrado en el problema anterior, al caso en el que se transforma la variable usando una transformación Box-Cox.</h3>
+<p><strong>R/</strong></p>
+<p>Del resultado obtenido en <strong>9.4.2</strong></p>
+<p><span class="math display">\[
+W^*(s_0) = \Psi(Y^*(s_0)) + \frac{1}{2} \Psi&#39;&#39;(\mu_y) \text{Var}[Y(s_0) - Y^*(s_0)].
+\]</span></p>
+<p>Para</p>
+<p><span class="math display">\[
+\Psi(y) = \frac{y^\lambda - 1}{\lambda}, \quad \lambda \neq 0,
+\]</span></p>
+<p>se tiene</p>
+<p><span class="math display">\[
+\Psi&#39;(y) = y^{\lambda - 1},
+\]</span></p>
+<p>y</p>
+<p><span class="math display">\[
+\Psi&#39;&#39;(y) = (\lambda - 1)y^{\lambda - 2}.
+\]</span></p>
+<p>Sustituyendo en la expresión anterior,</p>
+<p><span class="math display">\[
+W^*(s_0) = \frac{(Y^*(s_0))^\lambda - 1}{\lambda} + \frac{1}{2}(\lambda - 1)\mu_y^{\lambda - 2} \text{Var}[Y(s_0) - Y^*(s_0)].
+\]</span></p>
+<p>Cuando</p>
+<p><span class="math display">\[
+\lambda = 0,
+\]</span></p>
+<p>la transformación Box-Cox coincide con la transformación logarítmica,</p>
+<p><span class="math display">\[
+\Psi(y) = \ln(y).
+\]</span></p>
+<p>En este caso,</p>
+<p><span class="math display">\[
+\Psi&#39;&#39;(y) = -\frac{1}{y^2},
+\]</span></p>
+<p>por lo que</p>
+<p><span class="math display">\[
+W^*(s_0) = \ln(Y^*(s_0)) - \frac{\text{Var}[Y(s_0) - Y^*(s_0)]}{2\mu_y^2}.
+\]</span></p>
 </div>
 </div>
 
