@@ -1173,8 +1173,7 @@ par(mfrow = c(1, 1))
 
 
 
-# Ejercicios 
-<!-- {.tabset} -->
+# Ejercicios {.tabset}
 
 
 ## Capitulo 1 {.tabset}
@@ -2522,8 +2521,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 
 
 
-## Capitulo 4 
-<!-- {.tabset} -->
+## Capitulo 4 {.tabset}
 
 
 
@@ -3589,7 +3587,167 @@ par(mfrow = c(1, 1))
 
 Se observa que el modelo de Kriging Universal con tendencia lineal proporciona un mejor ajuste predictivo que el Kriging Ordinario, como se refleja en menores valores de RMSE y MAE. Esto indica que la inclusión de la dependencia espacial y la tendencia mejora la capacidad predictiva del modelo.
 
-### Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial. Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
+### Simule campos aleatorios espaciales bajo el supuesto de normalidad multivariada, para varios tipos de autocovarianza espacial. 
+
+Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
+
+Si un campo aleatorio espacial $Y(s)$ es gaussiano, se tiene que cualquier conjunto finito de ubicaciones $\{s_1, s_2, \dots, s_n\}$ sigue una distribución normal multivariada. Esto garantiza que la dependencia espacial este definida por la media $\mu$ y la matriz de covarianza $\Sigma$.
+
+> **Nota sobre Estacionariedad:**  
+> Para un proceso gaussiano, la estacionariedad débil (o de segundo orden)  implica automáticamente estacionariedad fuerte (estricta).
+
+Se plantean los siguientes modelos para la función de covarianza $C(h)$:
+
+   * **Exponencial:** $C(h) = \sigma^2 \exp(-h/a)$. 
+   * **Gaussiano:** $C(h) = \sigma^2 \exp(-(h/a)^2)$. 
+   * **Esférico:** $C(h) = \sigma^2 [1 - \frac{3}{2}(h/a) + \frac{1}{2}(h/a)^3]$ si $h \le a$, y $0$ si $h > a$. 
+
+La correlación teórica es $\rho(h) = \frac{C(h)}{C(0)} = \frac{C(h)}{\sigma^2}$. A medida que la distancia $h$ se incrementa respecto al rango $a$, $\rho(h) \to 0$, por lo que la elipse del dispersograma rezagado se abre progresivamente hasta convertirse en un círculo (independencia lineal).
+
+```{r funciones-simulacion}
+# ==============================================================================
+# FUNCIONES VECTORIZADAS DE SIMULACIÓN
+# ==============================================================================
+
+# Construcción eficiente de la matriz de covarianza usando outer()
+build_cov_matrix <- function(s, model, sigma2 = 1, range_a = 15) {
+  H <- abs(outer(s, s, "-")) # Matriz de distancias h_ij
+  
+  Sigma <- switch(model,
+    "exponential" = sigma2 * exp(-H / range_a),
+    "gaussian"    = sigma2 * exp(-(H / range_a)^2),
+    "spherical"   = ifelse(H <= range_a, 
+                           sigma2 * (1 - 1.5 * (H / range_a) + 0.5 * (H / range_a)^3), 
+                           0)
+  )
+  return(Sigma)
+}
+
+# Generador de gráficos de dispersión de pares rezagados Y(s) vs Y(s+h)
+plot_lagged_scatter <- function(Y, Sigma, model, range_a, lag_k, delta_s = 1) {
+  N <- length(Y)
+  h_val <- lag_k * delta_s
+  
+  df <- data.frame(
+    Y_s  = Y[1:(N - lag_k)],
+    Y_sh = Y[(lag_k + 1):N]
+  )
+  
+  r_empirico <- cor(df$Y_s, df$Y_sh)
+  r_teorico  <- Sigma[1, 1 + lag_k]
+  
+  p <- ggplot(df, aes(x = Y_s, y = Y_sh)) +
+    geom_point(alpha = 0.45, color = "#2B5C8F", size = 1.2) +
+    geom_abline(slope = 1, intercept = 0, color = "#D95F02", linetype = "dashed", linewidth = 0.8) +
+    labs(
+      title = paste0(toupper(model), " (a = ", range_a, ", h = ", h_val, ")"),
+      subtitle = sprintf("r = %.3f | ρ(h) = %.3f", r_empirico, r_teorico),
+      x = expression(Y(s)), 
+      y = expression(Y(s+h))
+    ) +
+    coord_fixed(ratio = 1) +
+    theme_minimal(base_size = 10) +
+    theme(
+      plot.title = element_text(face = "bold", size = 10),
+      plot.subtitle = element_text(color = "#800000", face = "bold", size = 9),
+      panel.grid.minor = element_blank()
+    )
+  
+  return(list(plot = p, r_emp = r_empirico, r_teo = r_teorico, model = model, range = range_a, lag = h_val))
+}
+```
+
+```{r experimento-ejecucion}
+# Configuración del experimento
+set.seed(2026) # Reproducibilidad
+N <- 300
+s <- 1:N
+mu <- rep(0, N)
+
+# --- Experimento 1: Efecto del Rango y Rezago (Modelo Exponencial) ---
+S_exp15 <- build_cov_matrix(s, "exponential", range_a = 15)
+Y_exp15 <- mvrnorm(n = 1, mu = mu, Sigma = S_exp15)
+
+S_exp30 <- build_cov_matrix(s, "exponential", range_a = 30)
+Y_exp30 <- mvrnorm(n = 1, mu = mu, Sigma = S_exp30)
+
+S_exp60 <- build_cov_matrix(s, "exponential", range_a = 60)
+Y_exp60 <- mvrnorm(n = 1, mu = mu, Sigma = S_exp60)
+
+e1 <- plot_lagged_scatter(Y_exp15, S_exp15, "exponential", range_a = 15, lag_k = 5)
+e2 <- plot_lagged_scatter(Y_exp15, S_exp15, "exponential", range_a = 15, lag_k = 10)
+e3 <- plot_lagged_scatter(Y_exp15, S_exp15, "exponential", range_a = 15, lag_k = 40)
+e4 <- plot_lagged_scatter(Y_exp30, S_exp30, "exponential", range_a = 30, lag_k = 5)
+e5 <- plot_lagged_scatter(Y_exp30, S_exp30, "exponential", range_a = 30, lag_k = 10)
+e6 <- plot_lagged_scatter(Y_exp30, S_exp30, "exponential", range_a = 30, lag_k = 40)
+e7 <- plot_lagged_scatter(Y_exp60, S_exp60, "exponential", range_a = 60, lag_k = 5)
+e8 <- plot_lagged_scatter(Y_exp60, S_exp60, "exponential", range_a = 60, lag_k = 10)
+e9 <- plot_lagged_scatter(Y_exp60, S_exp60, "exponential", range_a = 60, lag_k = 40)
+
+# --- Experimento 2: Comparación de Estructuras (Rango a=30, Rezago h=20) ---
+S_exp10 <- build_cov_matrix(s, "exponential", range_a = 10)
+S_gau10 <- build_cov_matrix(s, "gaussian",    range_a = 10)
+S_sph10 <- build_cov_matrix(s, "spherical",   range_a = 10)
+
+Y_exp10 <- mvrnorm(n = 1, mu = mu, Sigma = S_exp10)
+Y_gau10 <- mvrnorm(n = 1, mu = mu, Sigma = S_gau10)
+Y_sph10 <- mvrnorm(n = 1, mu = mu, Sigma = S_sph10)
+
+S_exp30 <- build_cov_matrix(s, "exponential", range_a = 30)
+S_gau30 <- build_cov_matrix(s, "gaussian",    range_a = 30)
+S_sph30 <- build_cov_matrix(s, "spherical",   range_a = 30)
+
+Y_exp30 <- mvrnorm(n = 1, mu = mu, Sigma = S_exp30)
+Y_gau30 <- mvrnorm(n = 1, mu = mu, Sigma = S_gau30)
+Y_sph30 <- mvrnorm(n = 1, mu = mu, Sigma = S_sph30)
+
+m_exp1 <- plot_lagged_scatter(Y_exp10, S_exp10, "exponential", range_a = 10, lag_k = 2)
+m_gau1 <- plot_lagged_scatter(Y_gau10, S_gau10, "gaussian",    range_a = 10, lag_k = 2)
+m_sph1 <- plot_lagged_scatter(Y_sph10, S_sph10, "spherical",   range_a = 10, lag_k = 2)
+
+m_exp2 <- plot_lagged_scatter(Y_exp30, S_exp30, "exponential", range_a = 30, lag_k = 20)
+m_gau2 <- plot_lagged_scatter(Y_gau30, S_gau30, "gaussian",    range_a = 30, lag_k = 20)
+m_sph2 <- plot_lagged_scatter(Y_sph30, S_sph30, "spherical",   range_a = 30, lag_k = 20)
+```
+
+**Relación entre Rango  ($a$) y Rezago ($h$)**
+
+```{r fig-panel-1, fig.height=8, fig.width=10, fig.cap="Evaluación del modelo exponencial variando la distancia h y el rango práctico a."}
+(e1$plot | e2$plot| e3$plot) / (e4$plot | e5$plot| e6$plot) / (e7$plot | e8$plot| e9$plot)
+```
+
+El análisis demuestra que la asociación lineal entre pares de puntos $Y(s)$ y $Y(s+h)$ depende de la relación entre el rezago $h$ y el rango $a$. Cuando ($h \ll a$), como en el escenario $a = 15, h = 5$, los datos se alinean fuertemente sobre la diagonal $1:1$ alcanzando correlaciones de $r = 0.726$ ($\rho = 0.717$). A medida que el rezago se incrementa superando la memoria del proceso ($h > a$), la estructura elíptica se pierde y forma una nube circular, reflejando dependencia nula; esto se evidencia en $h = 40$ para $a = 15$ ($r = -0.169, \rho = 0.069$) e incluso para $a = 60$ ($r = -0.058, \rho = 0.513$), donde la reducción en el número efectivo de pares evaluados ($N-k$) incrementa tambien la variabilidad muestral del estimador empírico.
+
+
+**Comparación entre Modelos de Autocovarianza**
+
+```{r fig-panel-2, fig.height=7, fig.width=10, fig.cap="Figura 2. Comparación de la estructura de dependencia entre modelos para a = 30 y h = 20."}
+(m_exp1$plot | m_gau1$plot | m_sph1$plot) / (m_exp2$plot | m_gau2$plot | m_sph2$plot)
+```
+El comportamiento geométrico de las realizaciones refleja claramente el tipo de continuidad espacial que implementa cada modelo cerca del origen. El *modelo Gaussiano* evidencia la mayor suavidad espacial pues en el origen tiene $C'(0)=0$, registrando las mayores correlaciones tanto a escalas cortas ($a=10, h=2; r = 0.965, \rho = 0.961$) como intermedias ($a=30, h=20; r = 0.445, \rho = 0.641$) mediante trayectorias armónicas y muy ordenadas. 
+
+En contraste, el *modelo Exponencial* presenta una caída lineal inicial que genera campos más irregulares ($r = 0.807$ y $r = 0.221$), mientras que el *modelo Esférico* impone un límite de correlación estricto en $h \ge a$, mostrando un decaimiento más acelerado a distancias intermedias ($r = 0.235, \rho = 0.148$) que dispersa rápidamente la nube de puntos.
+
+
+Esto se ve mejor en la siguiente tabla resumen, donde se comparan las correlaciones teóricas y empíricas para cada modelo y combinación de parámetros.
+
+```{r tabla-resumen, echo=FALSE}
+# Consolidar métricas en un dataframe
+metricas <- data.frame(
+  Modelo = c(e1$model, e2$model, e3$model, e4$model, e5$model, e6$model, e7$model, e8$model, e9$model, m_exp1$model, m_gau1$model, m_sph1$model, m_exp2$model, m_gau2$model, m_sph2$model),
+  Rango_a = c(e1$range, e2$range, e3$range, e4$range, e5$range, e6$range, e7$range, e8$range, e9$range, m_exp1$range, m_gau1$range, m_sph1$range, m_exp2$range, m_gau2$range, m_sph2$range),
+  Rezago_h = c(e1$lag, e2$lag, e3$lag, e4$lag, e5$lag, e6$lag, e7$lag, e8$lag, e9$lag, m_exp1$lag, m_gau1$lag, m_sph1$lag, m_exp2$lag, m_gau2$lag, m_sph2$lag),
+  `Pearson_Muestral_r` = round(c(e1$r_emp, e2$r_emp, e3$r_emp, e4$r_emp, e5$r_emp, e6$r_emp, e7$r_emp, e8$r_emp, e9$r_emp, m_exp1$r_emp, m_gau1$r_emp, m_sph1$r_emp, m_exp2$r_emp, m_gau2$r_emp, m_sph2$r_emp), 3),
+  `Teorico_rho` = round(c(e1$r_teo, e2$r_teo, e3$r_teo, e4$r_teo, e5$r_teo, e6$r_teo, e7$r_teo, e8$r_teo, e9$r_teo, m_exp1$r_teo, m_gau1$r_teo, m_sph1$r_teo, m_exp2$r_teo, m_gau2$r_teo, m_sph2$r_teo), 3)
+)
+
+metricas$Diferencia <- round(abs(metricas$Pearson_Muestral_r - metricas$Teorico_rho), 3)
+
+kable(metricas, col.names = c("Modelo", "Rango (a)", "Rezago (h)", "r (Muestral)", "ρ(h) (Teórico)", "Error Absoluto"),
+      caption = "Comparación de correlaciones teóricas y empíricas.", align = "lllccc") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  row_spec(c(1, 3, 5, 7, 9, 11, 13, 15), background = "#E8F4F8")
+```
 
 ### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.
 
