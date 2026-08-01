@@ -29,6 +29,8 @@ editor_options:
   chunk_output_type: inline
   markdown:
     wrap: sentence
+bibliography: bibliografia.bib
+csl: apa.csl
 ---
 
 ```{r setup, include=FALSE}
