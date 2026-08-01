@@ -56,8 +56,8 @@ library(knitr)
 
 1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
 
-**R/** 
-
+    **R/** 
+    
     como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
     
     $$
@@ -137,7 +137,7 @@ library(knitr)
 
 2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
 
-**R/**
+    **R/**
 
     El predictor lineal es
     
@@ -213,7 +213,7 @@ library(knitr)
 
 3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
 
-**R/**
+    **R/**
 
     El sistema es
     
@@ -274,7 +274,7 @@ library(knitr)
 
 4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
 
-**R/**
+    **R/**
 
     ```{r}
     # Intervalos de confianza
@@ -314,7 +314,7 @@ library(knitr)
 
 5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
 
-**R/** 
+    **R/** 
 
     Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.
 

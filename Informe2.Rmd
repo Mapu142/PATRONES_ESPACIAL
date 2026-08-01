@@ -2521,293 +2521,275 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 
 
 
+
 ## Capitulo 4 {.tabset}
-
-
-
-```{r tabla_4_1, echo=FALSE}
-tabla_4_1 <- data.frame(
-  ` ` = c("Intercepto", "y"),
-  `$\\hat{\\beta}$` = c("-1564", "0,0007581"),
-  `s.e $\\hat{\\beta}$` = c("600", "0,000279"),
-  `Valor p` = c("0,0161", "0,01259"),
-  check.names = FALSE
-)
-
-kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación del modelo de regresión $Y(s) = \\hat{\\beta}_0 + \\hat{\\beta}_1 y$ para la media.")
-
-```
-
-
-![Figura 4.2: Diagramas de dispersión de la concentración de ozono en muestras de aire en Ciudad de México a lo largo de cada coordenada espacial. Panel superior: datos observados. Panel inferior: residuales del modelo mostrado en la Tabla 4.1](figura4_2.png){width=60%}
-
-![Figura 4.3: Semivariogramas empírico y teórico para el ozono en la Ciudad de México. **Panel superior:** Modelo exponencial $\hat{\Theta} = (418,4; 12239,25)$. **Panel inferior:** Modelo seno cardinal $\hat{\Theta} = (422,9; 6579,15)$. Los números al lado de cada punto indican la cantidad de pares existentes para cada rezago, $|N(h)|$. Los ajustes de estos dos modelos al semivariograma empírico son muy similares. Se elige el modelo exponencial porque da unas varianzas de error de predicción ligeramente menores.](figura4_3.png){width=60%}
-
-
-![Figura 4.4: Resultados del proceso de predicción del ozono en la Ciudad de México. **Panel superior:** mapa de Ciudad de México con la predicción del ozono usando kriging simple sobre los residuales del modelo para la media, (ver Tabla 4.1) y un semivariograma exponencial $\hat{\Theta} = (418,4; 12239,25)$. A cada predicción $Z^*(s_0)$ se le suma su media $\mu(s_0)$. **Panel inferior:** mapa de la varianza del error de predicción (varianza del kriging simple). Nótese que el kriging es un predictor exacto, por lo que, la varianza es cero en los puntos con observaciones. Una alternativa es usar la varianza de la predicción obtenida usando validación cruzada en cada uno de estos puntos.](figura4_4.png){width=60%}
-
----
 
 
 ### Suponga que $Z(s)$ es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto. Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son $z_1(0, 0) = 15$; $z_2(100, 0) = 16$; $z_3(0, 50) = 16$ y $z_4(70, 50) = 15$. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:
 
 1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
 
-**R/** como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
-
-$$
-C(h)=\sigma^2exp\left(-\frac{||h||}{a}\right)=4exp\left(-\frac{h}{100}\right)
-$$
-
-
-Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza $C(h)$ con los puntos conocidos, los resultados seran guardados en una matriz $\mathbb{C}$, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector $\mathbf{c_0}$
-
-La estimación de $\lambda$ es
-
-$$
-\lambda = \Sigma^{-1} \sigma_0,
-$$
-
-```{r}
-# Coordenadas de los puntos muestreados
-coords <- data.frame(
-  x = c(0, 100, 0, 70),
-  y = c(0, 0, 50, 50)
-)
-
-# Matriz de distancias euclidianas
-d <- as.matrix(dist(coords))
-
-d
-
-p0 <- c(75, 25)
-
-d0 <- sqrt((coords$x - p0[1])^2 + (coords$y - p0[2])^2)
-
-d0
-
-# Matriz de covarianzas
-C <- 4 * exp(-d / 100)
-
-round(C, 4)
-
-c0 <- 4*exp(-d0/100)
-
-round(c0, 4)
-
-lambda <- solve(C)%*%c0
-#cat("$\lambda$")
-round(lambda, 4)
-```
-
-Como la media es conocida y **constante**:
-
-$$
-\hat{Z}(s_0) = \mu + \lambda^T (y - \mu \mathbf{1}),
-$$
-```{r}
-y <- c(15,16,16,15)
-mu <- 15.7
-z <- y - mu
-
-# Estimación
-y_hat <- mu + t(lambda) %*% z
-
-round(y_hat,4)
-```
-
-
-Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3983.
-
-Para la varianza del error tenemos:
-
-$$
-Var(Y^{*}(s_0)-Y(s_0))=C(0)-\sigma_0 \Sigma^{-1}\sigma_0=4-\sigma_0 \Sigma^{-1}\sigma_0
-$$
-
-```{r}
-(var1 <- 4-c0%*%solve(C)%*%c0)
-```
-Por lo tanto la varianza del error es aproximadamente $1.15$
+    **R/** 
+    
+    como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
+    
+    $$
+    C(h)=\sigma^2exp\left(-\frac{||h||}{a}\right)=4exp\left(-\frac{h}{100}\right)
+    $$
+    
+    
+    Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza $C(h)$ con los puntos conocidos, los resultados seran guardados en una matriz $\mathbb{C}$, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector $\mathbf{c_0}$
+    
+    La estimación de $\lambda$ es
+    
+    $$
+    \lambda = \Sigma^{-1} \sigma_0,
+    $$
+    
+    ```{r}
+    # Coordenadas de los puntos muestreados
+    coords <- data.frame(
+      x = c(0, 100, 0, 70),
+      y = c(0, 0, 50, 50)
+    )
+    
+    # Matriz de distancias euclidianas
+    d <- as.matrix(dist(coords))
+    
+    d
+    
+    p0 <- c(75, 25)
+    
+    d0 <- sqrt((coords$x - p0[1])^2 + (coords$y - p0[2])^2)
+    
+    d0
+    
+    # Matriz de covarianzas
+    C <- 4 * exp(-d / 100)
+    
+    round(C, 4)
+    
+    c0 <- 4*exp(-d0/100)
+    
+    round(c0, 4)
+    
+    lambda <- solve(C)%*%c0
+    #cat("$\lambda$")
+    round(lambda, 4)
+    ```
+    
+    Como la media es conocida y **constante**:
+    
+    $$
+    \hat{Z}(s_0) = \mu + \lambda^T (y - \mu \mathbf{1}),
+    $$
+    ```{r}
+    y <- c(15,16,16,15)
+    mu <- 15.7
+    z <- y - mu
+    
+    # Estimación
+    y_hat <- mu + t(lambda) %*% z
+    
+    round(y_hat,4)
+    ```
+    
+    
+    Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3983.
+    
+    Para la varianza del error tenemos:
+    
+    $$
+    Var(Y^{*}(s_0)-Y(s_0))=C(0)-\sigma_0 \Sigma^{-1}\sigma_0=4-\sigma_0 \Sigma^{-1}\sigma_0
+    $$
+    
+    ```{r}
+    (var1 <- 4-c0%*%solve(C)%*%c0)
+    ```
+    Por lo tanto la varianza del error es aproximadamente $1.15$
 
 2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
 
-**R/**
+    **R/**
 
-El predictor lineal es
-
-$$
-\hat{Y}(s_0) = \sum_{i=1}^4 \lambda_i Y(s_i),
-$$
-
-con la restricción de insesgamiento
-
-$$
-\sum_{i=1}^4 \lambda_i = 1.
-$$
-
-Como la media es desconocida, se incorpora un multiplicador de Lagrange $\eta$. El sistema es
-
-$$
-\begin{pmatrix}
-\Sigma & \mathbf{1} \\
-\mathbf{1}^T & 0
-\end{pmatrix}
-\begin{pmatrix}
-\lambda \\
-\delta
-\end{pmatrix}
-=
-\begin{pmatrix}
-\sigma_0 \\
-\mathbf{1}
-\end{pmatrix},
-$$
-
-donde
-
-$$
-\mathbf{1} =
-\begin{pmatrix}
-1 \\
-1 \\
-1 \\
-1
-\end{pmatrix}.
-$$
-
-```{r}
-unos <- matrix(1, nrow = nrow(C), ncol = 1)
-
-A <- rbind(
-  cbind(C, unos),
-  cbind(t(unos), 0)
-)
-
-A
-
-b0 <- c(c0,1)
-
-parametros <- solve(A)%*%b0
-
-(y2 <- t(parametros[-5])%*%y)
-```
-Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3982.
-
-Para la varianza del error tenemos:
-
-$$
-\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
-$$
-
-```{r}
-(var2 <- 4-t(parametros[-5])%*%c0+parametros[5])
-```
-
-Por lo tanto la varianza del error es aproximadamente $1.14$
+    El predictor lineal es
+    
+    $$
+    \hat{Y}(s_0) = \sum_{i=1}^4 \lambda_i Y(s_i),
+    $$
+    
+    con la restricción de insesgamiento
+    
+    $$
+    \sum_{i=1}^4 \lambda_i = 1.
+    $$
+    
+    Como la media es desconocida, se incorpora un multiplicador de Lagrange $\eta$. El sistema es
+    
+    $$
+    \begin{pmatrix}
+    \Sigma & \mathbf{1} \\
+    \mathbf{1}^T & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+    \lambda \\
+    \delta
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+    \sigma_0 \\
+    \mathbf{1}
+    \end{pmatrix},
+    $$
+    
+    donde
+    
+    $$
+    \mathbf{1} =
+    \begin{pmatrix}
+    1 \\
+    1 \\
+    1 \\
+    1
+    \end{pmatrix}.
+    $$
+    
+    ```{r}
+    unos <- matrix(1, nrow = nrow(C), ncol = 1)
+    
+    A <- rbind(
+      cbind(C, unos),
+      cbind(t(unos), 0)
+    )
+    
+    A
+    
+    b0 <- c(c0,1)
+    
+    parametros <- solve(A)%*%b0
+    
+    (y2 <- t(parametros[-5])%*%y)
+    ```
+    Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+    
+    Para la varianza del error tenemos:
+    
+    $$
+    \sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+    $$
+    
+    ```{r}
+    (var2 <- 4-t(parametros[-5])%*%c0+parametros[5])
+    ```
+    
+    Por lo tanto la varianza del error es aproximadamente $1.14$
 
 3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
 
-**R/**
+    **R/**
 
-El sistema es
-
-$$
-\begin{pmatrix}
-\Gamma & \mathbf{1} \\
-\mathbf{1}^T & 0
-\end{pmatrix}
-\begin{pmatrix}
-\lambda \\
-\delta
-\end{pmatrix}
-=
-\begin{pmatrix}
-\sigma_0 \\
-\mathbf{1}
-\end{pmatrix},
-$$
-
-El semivariograma es
-
-$$
-\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
-$$
-
-```{r}
-gammah <- 4*(1-exp(-(d/100))) 
-gamma0 <- 4*(1-exp(-(d0/100)))
-
-A <- rbind(
-  cbind(gammah, unos),
-  cbind(t(unos), 0)
-)
-
-A
-
-b0 <- c(gamma0,1)
-
-parametros <- solve(A)%*%b0
-
-(y3 <- t(parametros[-5])%*%y)
-```
-
-Obteniendo nuevamente una estimación para $Z(75,25)$ aproximadamente de 15.3982.
-
-Para la varianza
-
-$$
-\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
-$$
-
-```{r}
-(var3 <- t(parametros[-5])%*%gamma0+parametros[5])
-```
-
-Por lo tanto la varianza del error es aproximadamente $1.14$
+    El sistema es
+    
+    $$
+    \begin{pmatrix}
+    \Gamma & \mathbf{1} \\
+    \mathbf{1}^T & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+    \lambda \\
+    \delta
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+    \sigma_0 \\
+    \mathbf{1}
+    \end{pmatrix},
+    $$
+    
+    El semivariograma es
+    
+    $$
+    \gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
+    $$
+    
+    ```{r}
+    gammah <- 4*(1-exp(-(d/100))) 
+    gamma0 <- 4*(1-exp(-(d0/100)))
+    
+    A <- rbind(
+      cbind(gammah, unos),
+      cbind(t(unos), 0)
+    )
+    
+    A
+    
+    b0 <- c(gamma0,1)
+    
+    parametros <- solve(A)%*%b0
+    
+    (y3 <- t(parametros[-5])%*%y)
+    ```
+    
+    Obteniendo nuevamente una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+    
+    Para la varianza
+    
+    $$
+    \sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+    $$
+    
+    ```{r}
+    (var3 <- t(parametros[-5])%*%gamma0+parametros[5])
+    ```
+    
+    Por lo tanto la varianza del error es aproximadamente $1.14$
 
 
 4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
 
-```{r}
-# Intervalos de confianza
-li1 <- y_hat - 1.96 * sqrt(var1)
-ls1 <- y_hat + 1.96 * sqrt(var1)
+    **R/**
 
-li2 <- y2 - 1.96 * sqrt(var2)
-ls2 <- y2 + 1.96 * sqrt(var2)
-
-li3 <- y3 - 1.96 * sqrt(var3)
-ls3 <- y3 + 1.96 * sqrt(var3)
-
-# Tabla resumen
-tabla <- data.frame(
-  Punto = c("Punto 1", "Punto 2", "Punto 3"),
-  Estimacion = c(y_hat, y2, y3),
-  Varianza = c(var1, var2, var3),
-  LI_95 = c(li1, li2, li3),
-  LS_95 = c(ls1, ls2, ls3)
-)
-
-tabla %>% 
-  kableExtra::kbl(digits = 3) %>% 
-  kableExtra::kable_styling(
-    full_width = FALSE,
-    position = "center"
-  ) %>%
-  kableExtra::row_spec(
-    0,
-    bold = TRUE,
-    background = "#2c3e50",
-    color = "white"
-  ) 
-```
+    ```{r}
+    # Intervalos de confianza
+    li1 <- y_hat - 1.96 * sqrt(var1)
+    ls1 <- y_hat + 1.96 * sqrt(var1)
+    
+    li2 <- y2 - 1.96 * sqrt(var2)
+    ls2 <- y2 + 1.96 * sqrt(var2)
+    
+    li3 <- y3 - 1.96 * sqrt(var3)
+    ls3 <- y3 + 1.96 * sqrt(var3)
+    
+    # Tabla resumen
+    tabla <- data.frame(
+      Punto = c("Punto 1", "Punto 2", "Punto 3"),
+      Estimacion = c(y_hat, y2, y3),
+      Varianza = c(var1, var2, var3),
+      LI_95 = c(li1, li2, li3),
+      LS_95 = c(ls1, ls2, ls3)
+    )
+    
+    tabla %>% 
+      kableExtra::kbl(digits = 3) %>% 
+      kableExtra::kable_styling(
+        full_width = FALSE,
+        position = "center"
+      ) %>%
+      kableExtra::row_spec(
+        0,
+        bold = TRUE,
+        background = "#2c3e50",
+        color = "white"
+      ) 
+    ```
 
 
 
 5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
 
-**R/** Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.
+    **R/** 
+
+    Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.
 
 ### Suponga que
 
@@ -3213,6 +3195,8 @@ $$
 
 ### Suponga un campo aleatorio espacial normal multivariado, con observaciones en $n$ ubicaciones y media y covarianza conocidos. 
 
+**R/**
+
 Encuentre la esperanza condicional y la respectiva varianza $Z(s_0)$ dado el vector $(Z(s_1), \dots, Z(s_n))$. Compare con las expresiones de predicción y varianza del error de predicción del kriging simple.
 
 
@@ -3302,6 +3286,8 @@ Var[Z(s_0) | \mathbf{Z}]  &= \Sigma_{11} - \Sigma_{12} \Sigma_{22}^{-1} \Sigma_{
 que puede encontrar en [https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html](https://mpbohorquezc.github.io/SpatFD-Functional-Geostatistics/GeoestadisticaUnivariadaConGeoR.html), genere dos mapas de predicciones.
 
 Para el primer mapa utilice el predictor kriging y para el segundo mapa utilice predicción basada en modelos de regresión en términos de las coordenadas $(x, y) = (\text{Este}, \text{Norte})$, e incluyendo la dependencia espacial a través de la estimación de los parámetros del modelo, vía máxima verosimilitud. Compare el desempeño predictivo del modelo de regresión cuando se usan mínimos cuadrados ordinarios ignorando la dependencia espacial y cuando se usa máxima verosimilitud. Posteriormente, compare el desempeño de la regresión con el kriging.
+
+**R/**
 
 ```{r ej_4_6_base de datos}
 # ==============================================================================
@@ -3591,6 +3577,8 @@ Se observa que el modelo de Kriging Universal con tendencia lineal proporciona u
 
 Grafique los dispersogramas rezagados variando modelos y parámetros. Esto es, en cada caso, grafique $Y(s)$ Vs $Y(s+h)$, para varios valores de $h$. y en cada caso calcule el coeficiente de correlación de Pearson. Analice.
 
+**R/**
+
 Si un campo aleatorio espacial $Y(s)$ es gaussiano, se tiene que cualquier conjunto finito de ubicaciones $\{s_1, s_2, \dots, s_n\}$ sigue una distribución normal multivariada. Esto garantiza que la dependencia espacial este definida por la media $\mu$ y la matriz de covarianza $\Sigma$.
 
 > **Nota sobre Estacionariedad:**  
@@ -3829,6 +3817,8 @@ $$
 
 ### Generalice el resultado encontrado en el problema anterior, al caso en el que se transforma la variable usando una transformación Box-Cox.
 
+**R/**
+
 Del resultado obtenido en **9.4.2**
 
 $$
@@ -3882,4 +3872,5 @@ por lo que
 $$
 W^*(s_0) = \ln(Y^*(s_0)) - \frac{\text{Var}[Y(s_0) - Y^*(s_0)]}{2\mu_y^2}.
 $$
+
 
