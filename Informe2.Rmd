@@ -1915,12 +1915,64 @@ Sin embargo, el teorema establece que la densidad espectral $f(\omega)$ (la func
 
 ### Haga una tabla con la siguiente estructura para todos los modelos en los que aplique:
 
-* **Columna 1:** Función de autocovarianza.
-* **Columna 2:** Función de semivarianza.
-* **Columna 3:** Función de autocorrelación.
+* **Columna 1:** Función de autocovarianza $C(h)$.
+* **Columna 2:** Función de semivarianza $\gamma(h)$.
+* **Columna 3:** Función de autocorrelación $\rho(h)$.
 
 
 ¿Existen expresiones para las 3 funciones en todos los modelos? Si no, ¿en qué casos no existen expresiones para las 3 columnas y por qué?
+
+
+Para que existan las tres funciones, el proceso debe cumplir Estacionariedad de Segundo Orden. Bajo este supuesto, la varianza total es finita y constante ($C(0) = \sigma^2$, *Silla Total*), y las funciones se calculan de la forma:
+
+1.  **Semivarianza:** $\gamma(h) = C(0) - C(h) \implies C(h) = \sigma^2 - \gamma(h)$
+2.  **Autocorrelación:** $\rho(h) = \frac{C(h)}{C(0)} = 1 - \frac{\gamma(h)}{\sigma^2}$
+
+**Tabla: Modelos de Semivariograma Acotados (Estacionariedad de 2do Orden)**
+
+*En estos modelos, la varianza es finita ($C(0) = \sigma^2 < \infty$). Las tres funciones existen.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Efecto Pepita** | $0 \quad \text{si } h \neq 0$ <br> $\sigma^2 \quad \text{si } h = 0$ | $\sigma^2 \quad \text{si } h \neq 0$ <br> $0 \quad \text{si } h = 0$ | $0 \quad \text{si } h \neq 0$ <br> $1 \quad \text{si } h = 0$ |
+| **Esférico** | $\sigma^2 \left[ 1 - \frac{3}{2}\left(\frac{h}{a}\right) + \frac{1}{2}\left(\frac{h}{a}\right)^3 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{3}{2}\left(\frac{h}{a}\right) - \frac{1}{2}\left(\frac{h}{a}\right)^3 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{3}{2}\left(\frac{h}{a}\right) + \frac{1}{2}\left(\frac{h}{a}\right)^3 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Circular** | $\sigma^2 \left[ 1 - \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Pentaesférico** | $\sigma^2 \left[ 1 - \frac{15}{8}\left(\frac{h}{a}\right) + \frac{5}{4}\left(\frac{h}{a}\right)^3 - \frac{3}{8}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{15}{8}\left(\frac{h}{a}\right) - \frac{5}{4}\left(\frac{h}{a}\right)^3 + \frac{3}{8}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{15}{8}\left(\frac{h}{a}\right) + \frac{5}{4}\left(\frac{h}{a}\right)^3 - \frac{3}{8}\left(\frac{h}{a}\right)^5 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Triangular** | $\sigma^2 \left( 1 - \frac{h}{a} \right) \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left( \frac{h}{a} \right) \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{h}{a} \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Cúbico** | $\sigma^2 \left[ 1 - \frac{35}{4}\left(\frac{h}{a}\right)^2 + \frac{7}{2}\left(\frac{h}{a}\right)^3 - \frac{3}{4}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{35}{4}\left(\frac{h}{a}\right)^2 - \frac{7}{2}\left(\frac{h}{a}\right)^3 + \frac{3}{4}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{35}{4}\left(\frac{h}{a}\right)^2 + \frac{7}{2}\left(\frac{h}{a}\right)^3 - \frac{3}{4}\left(\frac{h}{a}\right)^5 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Matérn** | $\frac{\sigma^2}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \frac{1}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right) \right]$ | $\frac{1}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right)$ |
+| **Exponencial** | $\sigma^2 \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\frac{h}{a}\right) \right]$ | $\exp\left(-\frac{h}{a}\right)$ |
+| **Gaussiano** | $\sigma^2 \exp\left(-\left(\frac{h}{a}\right)^2\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\left(\frac{h}{a}\right)^2\right) \right]$ | $\exp\left(-\left(\frac{h}{a}\right)^2\right)$ |
+| **Cuadrático Racional** | $\sigma^2 \left( 1 + \frac{h^2}{a^2} \right)^{-1}$ | $\sigma^2 \left[ \frac{h^2/a^2}{1 + h^2/a^2} \right]$ | $\left( 1 + \frac{h^2}{a^2} \right)^{-1}$ |
+| **Estable** | $\sigma^2 \exp\left(-\left(\frac{h}{a}\right)^\delta\right) \quad (0 < \delta < 2)$ | $\sigma^2 \left[ 1 - \exp\left(-\left(\frac{h}{a}\right)^\delta\right) \right]$ | $\exp\left(-\left(\frac{h}{a}\right)^\delta\right)$ |
+| **Radon Orden 2** | $\sigma^2 \left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right) \right]$ | $\left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right)$ |
+| **Radon Orden 4** | $\sigma^2 \left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right) \right]$ | $\left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right)$ |
+| **Cauchy Generalizado**| $\sigma^2 \left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2}$ | $\sigma^2 \left[ 1 - \left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2} \right]$ | $\left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2}$ |
+| **Lantuéjoul** | $\sigma^2 \sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right)$ | $\sigma^2 \left[ 1 - \sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right) \right]$ | $\sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right)$ |
+
+**Tabla: Modelos de Semivariograma No Acotados (Estacionariedad Intrínseca)**
+
+*En estos modelos, la varianza total $C(0) \to \infty$. Solo existe la semivarianza.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Potencial** | **No existe** | $b \cdot h^\delta \quad (0 < \delta < 2)$ | **No existe** |
+| **Lineal** | **No existe** | $b \cdot h$ | **No existe** |
+| **Logarítmico (Wijsian-c2)**| **No existe** | $\frac{3}{2}b \log(h^2 + c^2)$ | **No existe** |
+| **Modelo Puente** | **No existe** | $b \left[ \left(1 + \left(\frac{h}{a}\right)^\alpha\right)^{\beta/\alpha} - 1 \right]$ | **No existe** |
+
+**Tabla: Modelos con Efecto Hueco (Correlación Espacial Negativa / Ondas)**
+
+*Modelos acotados que oscilan alrededor de la silla, permitiendo autocorrelaciones negativas.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Seno Cardinal** | $\sigma^2 \left( \frac{a}{h} \right) \sin\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \frac{a}{h}\sin\left(\frac{h}{a}\right) \right]$ | $\frac{a}{h}\sin\left(\frac{h}{a}\right)$ |
+| **Bessel** | $\sigma^2 \left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right) \right]$ | $\left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right)$ |
+| **Exp. con Amortiguamiento**| $\sigma^2 \exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right) \right]$ | $\exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right)$ |
+| **Coseno** | $\sigma^2 \cos\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \cos\left(\frac{h}{a}\right) \right]$ | $\cos\left(\frac{h}{a}\right)$ |
+
+> $J_{d/2-1}(\cdot)$ es la función de Bessel de la primera clase, $K_\kappa(\cdot)$ es la función de Bessel modificada de la tercera clase, y $\Gamma(\cdot)$ es la función Gamma).
 
 ---
 
