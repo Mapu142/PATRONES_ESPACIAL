@@ -1,0 +1,758 @@
+---
+title: "Geoestadística para una variable"
+author: "María Paula Camargo Rincón<br>Laura Katherine Martinez Castiblanco"
+output: 
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: true
+    code_folding: hide
+    mathjax: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+
+```{r Librerias, include=FALSE}
+#setwd("C:/PERSONAL_MAPU/UNIVERSIDADES/NACIONAL/ESTADÍSTICA_ESPACIAL/PARCIAL_2")
+library(readxl)
+library(dplyr)
+library(stringr)
+library(lubridate) # para función lubridate::hour, lubridate::minute y lubridate::second
+library(tidyverse)
+library(corrplot)
+library(sf)
+library(ggplot2)
+library(kableExtra)
+library(measurements)
+library(gganimate) # para hacer película
+library(gifski) #para renderizar la película
+library(spdep)
+library(adespatial)
+library(gstat) # Para ajuste automático de variogramas
+library(sp)
+library(spacetime)
+library(RColorBrewer)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(geoR)   # Para eyefit y análisis geoestadístico clásico
+library(MASS)
+library(performance)
+library(fields)
+library(patchwork)
+library(knitr)
+```
+
+## Capitulo 2 {.tabset}
+
+### Grafique los modelos de covarianza y semivarianza:
+
+1. Fije la silla y varíe el rango.
+
+Al fijar la silla ($\sigma^2=10$) y aumentar el rango ($a \in \{ 1, 5, 10, 20, 30 \}$), la curva de semivarianza se "estira" horizontalmente, tardando más en alcanzar la meseta. En la covarianza, esto se refleja en un decaimiento más lento hacia cero. 
+Esto se muestra en los graficos a continuación, utilizando el modelo Exponencial.
+
+
+```{r ej_2_1_1, fig.height=5, fig.width=10, fig.align='center'}
+h <- seq(0, 40, length.out = 300)
+silla <- 10
+rangos <- c(1, 5, 10, 20, 30)
+
+df1 <- expand.grid(h = h, rango = rangos) %>%
+  mutate(
+    Semivarianza = silla * (1 - exp(-h / rango)),
+    Covarianza = silla * exp(-h / rango)
+  ) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+ggplot(df1, aes(x = h, y = Valor, color = factor(rango))) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  # scale_color_viridis_d(name = "Rango (a)") +
+  labs(x = "Distancia (h)", y = "Valor", title = "Efecto de variar el Rango (Silla fija)") +
+  theme_minimal() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+2. Fije el rango y varíe la silla.
+
+Al mantener el rango constante ($a = 10$) y aumentar la silla ($\sigma^2 \in \{1, 5, 10, 15, 20\}$), las curvas experimentan un escalado vertical. La semivarianza alcanza mesetas más altas y la covarianza inicia en un punto de origen ($h=0$) superior, representando una varianza total del proceso mayor.
+
+Como se evidencia en los gráficos, la distancia a la cual las observaciones se vuelven independientes permanece constante, pero la magnitud de la variabilidad global del fenómeno aumenta.
+
+
+```{r ej_2_1_2, fig.height=5, fig.width=10, fig.align='center'}
+h <- seq(0, 40, length.out = 300)
+rango <- 10
+sillas <- c(1, 5, 10, 15, 20)
+
+df2 <- expand.grid(h = h, silla = sillas) %>%
+  mutate(
+    Semivarianza = silla * (1 - exp(-h / rango)),
+    Covarianza = silla * exp(-h / rango)
+  ) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+ggplot(df2, aes(x = h, y = Valor, color = factor(silla))) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  # scale_color_viridis_d(name = "Silla (σ²)") +
+  labs(x = "Distancia (h)", y = "Valor", title = "Efecto de variar la Silla (Rango fijo)") +
+  theme_minimal() +
+  theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
+
+3. Fije silla y rango y varíe parámetro de suavidad cuando aplique.
+
+
+ El parámetro de suavidad ($\kappa \in \{0.1, 0.5, 1.5, 2.5, 3\}$) en el modelo Matérn controla el comportamiento de las funciones cerca del origen ($h \to 0$). Para valores bajos (ej. $\kappa = 0.5$, equivalente al exponencial), la semivarianza crece linealmente desde el origen, indicando un proceso espacial menos continuo. A medida que $\kappa$ aumenta, la curva se aplana en el origen (parabólico), lo que se ve reflejado en la covarianza, donde la correlación inicial se mantiene alta antes de decaer. 
+
+```{r ej_2_1_3, fig.height=5, fig.width=10, fig.align='center'}
+# 1. Definición de parámetros
+h <- seq(0.01, 30, length.out = 300) 
+silla <- 10
+rango <- 10
+suavidades <- c(0.1, 0.5, 1.5, 2.5, 3)
+
+# 2. Creación del data.frame vectorizando kappa
+df3 <- expand.grid(h = h, kappa = suavidades) %>%
+  rowwise() %>% # <--- Esta es la clave para que cov.spatial evalúe cada kappa individualmente
+  mutate(
+    Covarianza = cov.spatial(h, cov.model = "matern", cov.pars = c(silla, rango), kappa = kappa),
+    Semivarianza = silla - Covarianza
+  ) %>%
+  ungroup() %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor") %>%
+  mutate(kappa_factor = factor(kappa, labels = paste0("κ = ", suavidades)))
+
+# 3. Gráfica con ggplot2
+ggplot(df3, aes(x = h, y = Valor, color = kappa_factor)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Modelo de Matérn: Variación del Parámetro de Suavidad (κ)",
+    x = "Distancia (h)",
+    y = "Valor de la función",
+    color = "Suavidad (κ)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    strip.text = element_text(size = 12, face = "bold")
+  )
+
+```
+
+4. Compare los comportamientos de diferentes modelos de covarianza y semivarianza cuando para todos se usan los mismos parámetros.
+
+Al comparar los modelos teóricos utilizando exactamente los mismos parámetros de silla ($\sigma^2=100$) y rango ($a=10$), las diferencias fundamentales radican en la geometría de sus curvas y en su comportamiento en las zonas cerca del origen ($h \to 0$) y en la llegada a la meseta.
+
+```{r ej_2_1_4, fig.height=5, fig.width=10, fig.align='center'}
+# Parámetros
+h <- seq(0, 20, length.out = 300)
+sigma2 <- 100
+a <- 10
+
+# Data frame con los 5 modelos
+df4 <- data.frame(h = h) %>%
+  mutate(
+    Esférico = ifelse(h <= a, sigma2 * (1.5 * (h / a) - 0.5 * (h / a)^3), sigma2),
+    Exponencial = sigma2 * (1 - exp(-h / a)),
+    Gaussiano = sigma2 * (1 - exp(-(h^2) / (a^2))),
+    # Modelo Cúbico (Acotado, llega a la silla en h = a)
+    Cúbico = ifelse(h <= a, sigma2 * (7 * (h / a)^2 - 35/4 * (h / a)^3 + 7/2 * (h / a)^5 - 3/4 * (h / a)^7), sigma2),
+    # Modelo Pentasférico (Acotado, llega a la silla en h = a)
+    Pentasférico = ifelse(h <= a, sigma2 * (1.875 * (h / a) - 1.25 * (h / a)^3 + 0.375 * (h / a)^5), sigma2)
+  ) %>%
+  pivot_longer(
+    cols = c(Esférico, Exponencial, Gaussiano, Cúbico, Pentasférico), 
+    names_to = "Modelo", 
+    values_to = "Semivarianza"
+  ) %>%
+  mutate(Covarianza = sigma2 - Semivarianza) %>%
+  pivot_longer(cols = c(Semivarianza, Covarianza), names_to = "Funcion", values_to = "Valor")
+
+# Visualización con ggplot2
+ggplot(df4, aes(x = h, y = Valor, color = Modelo)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ Funcion, scales = "free_y") +
+  scale_color_manual(
+    values = c(
+      "Esférico"     = "#377EB8", 
+      "Exponencial"  = "#E41A1C", 
+      "Gaussiano"    = "#4DAF4A",
+      "Cúbico"       = "#984EA3",
+      "Pentasférico" = "#FF7F00"
+    )
+  ) +
+  labs(
+    x = "Distancia (h)", 
+    y = "Valor", 
+    title = "Comparación de Modelos Teóricos (Mismos parámetros)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom", 
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 11, face = "bold")
+  )
+```
+
+
+---
+
+### Demuestre o refute: 
+
+la covarianza entre un proceso espacial en la ubicación $s_i$ y el proceso valor promedio del fenómeno sobre el área $B$ es igual al promedio de las covarianzas entre el proceso espacial en la ubicación $s_i$ y los procesos espaciales existentes en todos los puntos dentro de $B$.
+
+**Demostración:**
+
+El valor promedio de un campo aleatorio $Y(s)$ sobre un área continua $B$ se define como:
+    $$\bar{Y}_B = \frac{1}{|B|} \int_B Y(s) ds$$
+
+Por la definición fundamental de covarianza (Sección 1.1.2 del libro), asumiendo media constante $\mu$:
+    $$Cov(Y(s_i), \bar{Y}_B) = E\left[ (Y(s_i) - \mu) (\bar{Y}_B - \mu) \right]$$
+
+ Dado que $\mu = \frac{1}{|B|} \int_B \mu ds$, se puede reescribir $(\bar{Y}_B - \mu)$ como:
+    $$(\bar{Y}_B - \mu) = \frac{1}{|B|} \int_B (Y(s) - \mu) ds$$
+
+Luego, sustituyendo en la expresión de covarianza:
+    $$Cov(Y(s_i), \bar{Y}_B) = E\left[ (Y(s_i) - \mu) \left( \frac{1}{|B|} \int_B (Y(s) - \mu) ds \right) \right]$$
+
+Puesto que la esperanza es un operador lineal. 
+    $$Cov(Y(s_i), \bar{Y}_B) = \frac{1}{|B|} \int_B E\left[ (Y(s_i) - \mu)(Y(s) - \mu) \right] ds$$
+El término dentro de la esperanza es, por definición, la función de autocovarianza entre el punto $s_i$ y cualquier punto $s$ dentro de $B$:
+    $$E\left[ (Y(s_i) - \mu)(Y(s) - \mu) \right] = C(s_i - s; \Theta)$$
+Sustituyendo en la integral:
+    $$Cov(Y(s_i), \bar{Y}_B) = \frac{1}{|B|} \int_B C(s_i - s; \Theta) ds$$
+Este es el promedio de las covarianzas entre el punto $s_i$ y todos los puntos $s$ que componen el área $B$. 
+
+
+---
+
+### Compare para varios conjuntos de datos los 3 estimadores empíricos del semivariograma.
+
+¿Existe alguna relación de orden entre los 3? ¿Existe alguna relación de orden entre 2 de ellos? o, definitivamente, ¿no existe ningún orden entre estos estimadores?
+
+En el libro se definen tres estimadores: 
+
+* El **Clásico** (Matheron)  
+$$\hat{\gamma}(h) = \frac{1}{2\vert{}N(h)\vert{}} \sum_{N(h)} (z(s+h) - z(s))^2$$
+* El **Resistente** (Cressie & Hawkins) 
+$$\tilde{\gamma}(h) = \frac{1}{2 \left(0.457 + \frac{0.494}{\vert{}N(h)\vert{}} + \frac{0.045}{\vert{}N(h)\vert{}^2}\right)} \left( \frac{\sum_{N(h)} \vert{}z(s+h) - z(s)\vert{}^{1/2}}{\vert{}N(h)\vert{}} \right)^4$$
+* El de **Mediana**
+$$\breve{\gamma}(h) = \frac{\left( \text{me}\vert{}z(s+h) - z(s)\vert{}^{1/2} \right)^4}{2(0.457)}$$
+
+Los cuales en la práctica se selecciona el indicado según la presencia de valores atípicos, como se muestra en las estimaciones de las simulaciones:
+
+
+```{r ej_2_3}
+# 1. Función matemática robusta para calcular los 3 estimadores exactamente
+calcular_3_estimadores <- function(coords, data, max_dist = 2) {
+  # Matriz de distancias entre pares de puntos
+  dist_matrix <- as.matrix(dist(coords))
+  
+  # Extraer pares dentro de la distancia deseada (h <= max_dist)
+  indices <- which(dist_matrix > 0 & dist_matrix <= max_dist, arr.ind = TRUE)
+  indices <- indices[indices[, 1] < indices[, 2], ] # Evitar duplicados
+  
+  # Incrementos |z(s+h) - z(s)|
+  diffs <- abs(data[indices[, 1]] - data[indices[, 2]])
+  N_h <- length(diffs) # |N(h)|: Cantidad de pares
+  
+  # A. Estimador Clásico - Fórm. (2.2)
+  v_clasico <- (1 / (2 * N_h)) * sum(diffs^2)
+  
+  # B. Estimador Resistente (Cressie & Hawkins) - Fórm. (2.3)
+  correccion_cressie <- 2 * (0.457 + (0.494 / N_h) + (0.045 / (N_h^2)))
+  v_cressie <- (1 / correccion_cressie) * ((sum(diffs^(0.5)) / N_h)^4)
+  
+  # C. Estimador de Mediana - Fórm. (2.4)
+  v_mediana <- ((median(diffs^(0.5)))^4) / (2 * 0.457)
+  
+  return(c(Clásico = v_clasico, Cressie_Hawkins = v_cressie, Mediana = v_mediana))
+}
+
+# 2. Simulación de Campo aleatorio gaussiano (Sin atípicos)
+set.seed(731)
+coords <- cbind(runif(500, 0, 10), runif(500, 0, 10))
+data_normal <- rnorm(500, mean = 10, sd = 2)
+
+# 3. Inyección de valores atípicos extremos (Outliers)
+data_outliers <- data_normal
+data_outliers[c(5, 25, 50)] <- c(100, -50, 150) # Errores de medición
+
+# 4. Cálculo de los estimadores para ambos escenarios
+est_normal <- calcular_3_estimadores(coords, data_normal, max_dist = 2)
+est_outliers <- calcular_3_estimadores(coords, data_outliers, max_dist = 2)
+
+# 5. Creación de la tabla comparativa
+res_tabla <- data.frame(
+  Estimador = names(est_normal),
+  `Datos Normales (Sin Atípicos)` = round(as.numeric(est_normal), 4),
+  `Datos con Outliers Extremos` = round(as.numeric(est_outliers), 4),
+  check.names = FALSE
+)
+
+kable(res_tabla, align = "c", caption = "Comparación de Estimadores Empíricos del Semivariograma")
+```
+
+Esto se da porque la distribución de los incrementos tiene colas pesadas, el estimador Clásico se infla debido al cuadrado de las diferencias, se tiene el siguiente orden de preferencia $\hat{\gamma}_{clasico} > \breve{\gamma}_{mediana} \approx \tilde{\gamma}_{Cressie}$. Si los datos son normales y sin atípicos, los tres convergen, pero el Clásico se prefiere por ser el único insesgado bajo normalidad.
+
+
+---
+
+### Deduzca la correlación entre dos estimaciones del semivariograma empírico $\gamma(h_k)$ y $\gamma(h_l)$ para el modelo exponencial.
+Use la información dada en la nota 5.
+
+Para deducir esta correlación, haciendo referencia a la **Nota 5**, la cual establece que bajo el supuesto de normalidad bivariada, la correlación de los cuadrados de las variables es igual al cuadrado de su correlación: $\rho^2(X_1, X_2) = \rho(X_1^2, X_2^2)$. 
+
+Dado que el estimador clásico se basa en los incrementos al cuadrado $Y^2 = (Z(s+h)-Z(s))^2$, la correlación entre las estimaciones en dos rezagos $h_k$ y $h_l$ depende de la correlación de sus incrementos.
+
+
+Luego sean los incrementos: $Y_1 = Z(s_i+h_k) - Z(s_i)$ y $Y_2 = Z(s_j+h_l) - Z(s_j)$.
+donde $Var(Y_1) = 2\gamma(h_k)$ y $Var(Y_2) = 2\gamma(h_l)$.
+
+Entonces la covarianza de los incrementos es: 
+   $Cov(Y_1, Y_2) = \frac{1}{2} [\gamma(s_i-s_j+h_k) + \gamma(s_i-s_j-h_l) - \gamma(s_i-s_j+h_k-h_l) - \gamma(s_i-s_j)]$
+
+Por lo tanto la correlación de los incrementos es $\rho(Y_1, Y_2) = \frac{Cov(Y_1, Y_2)}{\sqrt{Var(Y_1)Var(Y_2)}}$.
+
+
+Aplicando el resultado de la Nota 5, la correlación de las estimaciones (incrementos al cuadrado) es:
+   $$Cor[\hat{\gamma}(h_k), \hat{\gamma}(h_l)] = \left[ \frac{\gamma(s_i-s_j+h_k) + \gamma(s_i-s_j-h_l) - \gamma(s_i-s_j+h_k-h_l) - \gamma(s_i-s_j)}{2\sqrt{\gamma(h_k)\gamma(h_l)}} \right]^2$$
+
+> *Misma formula la cual esta mal digitada en el libro, pues le falta la raiz en el denominador*
+
+Para el modelo exponencial $\gamma(h) = C(0)(1 - e^{-\|h\|/a})$, se tiene
+   $$Cor[\hat{\gamma}(h_k), \hat{\gamma}(h_l)] = \left[ \frac{(1 - e^{-\|s_i-s_j+h_k\|/a}) + (1 - e^{-\|s_i-s_j-h_l\|/a}) - (1 - e^{-\|s_i-s_j+h_k-h_l\|/a}) - (1 - e^{-\|s_i-s_j\|/a})}{2\sqrt{(1 - e^{-\|h_k\|/a})(1 - e^{-\|h_l\|/a})}} \right]^2$$
+
+Al hacer la simulación con los incrementos, se puede observar que a medida que la distancia entre los pares de puntos crece, la correlación tiende a 0, demostrando la independencia espacial de los estimadores.
+
+```{r ej_2_4}
+# Función para calcular la correlación teórica de los estimadores (Nota 5)
+correlacion_estimadores <- function(dist_si_sj, hk, hl, sill, rango) {
+  # Modelo Exponencial: gamma(h) = sill * (1 - exp(-h/rango))
+  gamma_h <- function(h) sill * (1 - exp(-h / rango))
+  
+  # Numerador: Covarianza de los incrementos * 2
+  num <- gamma_h(dist_si_sj + hk) + gamma_h(dist_si_sj - hl) - 
+         gamma_h(dist_si_sj + hk - hl) - gamma_h(dist_si_sj) # Asumiendo colinealidad para simplificar
+  
+  # Denominador correcto (producto de desviaciones estándar de los incrementos)
+  den <- 2 * sqrt(gamma_h(hk) * gamma_h(hl))
+  
+  # Correlación de los incrementos al cuadrado (Nota 5)
+  rho_cuadrado <- (num / den)^2
+  return(rho_cuadrado)
+}
+
+# Ejemplo práctico: Correlación entre estimar el variograma a 10m y a 20m
+# si los pares de puntos están separados por 5m.
+sill <- 100; rango <- 30
+dist_pares <- 1
+hk <- 10; hl <- 20
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n",
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+# A medida que 'dist_pares' crece, la correlación tiende a 0, demostrando la independencia espacial.
+
+dist_pares <- 5
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n",
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+
+dist_pares <- 10
+
+rho_teorica <- correlacion_estimadores(dist_pares, hk, hl, sill, rango)
+cat("Correlación teórica entre gamma(10) y gamma(20):", round(rho_teorica, 4), "\n", 
+    "distancia entre los pares de puntos:", dist_pares, "\n")
+```
+
+
+---
+
+### A continuación, se muestran las funciones de covarianza y densidad espectral para un modelo de covarianza gaussiano.
+Utilice el Teorema 1 para demostrar que una puede obtenerse a partir de la otra.
+
+  * *Función de covarianza:*
+  
+  $$C(h) = \sigma^2 \exp\left(- \frac{||h||^2}{\alpha^2}\right)$$
+  
+  > *Corrección del modelo gaussiano, en el libro se presenta $C(h) = \sigma^2 \exp(-\alpha^2)$*
+  
+  * *Función de densidad espectral:*
+  
+  $$f(\omega) = \frac{1}{2} \sigma^2 (\pi \alpha)^{-\frac{1}{2}} \exp\left( -\frac{\omega^2}{4\alpha} \right)$$
+
+
+> **Teorema 1 (Teorema Bochner).** *Una función continua es definida no-negativa si y solamente si puede ser representada como sigue:*
+> $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) dF(\omega)$$
+> 
+> 
+> *donde $F$ es una función real, acotada y no decreciente. Si $F$ es absolutamente continua (con respecto a la medida de Lebesgue):*
+> $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
+> 
+
+El Teorema de Bochner establece que la función de covarianza $C(h)$ y la densidad espectral $f(\omega)$ son un par de Transformadas de Fourier.
+
+La relación inversa para hallar $f(\omega)$ a partir de $C(h)$ es:
+$$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} C(h) e^{-i h \omega} dh$$ pues se supone $h \in \mathbb{R}^1$ 
+
+**Demostración:** Obtener la densidad $f(\omega)$ dada la covarianza $C(h)$.
+
+Sustituyendo en la densidad espectral
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(- \frac{h^2}{\alpha^2}\right) \exp(-i h \omega) dh$$
+   
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(-\frac{1}{\alpha^2} \left(h^2 + i h \omega \alpha^2 \right)\right) dh$$
+
+Para completar el cuadrado, sumamos y restamos $\left(\frac{i \omega \alpha^2}{2}\right)^2 = -\frac{\omega^2 \alpha^4}{4}$:
+   $$-\frac{1}{\alpha^2} \left[ \left( h + i \frac{\omega \alpha^2}{2} \right)^2 - \left(-\frac{\omega^2 \alpha^4}{4}\right) \right] = -\frac{1}{\alpha^2} \left( h + i \frac{\omega \alpha^2}{2} \right)^2 - \frac{\omega^2 \alpha^2}{4}$$
+
+Sustituimos en la integral y dado que el término $-\frac{\omega^2 \alpha^2}{4}$ no depende de $h$, se saca de la integral:
+   
+   $$f(\omega) = \frac{\sigma^2}{2\pi} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right) \int_{-\infty}^{\infty} \exp\left[ -\frac{1}{\alpha^2} \left( h + i \frac{\omega \alpha^2}{2} \right)^2 \right] dh$$
+
+   La integral es una integral gaussiana estándar de la forma $\int_{-\infty}^{\infty} e^{-a x^2} dx = \sqrt{\frac{\pi}{a}}$. En nuestro caso, $a = \frac{1}{\alpha^2}$, por lo que se tiene $\sqrt{\pi \alpha^2} = \alpha \sqrt{\pi}$.
+   
+   *(Nota: El desplazamiento complejo $i \frac{\omega \alpha^2}{2}$ no altera el valor de la integral en el contorno real por el teorema de Cauchy).*
+
+Finalmente se obtiene la función de densidad:
+   $$f(\omega) = \frac{\sigma^2}{2\pi} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right) \cdot \alpha \sqrt{\pi} = \frac{\sigma^2 \alpha}{2 \sqrt{\pi}} \exp\left( - \frac{\omega^2 \alpha^2}{4} \right)$$
+
+
+---
+
+### Seleccione otra función de covarianza espacial y aplique el Teorema 1 para encontrar la función de densidad espectral asociada. 
+¿La densidad espectral siempre existe? Justifique su respuesta.
+
+> **Teorema 1 (Teorema Bochner).** *Una función continua es definida no-negativa si y solamente si puede ser representada como sigue:*
+> $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) dF(\omega)$$
+> 
+> 
+> *donde $F$ es una función real, acotada y no decreciente. Si $F$ es absolutamente continua (con respecto a la medida de Lebesgue):*
+> $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
+> 
+
+Seleccionemos el Modelo Exponencial 
+
+$$C(h) = \sigma^2 \exp\left(-\frac{|h|}{\alpha}\right)$$
+**Demostración** similar al caso anterior de la densidad espectral $f(\omega)$ a partir de la covarianza $C(h)$.
+
+Se tiene $f(\omega)$ reemplazando $C(h)$:
+   $$f(\omega) = \frac{1}{2\pi} \int_{-\infty}^{\infty} \sigma^2 \exp\left(-\frac{|h|}{\alpha}\right) e^{-i h \omega} dh$$
+
+   Como $C(h)$ es una función par ($C(h) = C(-h)$) y la parte imaginaria de $e^{-ih\omega}$ (el seno) es impar, su producto se anula en la integral simétrica y queda de la forma: 
+   
+   $$f(\omega) = \frac{\sigma^2}{\pi} \int_{0}^{\infty} \exp\left(-\frac{h}{\alpha}\right) \cos(h \omega) dh$$
+
+
+Dado que se sabe que $\int_0^\infty e^{-ax} \cos(bx) dx = \frac{a}{a^2 + b^2}$.
+
+para $a = \frac{1}{\alpha}$ y $b = \omega$
+
+la función queda de la forma
+   $$f(\omega) = \frac{\sigma^2}{\pi} \left[ \frac{1/\alpha}{(1/\alpha)^2 + \omega^2} \right]$$
+
+   $$f(\omega) = \frac{\sigma^2 \alpha}{\pi (1 + \alpha^2 \omega^2)}$$
+
+En este caso la densidad espectral $f(\omega)$ no siempre existe, pues el Teorema de Bochner garantiza que para cualquier función de covarianza (definida positiva y continua), existe una medida $F(\omega)$ que es real, acotada y no decreciente (es decir, una Función de Distribución Acumulativa). 
+
+Sin embargo, el teorema establece que la densidad espectral $f(\omega)$ (la función que aparece en la integral) solo existe si la medida $F(\omega)$ es absolutamente continua con respecto a la medida de Lebesgue. Esto significa que $F(\omega)$ debe ser derivable casi en todas partes para que $f(\omega) = F'(\omega)$ exista.
+
+
+---
+
+### Haga una tabla con la siguiente estructura para todos los modelos en los que aplique:
+
+* **Columna 1:** Función de autocovarianza $C(h)$.
+* **Columna 2:** Función de semivarianza $\gamma(h)$.
+* **Columna 3:** Función de autocorrelación $\rho(h)$.
+
+
+¿Existen expresiones para las 3 funciones en todos los modelos? Si no, ¿en qué casos no existen expresiones para las 3 columnas y por qué?
+
+
+Para que existan las tres funciones, el proceso debe cumplir Estacionariedad de Segundo Orden. Bajo este supuesto, la varianza total es finita y constante ($C(0) = \sigma^2$, *Silla Total*), y las funciones se calculan de la forma:
+
+1.  **Semivarianza:** $\gamma(h) = C(0) - C(h) \implies C(h) = \sigma^2 - \gamma(h)$
+2.  **Autocorrelación:** $\rho(h) = \frac{C(h)}{C(0)} = 1 - \frac{\gamma(h)}{\sigma^2}$
+
+**Tabla: Modelos de Semivariograma Acotados (Estacionariedad de 2do Orden)**
+
+*En estos modelos, la varianza es finita ($C(0) = \sigma^2 < \infty$). Las tres funciones existen.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Efecto Pepita** | $0 \quad \text{si } h \neq 0$ <br> $\sigma^2 \quad \text{si } h = 0$ | $\sigma^2 \quad \text{si } h \neq 0$ <br> $0 \quad \text{si } h = 0$ | $0 \quad \text{si } h \neq 0$ <br> $1 \quad \text{si } h = 0$ |
+| **Esférico** | $\sigma^2 \left[ 1 - \frac{3}{2}\left(\frac{h}{a}\right) + \frac{1}{2}\left(\frac{h}{a}\right)^3 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{3}{2}\left(\frac{h}{a}\right) - \frac{1}{2}\left(\frac{h}{a}\right)^3 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{3}{2}\left(\frac{h}{a}\right) + \frac{1}{2}\left(\frac{h}{a}\right)^3 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Circular** | $\sigma^2 \left[ 1 - \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{2}{\pi} \left( \frac{h}{a}\sqrt{1-\left(\frac{h}{a}\right)^2} + \arcsin\left(\frac{h}{a}\right) \right) \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Pentaesférico** | $\sigma^2 \left[ 1 - \frac{15}{8}\left(\frac{h}{a}\right) + \frac{5}{4}\left(\frac{h}{a}\right)^3 - \frac{3}{8}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{15}{8}\left(\frac{h}{a}\right) - \frac{5}{4}\left(\frac{h}{a}\right)^3 + \frac{3}{8}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{15}{8}\left(\frac{h}{a}\right) + \frac{5}{4}\left(\frac{h}{a}\right)^3 - \frac{3}{8}\left(\frac{h}{a}\right)^5 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Triangular** | $\sigma^2 \left( 1 - \frac{h}{a} \right) \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left( \frac{h}{a} \right) \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{h}{a} \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Cúbico** | $\sigma^2 \left[ 1 - \frac{35}{4}\left(\frac{h}{a}\right)^2 + \frac{7}{2}\left(\frac{h}{a}\right)^3 - \frac{3}{4}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ | $\sigma^2 \left[ \frac{35}{4}\left(\frac{h}{a}\right)^2 - \frac{7}{2}\left(\frac{h}{a}\right)^3 + \frac{3}{4}\left(\frac{h}{a}\right)^5 \right] \quad \text{si } h \le a$ <br> $\sigma^2 \quad \text{si } h > a$ | $1 - \frac{35}{4}\left(\frac{h}{a}\right)^2 + \frac{7}{2}\left(\frac{h}{a}\right)^3 - \frac{3}{4}\left(\frac{h}{a}\right)^5 \quad \text{si } h \le a$ <br> $0 \quad \text{si } h > a$ |
+| **Matérn** | $\frac{\sigma^2}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \frac{1}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right) \right]$ | $\frac{1}{2^{\kappa-1}\Gamma(\kappa)} \left(\frac{h}{a}\right)^\kappa K_\kappa\left(\frac{h}{a}\right)$ |
+| **Exponencial** | $\sigma^2 \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\frac{h}{a}\right) \right]$ | $\exp\left(-\frac{h}{a}\right)$ |
+| **Gaussiano** | $\sigma^2 \exp\left(-\left(\frac{h}{a}\right)^2\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\left(\frac{h}{a}\right)^2\right) \right]$ | $\exp\left(-\left(\frac{h}{a}\right)^2\right)$ |
+| **Cuadrático Racional** | $\sigma^2 \left( 1 + \frac{h^2}{a^2} \right)^{-1}$ | $\sigma^2 \left[ \frac{h^2/a^2}{1 + h^2/a^2} \right]$ | $\left( 1 + \frac{h^2}{a^2} \right)^{-1}$ |
+| **Estable** | $\sigma^2 \exp\left(-\left(\frac{h}{a}\right)^\delta\right) \quad (0 < \delta < 2)$ | $\sigma^2 \left[ 1 - \exp\left(-\left(\frac{h}{a}\right)^\delta\right) \right]$ | $\exp\left(-\left(\frac{h}{a}\right)^\delta\right)$ |
+| **Radon Orden 2** | $\sigma^2 \left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right) \right]$ | $\left( 1 + \frac{h}{a} \right) \exp\left(-\frac{h}{a}\right)$ |
+| **Radon Orden 4** | $\sigma^2 \left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right) \right]$ | $\left( 1 + \frac{h}{a} + \frac{1}{3}\left(\frac{h}{a}\right)^2 \right) \exp\left(-\frac{h}{a}\right)$ |
+| **Cauchy Generalizado**| $\sigma^2 \left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2}$ | $\sigma^2 \left[ 1 - \left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2} \right]$ | $\left( 1 + \left(\frac{h}{a}\right)^{\kappa_2} \right)^{-\kappa_1/\kappa_2}$ |
+| **Lantuéjoul** | $\sigma^2 \sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right)$ | $\sigma^2 \left[ 1 - \sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right) \right]$ | $\sin\left( 2\pi \exp\left(-\frac{h}{a}\right) \right)$ |
+
+**Tabla: Modelos de Semivariograma No Acotados (Estacionariedad Intrínseca)**
+
+*En estos modelos, la varianza total $C(0) \to \infty$. Solo existe la semivarianza.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Potencial** | **No existe** | $b \cdot h^\delta \quad (0 < \delta < 2)$ | **No existe** |
+| **Lineal** | **No existe** | $b \cdot h$ | **No existe** |
+| **Logarítmico (Wijsian-c2)**| **No existe** | $\frac{3}{2}b \log(h^2 + c^2)$ | **No existe** |
+| **Modelo Puente** | **No existe** | $b \left[ \left(1 + \left(\frac{h}{a}\right)^\alpha\right)^{\beta/\alpha} - 1 \right]$ | **No existe** |
+
+**Tabla: Modelos con Efecto Hueco (Correlación Espacial Negativa / Ondas)**
+
+*Modelos acotados que oscilan alrededor de la silla, permitiendo autocorrelaciones negativas.*
+
+| Modelo | Función de Autocovarianza $C(h)$ | Función de Semivarianza $\gamma(h)$ | Función de Autocorrelación $\rho(h)$ |
+| :--- | :--- | :--- | :--- |
+| **Seno Cardinal** | $\sigma^2 \left( \frac{a}{h} \right) \sin\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \frac{a}{h}\sin\left(\frac{h}{a}\right) \right]$ | $\frac{a}{h}\sin\left(\frac{h}{a}\right)$ |
+| **Bessel** | $\sigma^2 \left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right) \right]$ | $\left( \frac{h}{a} \right)^{1-d/2} J_{d/2-1}\left(\frac{h}{a}\right)$ |
+| **Exp. con Amortiguamiento**| $\sigma^2 \exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right)$ | $\sigma^2 \left[ 1 - \exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right) \right]$ | $\exp\left(-\frac{h}{a_1}\right) \cos\left(\frac{h}{a_2}\right)$ |
+| **Coseno** | $\sigma^2 \cos\left(\frac{h}{a}\right)$ | $\sigma^2 \left[ 1 - \cos\left(\frac{h}{a}\right) \right]$ | $\cos\left(\frac{h}{a}\right)$ |
+
+> $J_{d/2-1}(\cdot)$ es la función de Bessel de la primera clase, $K_\kappa(\cdot)$ es la función de Bessel modificada de la tercera clase, y $\Gamma(\cdot)$ es la función Gamma).
+
+---
+
+### Realice un análisis geoestadístico para los datos presentados en la Tabla 2.3.
+
+```{r carga_tabla_2_3, include=FALSE}
+# 1. Definición de coordenadas
+Norte <- seq(29, 1, by = -2)
+Este <- 1:9
+
+# 2. Creación del grid (Norte varía más lento, Este más rápido -> orden por filas)
+datos_t23 <- expand.grid(Norte = Norte, Este = Este)
+
+
+
+# 3. Valores de la tabla (ordenados por filas, de Norte=29 a Norte=1)
+valores_tabla <- c(
+  # Norte 29
+  NA, 19.6,   NA, 20.8,   NA, 19.6, 19.8, 21.5,   NA, # Norte 27
+  NA, 18.8, 19.9, 20.3, 20.6, 19.9, 20.1, 19.8, 19.9, # Norte 25
+  NA, 17.9, 20.2, 20.5, 19.8, 21.0, 20.1, 20.2, 20.9, # Norte 23
+  14.5, 18.5, 19.9, 20.6, 20.2, 20.4, 20.9, 21.9, 22.1, # Norte 21
+  16.5, 18.6, 19.9, 20.5, 20.3, 21.6, 20.9, 19.8, 19.4, # Norte 19
+  19.5, 19.0, 20.8, 20.8, 21.5, 19.8, 20.8, 19.5, 21.2,# Norte 17
+  18.2, 19.2, 20.6, 20.9, 19.8, 19.9, 20.8,   NA, 19.9, # Norte 15
+  17.4, 18.5, 20.5, 20.9, 19.9, 22.1, 20.3,   NA, 21.1, # Norte 13
+  16.5, 19.0, 19.9, 20.8, 21.9, 20.9, 21.5,   NA, 20.2, # Norte 11
+  19.5, 19.2, 20.8,   NA, 20.9, 21.6, 19.9,   NA,   NA, # Norte 9
+  18.2, 18.5, 20.6,   NA, 21.5, 21.7, 22.1,   NA,   NA, # Norte 7
+  17.4, 18.5, 20.5,   NA, 20.7, 20.9, 20.9,   NA,   NA, # Norte 5
+  14.5,   NA, 20.2,   NA,   NA, 21.6,   NA,   NA,   NA, # Norte 3
+  16.5,   NA, 19.9,   NA,   NA,   NA,   NA,   NA,   NA, # Norte 1
+    NA,   NA,   NA,   NA,   NA,   NA,   NA,   NA,   NA
+)
+
+# Asignación de la variable Sensación Térmica
+datos_t23$Sensacion_Termica <- valores_tabla
+
+# Filtrar datos válidos (sin NA) para el análisis geoestadístico
+datos_validos <- na.omit(datos_t23)
+
+# Convertir a objeto espacial (sf)
+datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"), crs = NA)
+```
+
+
+```{r mostrar_tabla_2_3, echo=FALSE, message=FALSE, warning=FALSE}
+# Recreación de la matriz visual idéntica a la imagen
+matriz_visual <- matrix(valores_tabla, nrow = 15, ncol = 9, byrow = TRUE)
+rownames(matriz_visual) <- seq(29, 1, by = -2)
+colnames(matriz_visual) <- 1:9
+
+# Reemplazar NAs por cadenas vacías para que quede limpio
+matriz_visual[is.na(matriz_visual)] <- ""
+
+kable(matriz_visual, align = "c", caption = "Tabla 2.3. Datos de sensación térmica") %>%
+  kable_styling(bootstrap_options = c("bordered", "condensed"), full_width = FALSE) %>%
+  add_header_above(c("Norte / Este" = 1, "Este" = 9))
+
+```
+
+A continuación se sugieren los pasos para llevar a cabo un análisis de estacionariedad e isotropía así como de predicción espacial:
+
+1. Encuentre la matriz de correlación de la variable y sus coordenadas geográficas. Analice.
+
+    Calculamos la correlación de Pearson entre la variable de interés y sus coordenadas para detectar relaciones lineales globales.
+    
+    ```{r paso_1_correlacion}
+    matriz_cor <- cor(datos_validos[, c("Sensacion_Termica", "Este", "Norte")], use = "complete.obs")
+    kable(matriz_cor, digits = 3, caption = "Matriz de correlación de Pearson")
+    ```
+    Ninguna de las dos coordenadas geográficas presenta una fuerte asociación lineal con la sensación térmica. Esto sugiere que no es estrictamente necesario incluir un modelo de tendencia polinomial (Kriging universal)
+
+2. Realice gráficos de dispersión de la variable contra cada una de las coordenadas geográficas. Analice.
+
+```{r paso_2_dispersion_coords, fig.width=10, fig.height=4}
+p1 <- ggplot(datos_validos, aes(x = Este, y = Sensacion_Termica)) +
+  geom_point(size = 2, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  theme_minimal() + labs(title = "Sensación Térmica vs. Este")
+
+p2 <- ggplot(datos_validos, aes(x = Norte, y = Sensacion_Termica)) +
+  geom_point(size = 2, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  theme_minimal() + labs(title = "Sensación Térmica vs. Norte")
+
+p1 + p2
+```
+    Los gráficos confirman el supuesto de estacionariedad de primer orden ($E[Z(s)] = \mu$). La media de la sensación térmica no varía en función de la ubicación geográfica. Se confirma que no es necesario remover tendencia mediante modelos de regresión. El proceso es adecuado para aplicar kriging ordinario.
+
+3. Realice gráficos de dispersión de la media (mediana) de cada columna con respecto a su coordenada horizontal.
+
+    Agregamos los datos por `Este` para ver el comportamiento central en cada columna.
+
+    ```{r paso_3_media_columna, fig.height=3, fig.width=10}
+    resumen_este <- datos_validos %>%
+      group_by(Este) %>%
+      summarise(
+        media = mean(Sensacion_Termica, na.rm = TRUE),
+        mediana = median(Sensacion_Termica, na.rm = TRUE)
+      )
+    
+    ggplot(resumen_este, aes(x = Este)) +
+      geom_line(aes(y = media, color = "Media"), linewidth = 1) +
+      geom_point(aes(y = media, color = "Media"), size = 2) +
+      geom_line(aes(y = mediana, color = "Mediana"), linetype = "dashed", linewidth = 1) +
+      geom_point(aes(y = mediana, color = "Mediana"), size = 2, shape = 17) +
+      scale_color_manual(values = c("Media" = "blue", "Mediana" = "red")) +
+      theme_minimal() + labs(title = "Tendencia Central por Columna (Este)", y = "Valor")
+    ```
+    El análisis por columnas confirma que la media fluctúa de manera estable alrededor de $20.25^\circ\text{C}$ ($\mu \approx 20^\circ\text{C}$). Dado que la media no es resistente con valores atípicos (como en `Este = 8`), se prefiere usar estimadores resistentes de semivarianza (Cressie & Hawkins o Mediana).
+
+
+4. Realice gráficos de dispersión de la media (mediana) de cada fila con respecto a su coordenada vertical.
+
+    Agregamos los datos por `Norte` para ver el comportamiento central en cada fila.
+
+    ```{r paso_4_media_fila, fig.height=3, fig.width=10}
+    resumen_norte <- datos_validos %>%
+      group_by(Norte) %>%
+      summarise(
+        media = mean(Sensacion_Termica, na.rm = TRUE),
+        mediana = median(Sensacion_Termica, na.rm = TRUE)
+      )
+    
+    ggplot(resumen_norte, aes(x = Norte)) +
+      geom_line(aes(y = media, color = "Media"), linewidth = 1) +
+      geom_point(aes(y = media, color = "Media"), size = 2) +
+      geom_line(aes(y = mediana, color = "Mediana"), linetype = "dashed", linewidth = 1) +
+      geom_point(aes(y = mediana, color = "Mediana"), size = 2, shape = 17) +
+      scale_x_reverse() + # Para que el Norte crezca visualmente hacia arriba
+      scale_color_manual(values = c("Media" = "blue", "Mediana" = "red")) +
+      theme_minimal() + labs(title = "Tendencia Central por Fila (Norte)", y = "Valor", x = "Norte")
+    ```
+    El análisis de la tendencia central por fila muestra un comportamiento oscilatorio sin una dirección monótona creciente o decreciente claro en la variable de sensación térmica. La media y mediana se mantienen alrededor de $20^\circ\text{C}$, lo que refuerza la hipótesis de estacionariedad de primer orden.
+
+5. Realice gráficos de dispersión de la varianza de cada columna con respecto a su coordenada horizontal.
+
+    Evaluamos la estacionariedad en varianza a lo largo del eje X.
+
+    ```{r paso_5_varianza_columna, fig.height=3.5, fig.width=10}
+    var_este <- datos_validos %>%
+      group_by(Este) %>%
+      summarise(varianza = var(Sensacion_Termica, na.rm = TRUE))
+    
+    ggplot(var_este, aes(x = Este, y = varianza)) +
+      geom_col(fill = "darkgreen", alpha = 0.7) +
+      theme_minimal() + labs(title = "Varianza por Columna (Este)", y = "Varianza")
+    ```
+
+6. Realice gráficos de algunos dispersogramas. Encuentre el coeficiente de autocorrelación para cada caso. Analice.
+    
+    Graficamos $Z(s)$ vs $Z(s+h)$ para rezagos unitarios horizontales y verticales.
+
+    ```{r paso_6_dispersogramas, fig.width=10, fig.height=4}
+    # Dispersograma Horizontal (Rezago 1 en Este)
+    datos_h <- datos_validos %>%
+      mutate(Este_lag = Este + 1) %>%
+      inner_join(datos_validos, by = c("Norte", "Este_lag" = "Este"), suffix = c("", "_lag"))
+    
+    cor_h <- cor(datos_h$Sensacion_Termica, datos_h$Sensacion_Termica_lag, use = "complete.obs")
+    
+    p_h <- ggplot(datos_h, aes(x = Sensacion_Termica, y = Sensacion_Termica_lag)) +
+      geom_point(color = "purple", alpha = 0.7) +
+      geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+      geom_smooth(method = "lm", color = "blue", se = FALSE) +
+      theme_minimal() + labs(title = sprintf("Dispersograma Horizontal (h=1), r = %.3f", cor_h))
+    
+    # Dispersograma Vertical (Rezago 1 en Norte, recordemos que Norte baja de 29 a 1)
+    datos_v <- datos_validos %>%
+      mutate(Norte_lag = Norte - 2) %>% # El paso es de 2 en 2
+      inner_join(datos_validos, by = c("Este", "Norte_lag" = "Norte"), suffix = c("", "_lag"))
+    
+    cor_v <- cor(datos_v$Sensacion_Termica, datos_v$Sensacion_Termica_lag, use = "complete.obs")
+    
+    p_v <- ggplot(datos_v, aes(x = Sensacion_Termica, y = Sensacion_Termica_lag)) +
+      geom_point(color = "purple", alpha = 0.7) +
+      geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+      geom_smooth(method = "lm", color = "blue", se = FALSE) +
+      theme_minimal() + labs(title = sprintf("Dispersograma Vertical (h=2), r = %.3f", cor_v))
+    
+    p_h + p_v
+    ```
+
+
+7. Realice gráficos de dispersión de la varianza de cada fila con respecto a su coordenada vertical.
+
+    Evaluamos la estacionariedad en varianza a lo largo del eje Y.
+
+    ```{r paso_7_varianza_fila, fig.height=3.5, fig.width=10}
+    var_norte <- datos_validos %>%
+      group_by(Norte) %>%
+      summarise(varianza = var(Sensacion_Termica, na.rm = TRUE))
+    
+    ggplot(var_norte, aes(x = Norte, y = varianza)) +
+      geom_col(fill = "darkgreen", alpha = 0.7) +
+      scale_x_reverse() +
+      theme_minimal() + labs(title = "Varianza por Fila (Norte)", y = "Varianza", x = "Norte")
+    ```
+
+
+8. Realice al menos un gráfico de medias móviles que no sea ni por fila ni por columna.
+
+9. ¿Existe tendencia en alguna dirección? En caso afirmativo, explore varios modelos de regresión e intente mejoarla y posteriormente verifique que la tendencia fue eliminada realizando gráficos de dispersión de los residuales del modelo de regresión seleccionado.
+
+10. Grafique el semivariograma empírico horizontal de la variable centrada.
+
+11. Grafique el semivariograma empírico vertical de la variable centrada.
+
+12. Grafique el semivariograma empírico en dirección 45 grados de la variable centrada.
+
+13. Grafique el semivariograma empírico omnidireccional, esto es, sin tener en cuenta la dirección, sino únicamente la distancia de la variable centrada.
+
+14. Grafique, si es posible, un variograma con dirección diferente a las anteriores de la variable centrada.
+
+15. ¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?
+
+16. Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.
+
+17. Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.
+
+18. Realice la validación cruzada (al menos para 10 lugares observados) y calcule:
+    a.  Media (mediana) de los errores. Media (mediana) estandarizada.
+    b. Grafique observados Vs. predichos y calcule su coeficiente de correlación lineal de Pearson.
+
+
