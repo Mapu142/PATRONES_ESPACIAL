@@ -2185,7 +2185,83 @@ kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación
 
 1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
 
+R/ como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
+
+$$
+C(h)=\sigma^2exp\left(-\frac{||h||}{a}\right)=4exp\left(-\frac{h}{100}\right)
+$$
+
+Y el semivariograma es
+
+$$
+\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
+$$
+
+Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza $C(h)$ con los puntos conocidos, los resultados seran guardados en una matriz $\mathbb{C}$, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector $\mathbf{c_0}$
+
+La estimación de $\lambda$ es
+
+$$
+\lambda = C^{-1} c_0,
+$$
+
+```{r}
+# Coordenadas de los puntos muestreados
+coords <- data.frame(
+  x = c(0, 100, 0, 70),
+  y = c(0, 0, 50, 50)
+)
+
+# Matriz de distancias euclidianas
+d <- as.matrix(dist(coords))
+
+d
+
+p0 <- c(75, 25)
+
+d0 <- sqrt((coords$x - p0[1])^2 + (coords$y - p0[2])^2)
+
+d0
+
+# Matriz de covarianzas
+C <- 4 * exp(-d / 100)
+
+round(C, 4)
+
+c0 <- 4*exp(-d0/100)
+
+round(c0, 4)
+
+lambda <- solve(C)%*%c0
+
+round(lambda, 4)
+```
+
+Como la media es conocida y **constante**:
+
+$$
+\hat{Z}(s_0) = \mu + \lambda^T (y - \mu \mathbf{1}),
+$$
+```{r}
+y <- c(15,16,16,15)
+mu <- 15.7
+z <- y - mu
+
+# Estimación
+z_hat <- mu + t(lambda) %*% z
+
+round(z_hat,4)
+```
+Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3983.
+
+
 2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
+
+R/
+
+Primero debemos estimar la media
+
+
 
 3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
 
