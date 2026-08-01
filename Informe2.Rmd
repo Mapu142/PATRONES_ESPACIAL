@@ -2555,24 +2555,19 @@ kable(tabla_4_1, align = "c", caption = "Tabla 4.1. Resultados de la estimación
 
 1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
 
-R/ como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
+**R/** como tenemos que la **silla** es 4, entonces $C(0)=4=\sigma^2$, y el **rango** es 100, por ende $C(h)$ es
 
 $$
 C(h)=\sigma^2exp\left(-\frac{||h||}{a}\right)=4exp\left(-\frac{h}{100}\right)
 $$
 
-Y el semivariograma es
-
-$$
-\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
-$$
 
 Obtenemos las distancias euclideanas y reemplazamos en la función de covarianza $C(h)$ con los puntos conocidos, los resultados seran guardados en una matriz $\mathbb{C}$, luego calculamos las distancias euclideanas de cada punto conocido con respecto al punto a estimar, y utilizaremos estas distancias para calcular las covarianzas y cuadarlas en el vector $\mathbf{c_0}$
 
 La estimación de $\lambda$ es
 
 $$
-\lambda = C^{-1} c_0,
+\lambda = \Sigma^{-1} \sigma_0,
 $$
 
 ```{r}
@@ -2603,7 +2598,7 @@ c0 <- 4*exp(-d0/100)
 round(c0, 4)
 
 lambda <- solve(C)%*%c0
-
+#cat("$\lambda$")
 round(lambda, 4)
 ```
 
@@ -2618,28 +2613,203 @@ mu <- 15.7
 z <- y - mu
 
 # Estimación
-z_hat <- mu + t(lambda) %*% z
+y_hat <- mu + t(lambda) %*% z
 
-round(z_hat,4)
+round(y_hat,4)
 ```
+
+
 Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3983.
 
+Para la varianza del error tenemos:
+
+$$
+Var(Y^{*}(s_0)-Y(s_0))=C(0)-\sigma_0 \Sigma^{-1}\sigma_0=4-\sigma_0 \Sigma^{-1}\sigma_0
+$$
+
+```{r}
+(var1 <- 4-c0%*%solve(C)%*%c0)
+```
+Por lo tanto la varianza del error es aproximadamente $1.15$
 
 2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
 
-R/
+**R/**
 
-Primero debemos estimar la media
+El predictor lineal es
 
+$$
+\hat{Y}(s_0) = \sum_{i=1}^4 \lambda_i Y(s_i),
+$$
 
+con la restricción de insesgamiento
+
+$$
+\sum_{i=1}^4 \lambda_i = 1.
+$$
+
+Como la media es desconocida, se incorpora un multiplicador de Lagrange $\eta$. El sistema es
+
+$$
+\begin{pmatrix}
+\Sigma & \mathbf{1} \\
+\mathbf{1}^T & 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\delta
+\end{pmatrix}
+=
+\begin{pmatrix}
+\sigma_0 \\
+\mathbf{1}
+\end{pmatrix},
+$$
+
+donde
+
+$$
+\mathbf{1} =
+\begin{pmatrix}
+1 \\
+1 \\
+1 \\
+1
+\end{pmatrix}.
+$$
+
+```{r}
+unos <- matrix(1, nrow = nrow(C), ncol = 1)
+
+A <- rbind(
+  cbind(C, unos),
+  cbind(t(unos), 0)
+)
+
+A
+
+b0 <- c(c0,1)
+
+parametros <- solve(A)%*%b0
+
+(y2 <- t(parametros[-5])%*%y)
+```
+Obteniendo una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+
+Para la varianza del error tenemos:
+
+$$
+\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+$$
+
+```{r}
+(var2 <- 4-t(parametros[-5])%*%c0+parametros[5])
+```
+
+Por lo tanto la varianza del error es aproximadamente $1.14$
 
 3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
 
+**R/**
+
+El sistema es
+
+$$
+\begin{pmatrix}
+\Gamma & \mathbf{1} \\
+\mathbf{1}^T & 0
+\end{pmatrix}
+\begin{pmatrix}
+\lambda \\
+\delta
+\end{pmatrix}
+=
+\begin{pmatrix}
+\sigma_0 \\
+\mathbf{1}
+\end{pmatrix},
+$$
+
+El semivariograma es
+
+$$
+\gamma(h)= 4 - C(h)=4\left(1-exp\left(-\frac{h}{100}\right)\right)
+$$
+
+```{r}
+gammah <- 4*(1-exp(-(d/100))) 
+gamma0 <- 4*(1-exp(-(d0/100)))
+
+A <- rbind(
+  cbind(gammah, unos),
+  cbind(t(unos), 0)
+)
+
+A
+
+b0 <- c(gamma0,1)
+
+parametros <- solve(A)%*%b0
+
+(y3 <- t(parametros[-5])%*%y)
+```
+
+Obteniendo nuevamente una estimación para $Z(75,25)$ aproximadamente de 15.3982.
+
+Para la varianza
+
+$$
+\sigma_K^2 = C(0) - \lambda^T \sigma_0 + \delta,
+$$
+
+```{r}
+(var3 <- t(parametros[-5])%*%gamma0+parametros[5])
+```
+
+Por lo tanto la varianza del error es aproximadamente $1.14$
+
+
 4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
+
+```{r}
+# Intervalos de confianza
+li1 <- y_hat - 1.96 * sqrt(var1)
+ls1 <- y_hat + 1.96 * sqrt(var1)
+
+li2 <- y2 - 1.96 * sqrt(var2)
+ls2 <- y2 + 1.96 * sqrt(var2)
+
+li3 <- y3 - 1.96 * sqrt(var3)
+ls3 <- y3 + 1.96 * sqrt(var3)
+
+# Tabla resumen
+tabla <- data.frame(
+  Punto = c("Punto 1", "Punto 2", "Punto 3"),
+  Estimacion = c(y_hat, y2, y3),
+  Varianza = c(var1, var2, var3),
+  LI_95 = c(li1, li2, li3),
+  LS_95 = c(ls1, ls2, ls3)
+)
+
+tabla %>% 
+  kableExtra::kbl(digits = 3) %>% 
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  kableExtra::row_spec(
+    0,
+    bold = TRUE,
+    background = "#2c3e50",
+    color = "white"
+  ) 
+```
+
+
 
 5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
 
-
+**R/** Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.
 
 ### Suponga que
 
