@@ -2870,42 +2870,313 @@ $$Q_{MCO}(\Theta) = \sum_{k=1}^K \left( \hat{\gamma}(h_k) - \gamma(h_k; \Theta) 
 
 ### Para el problema 4 del capítulo 1, encuentre las matrices de covarianza, correlación y semivarianza, si existen. Si alguna no existe, justifique. Verifique las propiedades de las matrices obtenidas para que garanticen varianzas de predicción positivas.
 
+Para garantizar la reproducibilidad y alinearnos con las matrices de dimensión $6 \times 6$ del caso de estudio, extraeremos las coordenadas de los primeros 6 puntos del dataset clásico `meuse` del paquete `sp`. 
+
+Las relaciones fundamentales bajo estacionariedad de segundo orden son:
+
+*   **Semivarianza:** $\gamma(h)$
+*   **Covarianza:** $C(h) = C(0) - \gamma(h) = \sigma^2 - \gamma(h)$
+*   **Correlación:** $\rho(h) = \frac{C(h)}{C(0)}$
+
+```{r ej-3-4-datos, message=FALSE, warning=FALSE}
+library(sp)
+data(meuse)
+
+# Tomamos los primeros 6 puntos para replicar la estructura del caso
+coords <- meuse[1:6, c("x", "y")]
+D <- as.matrix(dist(coords)) # Matriz de distancias euclidianas 6x6
+
+# Variable de interés (ej. Zinc) para los cálculos de verosimilitud
+Y <- meuse$zinc[1:6] 
+n <- length(Y)
+```
+
+
     
 1. **Si el modelo es un exponencial con rango 50 y silla 1600, sin pepita.**
 
     **R/**
     
+    La función de semivarianza es $\gamma(h) = 1600(1 - e^{-h/50})$. Al ser un modelo acotado, existen las tres matrices.
+    
+    ```{r ej_3_4_exp, message=FALSE, warning=FALSE}
+    silla <- 1600; rango <- 50
+
+    # Cálculos matriciales
+    Gamma_exp <- silla * (1 - exp(-D / rango))
+    Cov_exp   <- silla - Gamma_exp
+    Rho_exp   <- Cov_exp / silla
+    
+    # Función auxiliar para formatear submatrices (primeras 5 filas y columnas)
+    ver_submatriz <- function(mat, titulo) {
+      sub_mat <- round(mat[1:min(5, nrow(mat)), 1:min(5, ncol(mat))], 2)
+      kable(sub_mat, caption = paste(titulo, "(Vista previa 5x5)"), align = "c") %>%
+        kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+    }
+    
+    # --- 1. Imprimir las matrices en formato tabla ---
+    ver_submatriz(Gamma_exp, "Matriz de Semivarianza (γ)")
+    ver_submatriz(Cov_exp,   "Matriz de Covarianza (C)")
+    ver_submatriz(Rho_exp,   "Matriz de Correlación (ρ)")
+    
+    # --- 2. Resumen de Propiedades Matemáticas ---
+    autovalores <- eigen(Cov_exp)$values
+    es_simetrica <- isSymmetric(Cov_exp)
+    es_def_pos   <- all(autovalores > 0)
+    
+    df_propiedades <- data.frame(
+      Propiedad = c("Matriz Simétrica", "Definida Positiva", "Mín. Autovalor", "Máx. Autovalor"),
+      Resultado = c(
+        ifelse(es_simetrica, "Sí (Correcto)", "No"),
+        ifelse(es_def_pos,   "Sí (Correcto)", "No"),
+        round(min(autovalores), 4),
+        round(max(autovalores), 4)
+      )
+    )
+    
+    kable(df_propiedades, caption = "Verificación de Propiedades de la Matriz de Covarianza", align = "lc") %>%
+      kable_styling(bootstrap_options = c("striped", "bordered"), full_width = FALSE) %>%
+      column_spec(2, bold = TRUE, color = ifelse(es_def_pos, "#2E7D32", "#C62828"))
+    ```
+    La matriz de covarianza es simétrica y todos sus valores propios son estrictamente positivos, garantizando varianzas de predicción positivas.
+
+    
 2. **Si el modelo es un seno cardinal con rango 50 y silla 1600, sin pepita.**
 
     **R/**
+    
+    La función es $\gamma(h) = 1600 \left[ 1 - \frac{\sin(h/50)}{h/50} \right]$ (con $\gamma(0)=0$). Este modelo presenta "efecto hueco" (correlaciones negativas).
+
+    ```{r ej_3_4_sinc, message=FALSE, warning=FALSE}
+    Gamma_sinc <- ifelse(D == 0, 0, silla * (1 - sin(D/rango)/(D/rango)))
+    Cov_sinc   <- silla - Gamma_sinc
+    Rho_sinc   <- Cov_sinc / silla
+    
+    # --- 1. Imprimir las matrices en formato tabla ---
+    ver_submatriz(Gamma_sinc, "Matriz de Semivarianza (γ)")
+    ver_submatriz(Cov_sinc,   "Matriz de Covarianza (C)")
+    ver_submatriz(Rho_sinc,   "Matriz de Correlación (ρ)")
+    
+    # --- 2. Resumen de Propiedades Matemáticas ---
+    autovalores <- eigen(Cov_sinc)$values
+    es_simetrica <- isSymmetric(Cov_sinc)
+    es_def_pos   <- all(autovalores > 0)
+    
+    df_propiedades <- data.frame(
+      Propiedad = c("Matriz Simétrica", "Definida Positiva", "Mín. Autovalor", "Máx. Autovalor"),
+      Resultado = c(
+        ifelse(es_simetrica, "Sí (Correcto)", "No"),
+        ifelse(es_def_pos,   "Sí (Correcto)", "No"),
+        round(min(autovalores), 4),
+        round(max(autovalores), 4)
+      )
+    )
+    
+    kable(df_propiedades, caption = "Verificación de Propiedades de la Matriz de Covarianza", align = "lc") %>%
+      kable_styling(bootstrap_options = c("striped", "bordered"), full_width = FALSE) %>%
+      column_spec(2, bold = TRUE, color = ifelse(es_def_pos, "#2E7D32", "#C62828"))
+    ```
+    Aunque permite correlaciones negativas (valores propios de $\rho(h)$ negativos), la matriz de covarianza global sigue siendo definida positiva, cumpliendo el Teorema de Bochner.
     
 3. **Si el modelo es un cúbico con pendiente 50 y potencia 1600, sin pepita.**
 
     **R/**
     
+    La función es $\gamma(h) = 1600 \left[ 7\left(\frac{h}{50}\right)^2 - \frac{35}{4}\left(\frac{h}{50}\right)^3 + \frac{7}{2}\left(\frac{h}{50}\right)^5 - \frac{3}{4}\left(\frac{h}{50}\right)^7 \right]$ para $h \le 50$, y $1600$ si $h > 50$.
+
+```{r ej_3_4_cub, message=FALSE, warning=FALSE}
+    h_norm <- D / rango
+    # Fórmula exacta del variograma cúbico
+    Gamma_cub <- ifelse(D <= rango, 
+                        silla * (7*(h_norm^2) - (35/4)*(h_norm^3) + (7/2)*(h_norm^5) - (3/4)*(h_norm^7)), 
+                        silla)
+    Cov_cub   <- silla - Gamma_cub
+    Rho_cub   <- Cov_cub / silla
+
+    # --- 1. Imprimir las matrices en formato tabla ---
+    ver_submatriz(Gamma_cub, "Matriz de Semivarianza (γ)")
+    ver_submatriz(Cov_cub,   "Matriz de Covarianza (C)")
+    ver_submatriz(Rho_cub,   "Matriz de Correlación (ρ)")
+    
+    # --- 2. Resumen de Propiedades Matemáticas ---
+    autovalores <- eigen(Cov_cub)$values
+    es_simetrica <- isSymmetric(Cov_cub)
+    es_def_pos   <- all(autovalores > 0)
+    
+    df_propiedades <- data.frame(
+      Propiedad = c("Matriz Simétrica", "Definida Positiva", "Mín. Autovalor", "Máx. Autovalor"),
+      Resultado = c(
+        ifelse(es_simetrica, "Sí (Correcto)", "No"),
+        ifelse(es_def_pos,   "Sí (Correcto)", "No"),
+        round(min(autovalores), 4),
+        round(max(autovalores), 4)
+      )
+    )
+    
+    kable(df_propiedades, caption = "Verificación de Propiedades de la Matriz de Covarianza", align = "lc") %>%
+      kable_styling(bootstrap_options = c("striped", "bordered"), full_width = FALSE) %>%
+      column_spec(2, bold = TRUE, color = ifelse(es_def_pos, "#2E7D32", "#C62828"))
+```
+
+    
 4. **Si el modelo es un potencial con pendiente 50 y potencia 1.6, sin pepita.**
 
     **R/**
+    
+    La función es $\gamma(h) = 50 h^{1.6}$. 
+
+    ```{r ej_3_4_pot, message=FALSE, warning=FALSE}
+    Gamma_pot <- 50 * D^1.6
+    
+    # --- 1. Imprimir las matrices en formato tabla ---
+    ver_submatriz(Gamma_pot, "Matriz de Semivarianza (γ)")
+    
+    ```
+    Las matrices de Covarianza $C(h)$ y Correlación $\rho(h)$ NO existen en este modelo. 
+El modelo potencial es no acotado (crece indefinidamente con la distancia). Por lo tanto, no alcanza una meseta (silla), lo que implica que la varianza del proceso $Var[Z(s)] = C(0) \to \infty$. 
+
+Este modelo solo satisface la estacionariedad intrínseca (de los incrementos), pero no la estacionariedad de segundo orden. Solo es válida la matriz de semivarianza $\Gamma_{pot}$.
+
     
 5. **Calcule el valor de la función de verosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?**
 
     **R/**
     
+    Bajo normalidad multivariada, la ML solo es aplicable a modelos que poseen función de covarianza (estacionariedad de segundo orden). El modelo Potencial queda excluido de este criterio. La función a maximizar es:
+$$ \ell(\Theta) = -\frac{n}{2}\ln(2\pi) - \frac{1}{2}\ln|\Sigma(\Theta)| - \frac{1}{2}(Y - \mu)^\top \Sigma^{-1}(\Theta) (Y - \mu) $$
+
+    ```{r ej-3-4-ml, message=FALSE, warning=FALSE}
+    # Función de Log-Verosimilitud Exacta usando Media GLS
+calc_loglik <- function(Sigma, Y) {
+  n <- length(Y)
+  one <- rep(1, n)
+  Sigma_inv <- solve(Sigma)
+  
+  # Estimador GLS de la media mu
+  mu_gls <- as.numeric((t(one) %*% Sigma_inv %*% Y) / (t(one) %*% Sigma_inv %*% one))
+  
+  # Componentes de la Log-Verosimilitud
+  det_sig <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
+  quad_form <- as.numeric(t(Y - mu_gls) %*% Sigma_inv %*% (Y - mu_gls))
+  
+  log_lik <- -0.5 * (n * log(2 * pi) + det_sig + quad_form)
+  return(log_lik)
+}
+
+LL_exp  <- calc_loglik(Cov_exp, Y)
+LL_sinc <- calc_loglik(Cov_sinc, Y)
+LL_cub  <- calc_loglik(Cov_cub, Y)
+
+resultados_ml <- data.frame(
+  Modelo = c("Exponencial", "Seno Cardinal", "Cúbico"),
+  LogLik = round(c(LL_exp, LL_sinc, LL_cub), 2),
+  Criterio = "Comparativo"
+)
+
+# Ahora LogLik existe perfectamente y la comparación no falla:
+resultados_ml$Selección <- ifelse(resultados_ml$LogLik == max(resultados_ml$LogLik), 
+                                 "Mejor Modelo", "")
+
+# Imprimir con kable usando bonitos encabezados:
+knitr::kable(
+  resultados_ml, 
+  col.names = c("Modelo", "Log-Verosimilitud (ℓ)", "Criterio", "Selección"),
+  caption = "Comparación de Log-Verosimilitud Multivariada (ML)"
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+    ```
+
+    
 6. **En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de máxima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?**
 
     **R/**
+    
+    
+    En un modelo anisotrópico geométrico, la dependencia espacial varía según la dirección. Para modelarlo, se transforma el espacio original $(h_x, h_y)$ en un espacio isotrópico $(h'_\phi, h'_\theta)$ mediante una rotación y un reescalamiento.
+    
+    *   **Dirección de Máxima Anisotropía (Mayor Rango / Mayor Pendiente):**
+        La magnitud del rezago espacial en esta dirección es la distancia original sin reescalar a lo largo del eje mayor de la elipse de anisotropía. Sin embargo, para evaluar el modelo isotrópico equivalente, el semivariograma se evalúa usando como alcance el rango mínimo ($a_\phi$). El modelo queda como $\gamma(h) \to \gamma'(\|h'\|)$, donde $\|h'\|$ comprime el eje mayor.
+    
+    Ell modelo de semivariograma anisotrópico se reduce a un modelo isotrópico evaluado sobre la distancia transformada $\|h'\| = \sqrt{(h'_\phi)^2 + (h'_\theta)^2}$, utilizando el rango de la dirección de menor anisotropía ($a_\phi$).
+
     
 7. **En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de mínima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?**
 
     **R/**
     
+    En un modelo anisotrópico geométrico, la dependencia espacial varía según la dirección. Para modelarlo, se transforma el espacio original $(h_x, h_y)$ en un espacio isotrópico $(h'_\phi, h'_\theta)$ mediante una rotación y un reescalamiento.
+    
+    *   **Dirección de Mínima Anisotropía (Menor Rango / Menor Pendiente):**
+        La magnitud del rezago es la distancia a lo largo del eje menor. El modelo isotrópico equivalente utiliza el rango mínimo ($a_\phi$) como su único parámetro de alcance, y la distancia transformada $\|h'\|$ expande el eje menor para igualarlo al mayor.
+    
+    Ell modelo de semivariograma anisotrópico se reduce a un modelo isotrópico evaluado sobre la distancia transformada $\|h'\| = \sqrt{(h'_\phi)^2 + (h'_\theta)^2}$, utilizando el rango de la dirección de menor anisotropía ($a_\phi$).
+    
 8. **Calcule el valor de la función de pseudoverosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?**
 
     **R/**
     
+    El método CL relaja el supuesto de normalidad conjunta y utiliza las marginales de los incrementos $U_{ij} \sim N(0, 2\gamma(h_{ij}))$. Al no requerir la inversión de la matriz de covarianza global $n \times n$, **es aplicable incluso al modelo Potencial**.
+
+    ```{r ej-3-4-cl, message=FALSE, warning=FALSE}
+    # Función para calcular la Log-Pseudoverosimilitud Compuesta
+    calc_log_CL <- function(Gamma, Y) {
+      # Extraer índices del triángulo superior (pares únicos i < j)
+      idx <- upper.tri(Gamma)
+      
+      h_gamma <- Gamma[idx]
+      # Matriz de diferencias Y_i - Y_j
+      U_matrix <- outer(Y, Y, "-")
+      U_ij <- U_matrix[idx]
+      
+      # Densidad marginal normal para cada par
+      l_ij <- -0.5 * log(4 * pi * h_gamma) - (U_ij^2) / (4 * h_gamma)
+      
+      return(sum(l_ij))
+    }
+    
+    # Cálculo para los 4 modelos
+    CL_exp  <- calc_log_CL(Gamma_exp, Y)
+    CL_sinc <- calc_log_CL(Gamma_sinc, Y)
+    CL_cub  <- calc_log_CL(Gamma_cub, Y)
+    CL_pot  <- calc_log_CL(Gamma_pot, Y)
+    
+    # Consolidación de resultados
+    resultados_cl <- data.frame(
+      Modelo = c("Exponencial", "Seno Cardinal", "Cúbico", "Potencial"),
+      Log_CL = round(c(CL_exp, CL_sinc, CL_cub, CL_pot), 2),
+      Criterio = "Maximización"
+    )
+    
+    # Identificar el modelo óptimo (mayor valor de Log-CL)
+    resultados_cl$Selección <- ifelse(resultados_cl$Log_CL == max(resultados_cl$Log_CL), 
+                                     "Mejor Modelo", "")
+    
+    knitr::kable(
+      resultados_cl, 
+      col.names = c("Modelo", "Log-Pseudoverosimilitud (ℓ_CL)", "Criterio", "Selección"),
+      caption = "Comparación de Log-Pseudoverosimilitud Compuesta (CL)"
+    ) %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+    ```
+    
+    Matemáticamente, el modelo Potencial puede arrojar el mayor valor de CL. Sin embargo, esto no lo hace el más adecuado teóricamente si el fenómeno exhibe estacionariedad de segundo orden (meseta). El método CL penaliza menos la falta de estructura de covarianza global. Si se sabe que el proceso es acotado, se debe preferir el modelo acotado con mejor CL (usualmente el Exponencial).
+
+    
 9. **Escriba cada modelo con la corrección necesaria en presencia de anisotropía.**
 
     **R/**
+    
+    Sea $\gamma(h; \Theta)$ el modelo isotrópico base. Ante anisotropía geométrica con razón $\lambda = \frac{a_\phi}{a_\theta} < 1$ y ángulo de máxima anisotropía $\theta$, se aplica la transformación de coordenadas $h \to h'$. Los modelos corregidos se escriben evaluando la norma transformada $\|h'\|$:
+
+    1.  **Exponencial:** $\gamma(h') = 1600 \left( 1 - \exp\left( - \frac{\|h'\|}{50} \right) \right)$
+    2.  **Seno Cardinal:** $\gamma(h') = 1600 \left[ 1 - \frac{\sin(\|h'\| / 50)}{\|h'\| / 50} \right]$
+    3.  **Cúbico:** 
+        $$ \gamma(h') = \begin{cases} 1600 \left[ 7\left(\frac{\|h'\|}{50}\right)^2 - \dots - \frac{3}{4}\left(\frac{\|h'\|}{50}\right)^7 \right] & \text{si } \|h'\| \le 50 \\ 1600 & \text{si } \|h'\| > 50 \end{cases} $$
+    4.  **Potencial:** $\gamma(h') = 50 \|h'\|^{1.6}$
+    
+    Donde $\|h'\|$ es la distancia euclidiana en el sistema de coordenadas rotado y reescalado.
+
+
 
 ### El levantamiento topográfico para la construcción de los Modelos de Elevación Digital (MED) o mapas de curvas de nivel, se realiza mediante el diseño de trayectorias distanciadas 60m, regularmente distribuidas por toda la zona de interés. Para redes hidrológicas, se eligen trayectorias perpendiculares a la dirección de drenaje. 
 
