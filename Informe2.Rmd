@@ -55,9 +55,6 @@ Las redes fijas de monitoreo, como la Red de Monitoreo de Calidad del Aire de Bo
 El objetivo de este informe es aplicar un modelo de interpolación geoestadística (Kriging) a partir de 19 estaciones dispersas para reconstruir la superficie continua del Material Particulado ($\text{PM}_{10}$) en un instante determinado. Al fijar un corte temporal, aislamos la dependencia espacial intrínseca del fenómeno. 
 
 
-**Área de Estudio**
-
-
 **Variable de Interés**
 
 Se modelará la concentración horaria de $\text{PM}_{10}$ (partículas con diámetro aerodinámico $\le 10\ \mu\text{m}$), prioritarias en salud pública por su capacidad de penetración en el sistema respiratorio. 
@@ -65,7 +62,7 @@ Se modelará la concentración horaria de $\text{PM}_{10}$ (partículas con diá
 
 
 
-```{r base-datos}
+```{r base-datos, include=FALSE}
 #writexl::write_xlsx(reporte_completo,"reporte_completo.xlsx")
 reporte_completo <- read_excel("reporte_completo.xlsx")
 dms_a_decimal <- function(x) {
@@ -107,7 +104,7 @@ estaciones_sf <- st_as_sf(
 ```
 
 
-# Base de datos 
+## Base de datos 
 <!-- {.tabset} -->
 
 La base de datos proviene del sistema de monitoreo de calidad del aire, consolidando registros espacio-temporales. Para efectos del análisis geoestadístico espacial, la dimensión temporal se filtra y se trabaja con los datos del día $2024-02-01$.
@@ -176,7 +173,7 @@ kbl(
 
 
 
-```{r configuracion-fecha, message=FALSE, warning=FALSE}
+```{r configuracion-fecha, message=FALSE, warning=FALSE, include=FALSE}
 # 1. Definir la fecha y hora objetivo (Fácil de modificar)
 # Formato: "AAAA-MM-DD HH:MM:SS"
 fecha_buscada <- "2024-01-04"
@@ -203,9 +200,13 @@ cat("Porcentaje de datos faltantes (NA):", porcentaje_faltantes, "%\n")
 
 ```
 
-Dado dato faltante en USME se expluye de la base de datos a trabajar, al final se trabaja con datos de 18 estaciones.
 
-```{r faltantes, tab.cap="Conteo de datos faltantes"}
+**Área de Estudio**
+
+Debido a la amplia extensión territorial de las localidades de Usme y Ciudad Bolívar hacia el sur y a la presencia de una sola estación de monitoreo en dicha zona, se fijó un límite latitudinal sur a los $4.51^\circ\text{N}$. Esta delimitación espacial evita distorsiones asociadas al efecto de borde y a la baja densidad muestral, garantizando una estimación robusta del semivariograma y previniendo artefactos en la interpolación por kriging.
+
+
+```{r faltantes, include=FALSE, tab.cap="Conteo de datos faltantes"}
 
 # 1. FILTRADO DE DATOS VÁLIDOS (Excluye NAs de PM10 para el análisis espacial)
 # Al filtrar PM10 no nulo, Usme (que tenía NA) queda fuera de la muestra automáticamente.
@@ -252,7 +253,7 @@ st_agr(bogota) <- "constant"
 
 ## Mapa de bogotá
 
-```{r mapa-bogota}
+```{r mapa-bogota, message=FALSE, warning=FALSE}
 colores <- list(
   azul_oscuro = "#2c3e50",
   azul_medio = "#34495e",
@@ -376,12 +377,19 @@ dplyr::select( Estacion, Latitud, Longitud, `Altitud (m)`, PM10, `Tipo de estaci
 
 # Exploración espacial
  <!-- {.tabset} -->
+ 
+ De acuerdo con el modelo geoestadístico, el proceso espacial de interés se descompone en una componente determinística (tendencia) y una estocástica (proceso centrado):
+$$ Y(s) = \mu(s) + Z(s) $$
+Donde $E[Z(s)] = 0$. Para que la geoestadística (la estimación del semivariograma y el Kriging) sean válidas, el proceso $Z(s)$ debe cumplir con estacionariedad de segundo orden o intrínseca. 
+
+
+
 
 ## Boxplot de $PM_{10}$
 
 
 
-```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=3, fig.width=8, message=FALSE, warning=FALSE}
+```{r boxplot-pm10, fig.cap="Diagrama de caja de la variable PM10", fig.height=2.5, fig.width=8, message=FALSE, warning=FALSE}
 ggplot()+
   geom_boxplot(data = datos_corte, aes(x = PM10),fill = "#41B7C4")
 ```
@@ -392,7 +400,7 @@ ggplot()+
 La distribución del $PM_{10}$ evidencia asimetría positiva. La media (47.26 $\mu g/m^3$) supera a la mediana (43.00 $\mu g/m^3$), con una cola derecha prolongada impulsada por episodios de alta contaminación o por error instrumental. 
 
 
-```{r exploratorio_p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=3, fig.width=10}
+```{r exploratorio-p10, echo=FALSE, fig.align="center", fig.cap="Distribución empírica de la concentración de PM10.", fig.height=2.5, fig.width=10}
 ggplot(datos_corte, aes(x = PM10)) +
   geom_histogram(binwidth =10, fill = "#41B7C4", color = "white", alpha = 0.8) +
   geom_vline(aes(xintercept = mean(PM10, na.rm=T)), color = "red", linetype = "dashed") +
@@ -405,10 +413,10 @@ ggplot(datos_corte, aes(x = PM10)) +
 
 
 
-# Relaciones entre variables 
+## Relaciones entre variables 
 <!-- {.tabset} -->
 
-## Correlación con la variable de interés $PM_{10}$
+### Correlación con la variable de interés $PM_{10}$
 
 ```{r correlacion-variable, fig.height=3, fig.width=7}
 mat_cor <- cor(
@@ -426,14 +434,10 @@ corrplot(
 )
 ```
 
-## Dispersión con longitud
-
-Si la línea roja (Loess) no es horizontal, viola el supuesto de Estacionariedad en la Media ($E[Z(s)] = \mu$). 
-
-Si existe tendencia en los datos, y esta no es eliminada antes de encontrar la estimación empírica del semivariograma, estos estimadores quedarán contaminados.
+### Dispersión con longitud
 
 
-```{r dispm10lon, fig.height=3, fig.width=10, message=FALSE, warning=FALSE}
+```{r dispm10lon, fig.height=2.5, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(datos_corte,
        aes(Longitud, PM10))+
     geom_point(alpha=.3)+
@@ -445,9 +449,9 @@ ggplot(datos_corte,
 #     geom_smooth(method="loess")
 ```
 
-## Dispersión con latitud
+### Dispersión con latitud
 
-```{r disPM10lat, fig.height=3, fig.width=10, message=FALSE, warning=FALSE}
+```{r disPM10lat, fig.height=2.5, fig.width=8, message=FALSE, warning=FALSE}
 ggplot(datos_corte,
        aes(Latitud, PM10))+
     geom_point(alpha=.3)+
@@ -459,8 +463,9 @@ ggplot(datos_corte,
 #     geom_smooth(method="loess")
 ```
 
+El análisis exploratorio previo (gráficos de dispersión con *Loess*) evidenció que la concentración de $\text{PM}_{10}$ no es constante en el espacio, sino que presenta gradientes significativos a lo largo de las coordenadas geográficas (Longitud $x$ y Latitud $y$). Por lo tanto, es necesario modelar la media $\mu(s)$ mediante regresión espacial, de modo que los residuales $\hat{Z}(s) = Y(s) - \hat{\mu}(s)$ constituyan un proceso estacionario de media cero, libre de tendencia espacial.
 
-## Gráfico de objeto geodata
+### Gráfico de objeto geodata
 
 ```{r geodata_descriptivo, fig.height=5, fig.width=10}
 # Convertir a geodata especificando columnas de coordenadas y variable
@@ -481,6 +486,16 @@ plot(datos_geoR, scatter3d = T)
 ```
 
 # Análisis de estacionariedad en media y Modelo para la media
+
+Basado en la topografía de Bogotá (que genera gradientes de contaminación tanto de Occidente a Oriente por los Cerros, como de Sur a Norte), se proponen cinco modelos de regresión polinómica para capturar la tendencia $\mu(s)$:
+
+1. **Lineal Múltiple (`x + y`):** Tendencia plana en ambas direcciones (Modelo de primer orden).
+2. **Cuadrático (`x + y + I(x^2) + I(y^2) + I(x*y)`):** Superficie curva (Modelo de segundo orden).
+3. **Interacción (`x * y`):** Superficie plana con pendiente variable (Modelo de primer orden con interacción).
+4. **Mixto (`x + I(y^2)`):** Tendencia lineal en un eje y cuadrática en el otro.
+5. **Lineal Simple (`x`):** Tendencia unidireccional.
+
+A continuación, se ajustan los modelos candidatos y se evalúan mediante tres criterios: (AIC) (donde menor valor indica mejor ajuste penalizado por complejidad), el $R^2$ Ajustado (proporción de varianza espacial explicada) y la Prueba de Shapiro-Wilk (para validar la normalidad de los residuales, requisito para la estimación de verosimilitud del variograma).
 
 
 ```{r SelecciónModeloMedia, fig.height=8, fig.width=11}
@@ -548,45 +563,54 @@ plot(datos_geoR, trend = ~ datos_geoR$coords[,1])
 ```
 
 
-Dado que la regresión lineal en las coordenadas logró capturar la tendencia y normalizar los residuales, usar `trend="1st"` en `geoR` (que internamente hace esta misma regresión) es **matemáticamente correcto y suficiente**. El pulimiento de medianas se usa cuando la regresión falla; aquí la regresión funcionó.
+
+Al evaluar los resultados de la Tabla de Análisis de Varianza (ANOVA) y el resumen del modelo de regresión, se observa que únicamente la variable espacial $x$ (longitud) resulta ser estadísticamente significativa ($F = 11.05, p = 0.00402$).Por lo tanto, atendiendo al principio de parsimonia (preferir modelos simples y explicativos frente a configuraciones complejas que no aportan significancia), se seleccionó el modelo lineal simple basado únicamente en la coordenada $x$ para capturar la tendencia de primer orden de $\text{PM}_{10}$.
 
 
-```{r fig.height=4, fig.width=10}
-# Función auxiliar para graficar residuos (Adaptada de Bohórquez, 2025)
+
+
+```{r ANOVA_Modelo_Seleccionado, echo=FALSE}
+# Validación estadística del modelo seleccionado
+knitr::kable(car::Anova(mod_5, type = "II"), 
+             caption = "Análisis de Varianza (ANOVA) para el modelo Lineal Múltiple",
+             digits = 4)
+```
+
+El ANOVA confirma que la coordenada $x$ (Longitud) es un  predictor significativo ($p < 0.01$) de la concentración de $\text{PM}_{10}$.
+
+
+Una vez seleccionado el modelo, se verifica que la tendencia ha sido eliminada. Si el modelo es adecuado, los residuales $\hat{Z}(s)$ no deben mostrar patrones espaciales.
+
+```{r Diagnostico_Residuales, fig.height=3, fig.width=10, message=FALSE, warning=FALSE}
+# Extraer residuales del modelo ganador
+datos_modelo$resid_final <- residuals(mod_5)
+
+# Función para graficar residuales vs coordenadas
 plot_residuos <- function(datos, var_residuo, titulo) {
   p1 <- ggplot(datos, aes(x = x, y = .data[[var_residuo]])) +
     geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
     geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
-    labs(title = titulo, x = "Longitud", y = "Residuos") +
-    theme_minimal() +
-    theme(plot.title = element_text(face = "bold", hjust = 0.5))
+    labs(title = titulo, x = "Longitud (x)", y = expression(hat(Z)(s))) +
+    theme_minimal() + theme(plot.title = element_text(face = "bold", hjust = 0.5))
   
   p2 <- ggplot(datos, aes(x = y, y = .data[[var_residuo]])) +
     geom_point(size = 3, color = "#d95f02", alpha = 0.8) +
     geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
-    labs(title = "", x = "Latitud", y = "Residuos") +
+    labs(title = "", x = "Latitud (y)", y = expression(hat(Z)(s))) +
     theme_minimal()
-    
+  
   gridExtra::grid.arrange(p1, p2, ncol = 2)
 }
 
-# Evaluar visualmente el mejor modelo (El logarítmico tuvo el menor AIC)
-plot_residuos(st_drop_geometry(datos_modelo), "resid_5", "Residuos del Modelo Logarítmico")
-
-# anova(mod_lineal)
-# summary(mod_lineal)
-# 
-# anova(mod_cuadratico)
-# summary(mod_cuadratico)
-# 
-# anova(mod_3)
-# summary(mod_3)
-# 
-anova(mod_5)
-summary(mod_5)
+# Gráfico de diagnóstico
+plot_residuos(st_drop_geometry(datos_modelo), "resid_final", 
+              "Diagnóstico: Residuales del Modelo Lineal Simple (x)")
 ```
+
+En los gráficos de diagnóstico se observa que la línea de tendencia roja (ajuste lineal a los residuales) es prácticamente horizontal y se superpone con la línea negra en $y=0$. Esto demuestra que la esperanza condicional de los residuales es cero ($E[\hat{Z}(s)|x,y] \approx 0$), cumpliendo con el supuesto de estacionariedad en la media. A partir de este punto, el semivariograma empírico se calculará utilizando estos residuales $\hat{Z}(s)$, garantizando que la variabilidad estimada responda únicamente a la autocorrelación espacial y no a la tendencia determinística.
+
 
 # Estimación empírica y teórica del semivariograma.
 
