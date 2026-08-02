@@ -509,7 +509,7 @@ datos_modelo <- datos_corte %>%
    x = Longitud,
    y = Latitud
  ) %>%
- st_as_sf(coords = c("x", "y"), crs = 4326, remove = FALSE) # Convertimos a sf para mapeo de residuos
+ st_as_sf(coords = c("x", "y"), crs = 32618, remove = FALSE) # Convertimos a sf para mapeo de residuos
 
 # ------------------------------------------------------------------------------
 # 1. Ajuste de los modelos candidatos (Ya los tienes, los reutilizamos)
@@ -614,15 +614,17 @@ En los gráficos de diagnóstico se observa que la línea de tendencia roja (aju
 
 # Estimación empírica y teórica del semivariograma.
 
-Para que la estimación del semivariograma sea válida, debe calcularse sobre el proceso centrado $Z(s)$ (los residuales del modelo de tendencia), garantizando así la estacionariedad en la media. 
-
-Por otro lado dado que el semivariograma empírico $\hat{\gamma}(h)$ estima la varianza de los incrementos espaciales en función de la distancia euclidiana $\|h\|$ entre pares de observaciones. Para que esta distancia sea métricamente válida y físicamente interpretable, es necesario trabajar en un Sistema de Coordenadas Planas (Proyectadas).
 
 
-Para el área de estudio de Bogotá D.C., el sistema de coordenadas planas oficial y más adecuado es el UTM (Universal Transverse Mercator) Zona 18 Norte, con datum WGS84 (código *EPSG: 32618*). En este sistema, las unidades son **metros**, lo que garantiza que el "rango" (alcance espacial) y la "silla" (varianza) del modelo teórico tengan una interpretación física real.
+Para que la estimación del semivariograma sea válida y sus parámetros (alcance y meseta) tengan una interpretación física real, es necesario trabajar sobre el proceso centrado $\hat{Z}(s)$ (los residuales del modelo de tendencia) y utilizar un Sistema de Coordenadas Planas (Proyectadas).
 
- Dado que el número total de pares de datos es limitado ($N_p = 153$), se establece una distancia máxima de corte (`max.dist = 15000` metros) para evitar la inestabilidad del estimador a grandes distancias donde la cantidad de pares decae drásticamente.
 
+
+De acuerdo con la teoría de campos aleatorios espaciales (Bohórquez, 2025, Cap. 2; Baragatt et al., 2019, Apéndice B), el semivariograma empírico $\hat{\gamma}(h)$ estima la varianza de los incrementos en función de la magnitud del vector de separación $\|h\|$. 
+
+Si trabajamos con coordenadas geográficas (Latitud/Longitud, EPSG:4326), las unidades son grados angulares. La distancia euclidiana entre dos puntos en grados no representa la distancia física real sobre la superficie terrestre, y esta distorsión varía según la latitud. Para garantizar que la distancia $\|h\|$ sea métricamente válida, debemos transformar los datos a un Sistema de Coordenadas Proyectadas (PCS). 
+
+Para el área de estudio de Bogotá D.C., el sistema oficial y más adecuado es el *UTM (Universal Transverse Mercator) Zona 18 Norte*, con datum WGS84 (código *EPSG: 32618*). En este sistema, las unidades son metros, lo que garantiza que el "rango" o alcance espacial del modelo teórico tenga una interpretación física real.
 
 
 ```{r fig.height=5, fig.width=11, message=FALSE, warning=FALSE, include=FALSE}
@@ -715,10 +717,7 @@ par(mfrow = c(1, 1))
 
 ## Explorando estimación resistente a datos atípicos y removiendo tendencia
 
-Reemplaza el estimador clásico de Matheron por el **estimador robusto de Cressie y Hawkins** ($\text{modulus}$).
-
-
-Si un solo par de puntos tiene una diferencia muy grande, distorsiona la semivarianza promedio. El estimador de módulo atenúa esos impactos desproporcionados.
+El estimador clásico de Matheron es sensible a valores atípicos. Dado que la concentración de $\text{PM}_{10}$ puede presentar episodios de alta contaminación localizados o errores instrumentales (como se evidenció en la asimetría positiva de la exploración), se implementa también el estimador robusto de Cressie y Hawkins ($\text{modulus}$). Este estimador atenúa el impacto desproporcionado de los incrementos extremos al elevar a la potencia $1/2$ antes de promediar.
 
 
 ```{r fig.height=4, fig.width=10}
@@ -743,11 +742,11 @@ par(mfrow = c(1, 1))
 
 ```
 
- Si la curva del variograma *modulus* es mucho más suave y tiene una varianza menor que la del variograma clásico (el que analizamos antes), significa que la contaminación por $\text{PM}_{10}$ tiene eventos o estaciones con valores extremos locales.
 
 ## Explorando anisotropía
 
-En lugar de asumir que la variabilidad espacial es igual en todas las direcciones (**Isotropía**), calcula el semivariograma restringiendo los pares de puntos a ángulos específicos ($0^\circ, 45^\circ, 90^\circ, 135^\circ$) con una tolerancia angular (usualmente $\pm 22.5^\circ$).
+
+Sse calcula el semivariograma restringiendo los pares de puntos a ángulos específicos ($0^\circ, 45^\circ, 90^\circ, 135^\circ$) con una tolerancia angular de $\pm 22.5^\circ$. Esto permite evaluar si la topografía de Bogotá (los Cerros Orientales) o los patrones de viento generan una anisotropía geométrica, donde el alcance espacial varía según la dirección.
 
 
 ```{r fig.height=5, fig.width=10}
@@ -792,13 +791,18 @@ legend("bottomright", legend = c("0° (N-S)", "45° (NE-SO)", "90° (E-O)", "135
 ```
 
 
-* **Isotropía (Mismo comportamiento):** Si los 4 gráficos muestran la misma curvatura, el mismo Alcance (*Range*) y la misma Meseta (*Sill*), la variabilidad de $\text{PM}_{10}$ depende **únicamente de la distancia entre estaciones** y no de la dirección.
-* **Anisotropía Geometrica / Zonal:** En Bogotá es muy común encontrar anisotropía. Por ejemplo:
-  * **Dirección Norte-Sur ($0^\circ$):** Suele tener mayor autocorrelación espacial debido al flujo de los vientos y la orientación de la sabana/Cerros Orientales.
-  * **Dirección Este-Oeste ($90^\circ$):** Puede mostrar cambios muy abruptos (menor alcance o mayor pendiente) debido al cambio topográfico (de la sabana hacia los Cerros).
+Al observar los gráficos se evidencia que el semivariograma direccional a 90° (Este-Oeste) alcanza la meseta más rápidamente, mientras que el semivariograma a 0° (Norte-Sur) muestra un alcance más largo. Esto sugiere una anisotropía geométrica, probablemente influenciada por la topografía de Bogotá y los patrones de viento predominantes.
 
 
-# Estimación teórica del semivariograma
+## Estimación teórica del semivariograma
+
+Una vez obtenido el semivariograma empírico de los residuales, se ajusta un modelo teórico válido (condicionalmente definido negativo). Los parámetros fundamentales a estimar son:
+
+*   **Efecto Pepita ($c_0$):** Discontinuidad en el origen, atribuible a error de medición o microestructura (variabilidad a escalas menores a la distancia mínima entre estaciones).
+*   **Silla Parcial ($c$):** Varianza explicada puramente por la estructura de autocorrelación espacial.
+*   **Silla Total ($C(0) = c_0 + c$):** Varianza total del proceso estocástico $\hat{Z}(s)$.
+*   **Alcance o Rango ($a$):** Distancia a partir de la cual las observaciones dejan de estar espacialmente correlacionadas.
+
 
 
 ```{r}
