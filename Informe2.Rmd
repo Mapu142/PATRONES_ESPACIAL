@@ -2528,44 +2528,279 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 ## Capitulo 3 {.tabset}
 
 
-### Realice una tabla comparativa entre el método de ecuaciones de estimación generalizada y el método de $CL$. Encuentre similitudes y diferencias.
+### Realice una tabla comparativa entre el método de ecuaciones de estimación generalizada y el método de $CL$. 
+
+Encuentre similitudes y diferencias.
+
+**R/**
+
+Tanto el método de Mínimos Cuadrados Generalizados (MCG) como el método de Pseudoverosimilitud Compuesta (CL, *Composite Likelihood*) son alternativas al método de Máxima Verosimilitud (ML) para estimar los parámetros $\Theta$ de un modelo de semivarianza o covarianza espacial. Sin embargo, abordan el problema desde perspectivas matemáticas y computacionales distintas.
+
+A continuación, se presenta la tabla comparativa basada en los la Sección 3.5 y la Nota 5 (Sección 3.6) del libro:
+
+| Característica | MCG (Ecuaciones de Estimación Generalizada) | CL (Pseudoverosimilitud Compuesta) |
+| :--- | :--- | :--- |
+| **Función Objetivo** | Minimiza la distancia cuadrática entre el semivariograma empírico y el teórico, ponderada por la inversa de la matriz de covarianza del estimador empírico: $(\hat{\gamma} - \gamma(\Theta))' V^{-1} (\hat{\gamma} - \gamma(\Theta))$. | Maximiza la suma de las funciones de log-verosimilitud marginales de los incrementos $U_{ij} = Z(s_i) - Z(s_j)$: $CL(\Theta) = \sum l(U_{ij}, \Theta)$. |
+| **Supuesto Distribucional** | Requiere conocer o estimar la matriz de covarianza $V$ de los incrementos al cuadrado, lo cual implica asumir normalidad bivariada para derivar la varianza del estimador empírico. | Solo requiere conocer las distribuciones marginales univariadas (o bivariadas) de los incrementos. Relaja el supuesto de normalidad multivariada conjunta. |
+| **Complejidad Computacional** | Alta y problemática. La matriz de ponderación $V$ depende de $\Theta$, y para estimar $V$ se requiere conocer la matriz de covarianza espacial $\Sigma$, creando una dependencia circular. | Baja y eficiente. El proceso de optimización solo involucra matrices de dimensión $p \times p$ (donde $p$ es el número de parámetros), evitando la inversión de matrices $N \times N$. |
+| **Uso de los Datos** | Trabaja sobre los pares de distancia y semivarianza ya agrupados en clases (el semivariograma empírico binneado). | Trabaja directamente con todas las realizaciones posibles de los incrementos espaciales (o un subconjunto filtrado por umbrales de alcance). |
+| **Eficiencia Estadística** | Menor eficiencia. La dificultad para estimar $V$ de manera consistente en la práctica limita su rendimiento. | Mayor eficiencia que MCG. Aunque es menos eficiente que ML, su eficiencia aumenta notablemente al usar ponderaciones dicotómicas basadas en los alcances espaciales. |
+
+En la práctica, el método CL es preferido sobre MCG, intentar usar MCG complicaría el procedimiento, pues la estimación de la matriz $\Sigma$ implicaría la estimación previa de $V$, haciendo que el método no sea práctico.
+
+```{r ej-3-1-comparacion, echo=FALSE, message=FALSE, warning=FALSE}
+# Implementación conceptual en R de las funciones objetivo
+
+# 1. Función objetivo de MCG (Mínimos Cuadrados Generalizados)
+# Requiere el vector de semivarianza empírica (gamma_hat), el vector teórico (gamma_teo)
+# y la matriz de ponderación V (inversa de la varianza del estimador empírico).
+mcg_objetivo <- function(gamma_hat, gamma_teo, V_inv) {
+  t(gamma_hat - gamma_teo) %*% V_inv %*% (gamma_hat - gamma_teo)
+}
+
+# 2. Función objetivo de CL (Pseudoverosimilitud Compuesta)
+# Suma de las log-verosimilitudes marginales de los incrementos U_ij ~ N(0, 2*gamma(h_ij))
+cl_objetivo <- function(incrementos, distancias, theta) {
+  # theta contiene los parámetros del modelo de semivarianza
+  # gamma_teo es el vector de semivarianzas teóricas evaluadas en las distancias
+  gamma_teo <- modelo_semivarianza(distancias, theta) 
+  
+  # Log-verosimilitud normal marginal para cada incremento
+  log_verosimilitudes <- dnorm(incrementos, mean = 0, sd = sqrt(2 * gamma_teo), log = TRUE)
+  
+  return(sum(log_verosimilitudes))
+}
+
+# Nota: Mientras MCG requiere construir y invertir V (dependiente de Sigma), 
+# CL solo evalúa la densidad normal marginal para cada par, escalando linealmente 
+# con el número de pares, no con el cubo o la cuarta potencia de N.
+```
+
+### Suponga que se tiene un modelo de covarianza y se requiere elegir entre dos vectores de parámetros, cuál de ellos es más verosímil con base en el vector de observaciones.
+
+Bajo el supuesto de normalidad, describa en general el procedimiento e ilustre para al menos un caso particular.
 
 **R/**
 
 
-### Suponga que se tiene un modelo de covarianza y se requiere elegir entre dos vectores de parámetros, cuál de ellos es más verosímil con base en el vector de observaciones. Bajo el supuesto de normalidad, describa en general el procedimiento e ilustre para al menos un caso particular.
+Bajo el supuesto de normalidad multivariada, el vector de observaciones $Y = (Y(s_1), \dots, Y(s_n))'$ sigue una distribución $Y \sim N_n(X\beta, \Sigma(\Theta))$, donde $\boldsymbol\Sigma(\Theta)$ es la matriz de covarianza construida a partir de una función definida positiva $C(h; \Theta)$ con parámetros $\Theta = (\sigma^2, a, \tau^2)'$ (silla, rango práctico y efecto pepita).
 
-**R/**
+
+Para comparar dos vectores de parámetros candidatos , $\Theta_1$ y $\Theta_2$, se utiliza el criterio de Máxima Verosimilitud. El procedimiento es el siguiente:
+
+1.  Se asume el proceso centrado $Z = Y - \mu$.
+2.  Se evalúa la función del negativo de la log-verosimilitud para cada vector. La expresión a minimizar es:
+    $$L({\Theta}) = \frac{n}{2} \ln(2\pi) + \frac{1}{2} \ln|\boldsymbol{\Sigma}({\Theta})| + \frac{1}{2} Z' \boldsymbol{\Sigma}^{-1}({\Theta}) Z$$
+3.  Se evalúan  $L(\Theta_1)$ y $L(\Theta_2)$.
+4.  Se selecciona el vector ${\Theta}^* = \arg\min_{{\Theta}} L(\boldsymbol{\Theta})$. 
+El vector óptimo es aquel que logra el mejor balance entre la penalización por dispersión ($\ln|\boldsymbol{\Sigma}|$) y el ajuste a la variabilidad/correlación observada en los datos ($Z'\boldsymbol{\Sigma}^{-1}Z$).
+
+
+Consideremos $n = 2$ observaciones $z = (3, 4)'$ separadas por una distancia $h = 5$. Se asume un modelo exponencial $C(h; \boldsymbol{\Theta}) = \sigma^2 \exp(-h/a)$. Evaluamos:
+
+* ${\Theta}_1 = (\sigma^2 = 10, a = 2)$
+* ${\Theta}_2 = (\sigma^2 = 20, a = 10)$
+
+```{r ej-3-2-verosimilitud, echo=TRUE}
+# --- Función Optimizada de Negativo de Log-Verosimilitud ---
+neg_log_likelihood <- function(z, sigma2, a, dist_matrix) {
+  n <- length(z)
+  Sigma <- sigma2 * exp(-dist_matrix / a)
+  
+  # Cálculo numéricamente estable de log-determinante y forma cuadrática
+  log_det_Sigma <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
+  quad_form <- as.numeric(t(z) %*% solve(Sigma, z))
+  
+  L <- 0.5 * (n * log(2 * pi) + log_det_Sigma + quad_form)
+  return(L)
+}
+
+# --- Configuración del Caso ---
+z <- c(3, 4)
+dist_matrix <- matrix(c(0, 5, 5, 0), nrow = 2)
+
+Theta_1 <- c(sigma2 = 10, a = 2)
+Theta_2 <- c(sigma2 = 25, a = 10)
+
+L_1 <- neg_log_likelihood(z, Theta_1["sigma2"], Theta_1["a"], dist_matrix)
+L_2 <- neg_log_likelihood(z, Theta_2["sigma2"], Theta_2["a"], dist_matrix)
+
+cat(sprintf("NLL para Theta_1 (10, 2)  : %.4f\n", L_1))
+cat(sprintf("NLL para Theta_2 (25, 10) : %.4f\n", L_2))
+```
+
+
+En este ejemplo, la verosimilitud selecciona ${\Theta}_2$ debido a que $L({\Theta}_2) = 5.1578 < L({\Theta}_1) = 5.2964$. 
+
+Aunque $\boldsymbol{\Theta}_2$ impone una varianza mayor ($\sigma^2 = 25$), su mayor rango espacial ($a = 10$) captura adecuadamente la covarianza entre los puntos ($C(5) = 12.13$), lo que reduce drásticamente el valor de la forma cuadrática $Z'\boldsymbol{\Sigma}^{-1}Z$ y compensa la penalización del determinante.
 
 
 ### Plantee para cada método y para cada modelo de covarianza o semivarianza la expresión a minimizar:
+
+Para plantear las expresiones a minimizar, asumiremos un modelo de semivarianza teórico $\gamma(h; \Theta)$, donde $\Theta$ es el vector de parámetros a estimar. Sea $\hat{\gamma}(h_k)$ el estimador empírico para el rezago $h_k$, con $K$ rezagos totales, y $|N(h_k)|$ la cantidad de pares de datos en dicho rezago.
 
 1. **Mínimos cuadrados ordinarios (MCO),**
 
     **R/**
     
+    El método MCO trata la estimación del semivariograma como un problema de regresión no lineal estándar, donde la "variable respuesta" son los valores empíricos $\hat{\gamma}(h_k)$.
+$$Q_{MCO}(\Theta) = \sum_{k=1}^K \left( \hat{\gamma}(h_k) - \gamma(h_k; \Theta) \right)^2$$
     
 2. **Mínimos cuadrados ponderados (MCP) considerando ambas ponderaciones:**
-    a. **La varianza del estimador empírico del semivariograma**
-    b. **$N(h)$, número de pares de datos para cada rezago espacial considerado $h$**
-    
+
     **R/**
+    
+    Dado que la varianza de los estimadores empíricos cambia drásticamente con la distancia (y con la cantidad de pares $|N(h_k)|$), el MCP introduce una matriz de ponderación $W$.
+    
+    a. **La varianza del estimador empírico del semivariograma**
+        Bajo el supuesto de normalidad marginal, la varianza de los incrementos al cuadrado permite construir la matriz diagonal $W(\Theta) \simeq \text{Diag}\left( \frac{2\gamma(h_k; \Theta)^2}{|N(h_k)|} \right)$. La expresión a minimizar es:
+        $$Q_{MCP\_var}(\Theta) = \left( \hat{\boldsymbol{\gamma}} - \boldsymbol{\gamma}(\Theta) \right)^\top W^{-1}(\Theta) \left( \hat{\boldsymbol{\gamma}} - \boldsymbol{\gamma}(\Theta) \right)$$
+        Este método es iterativo porque la matriz de pesos $W$ depende del parámetro $\Theta$ que se está estimando.
+
+    b. **$N(h)$, número de pares de datos para cada rezago espacial considerado $h$**
+        Para evitar la iteración de la matriz de pesos, se puede usar una matriz constante basada en la inversa de la cantidad de pares: $W = \text{Diag}\left( \frac{1}{|N(h_k)|} \right)$. 
+        $$Q_{MCP\_npairs}(\Theta) = \sum_{k=1}^K |N(h_k)| \left( \hat{\gamma}(h_k) - \gamma(h_k; \Theta) \right)^2$$
 
 3. **ML, con el supuesto de normalidad multivariada conjunta.**
 
     **R/**
     
+    sumiendo normalidad multivariada conjunta $Y \sim N_n(X\beta, \Sigma(\Theta))$, se minimiza el negativo de la log-verosimilitud. Aquí $\Sigma(\Theta)$ es la matriz de covarianza $n \times n$ construida evaluando el modelo teórico entre todos los pares de observaciones.
+    $$L_{ML}(\beta, \Theta) = \frac{n}{2}\ln(2\pi) + \frac{1}{2}\ln|\Sigma(\Theta)| + \frac{1}{2}(Y - X\beta)^\top \Sigma^{-1}(\Theta) (Y - X\beta)$$
+    
 4. **REML, con el supuesto de normalidad multivariada conjunta.**
 
     **R/**
+    
+    Para reducir el sesgo en la estimación de $\Theta$ al no estimar la tendencia $\beta$ simultáneamente, se maximiza la verosimilitud de los incrementos $A^\top Y$ (donde $A$ es una matriz de contraste tal que $A^\top X = 0$). Se minimiza:
+    $$L_{REML}(\Theta) = \frac{n-p}{2}\ln(2\pi) + \frac{1}{2}\ln|A^\top \Sigma(\Theta) A| + \frac{1}{2}Y^\top A (A^\top \Sigma(\Theta) A)^{-1} A^\top Y$$
     
 5. **Pseudoverosimilitud ($CL$), con el supuesto de normalidad multivariada marginal.**
 
     **R/**
     
+    Relaja el supuesto de normalidad conjunta y utiliza las distribuciones marginales de los incrementos $U_{ij} = Y(s_i) - Y(s_j) \sim N(0, 2\gamma(s_i - s_j; \Theta))$. Se minimiza el negativo de la log-verosimilitud compuesta:
+    $$-CL(\Theta) = \sum_{i=1}^{n-1} \sum_{j=i+1}^n \left[ \frac{1}{2}\ln\left(4\pi\gamma(s_i - s_j; \Theta)\right) + \frac{U_{ij}^2}{4\gamma(s_i - s_j; \Theta)} \right]$$
+    
 6. **Diseñe el código para que estos procesos de optimización, funcionen desde la tabla de los datos originales. Puede usar, por ejemplo, la función `optim` de R cran project. Compare los resultados obtenidos con su código con los obtenidos por las funciones de `geoR`, `variofit`, `likfit` o de `gstat`, `fit.variogram`.**
 
     **R/**
+    
+    A continuación, se presenta un script que simula datos, define las funciones objetivo para MCO (basado en el variograma empírico) y ML (basado en la matriz de covarianza), y utiliza `optim()` para encontrar $\Theta$. Luego, se comparan los resultados con `gstat` y `geoR`.
+
+    ```{r paso_19_optimizacion_desde_cero, echo=TRUE, message=FALSE, warning=FALSE}
+    # ==============================================================================
+    # OPTIMIZACIÓN GEOESTADÍSTICA DESDE CERO CON optim() vs PAQUETES ESTÁNDAR
+    # ==============================================================================
+    library(gstat)
+    library(geoR)
+    library(MASS) # Para mvrnorm
+    
+    # 1. Simulación de un conjunto de datos espacial (Proceso Exponencial)
+    set.seed(123)
+    n <- 50
+    coords <- cbind(runif(n, 0, 100), runif(n, 0, 100))
+    # Parámetros verdaderos: Silla (sigmasq) = 10, Alcance (phi) = 20
+    vero_pars <- c(sigmasq = 10, phi = 20) 
+    Sigma_verdadero <- vero_pars["sigmasq"] * exp(-as.matrix(dist(coords)) / vero_pars["phi"])
+    Sigma_verdadero <- Sigma_verdadero + diag(0.01, n) # Efecto pepita pequeño para invertibilidad
+    Y <- mvrnorm(1, mu = rep(0, n), Sigma = Sigma_verdadero)
+    
+    # ------------------------------------------------------------------------------
+    # A. ENFOQUE BASADO EN VARIOGRAMA: MCO usando optim()
+    # ------------------------------------------------------------------------------
+    # Función para calcular el variograma empírico (binning simple)
+    calc_vario_empirico <- function(coords, data, max_dist = 50, bins = 10) {
+      d <- as.matrix(dist(coords))
+      data_diff <- outer(data, data, "-")^2
+      upper_idx <- upper.tri(d)
+      d_vec <- d[upper_idx]
+      diff_vec <- data_diff[upper_idx]
+      
+      # Filtrar por distancia máxima
+      mask <- d_vec <= max_dist
+      d_vec <- d_vec[mask]
+      diff_vec <- diff_vec[mask]
+      
+      # Agrupar en bins
+      breaks <- seq(0, max_dist, length.out = bins + 1)
+      h_mids <- (breaks[-1] + breaks[-(bins+1)]) / 2
+      gamma_hat <- numeric(bins)
+      N_h <- numeric(bins)
+      
+      for(i in 1:bins) {
+        idx <- d_vec > breaks[i] & d_vec <= breaks[i+1]
+        N_h[i] <- sum(idx)
+        gamma_hat[i] <- ifelse(N_h[i] > 0, mean(diff_vec[idx]) / 2, NA)
+      }
+      return(list(h = h_mids, gamma = gamma_hat, N = N_h))
+    }
+    
+    v_emp <- calc_vario_empirico(coords, Y)
+    validos <- !is.na(v_emp$gamma)
+    
+    # Función objetivo MCO
+    obj_MCO <- function(pars, h, gamma_hat) {
+      sigmasq <- pars[1]; phi <- pars[2]
+      gamma_teo <- sigmasq * (1 - exp(-h / phi))
+      sum((gamma_hat - gamma_teo)^2)
+    }
+    
+    # Optimización MCO
+    opt_MCO <- optim(par = c(5, 10), fn = obj_MCO, h = v_emp$h[validos], 
+                     gamma_hat = v_emp$gamma[validos], method = "L-BFGS-B", 
+                     lower = c(0.01, 0.01))
+    cat("Parámetros MCO (optim): sigmasq =", round(opt_MCO$par[1], 2), 
+        ", phi =", round(opt_MCO$par[2], 2), "\n")
+    
+    # ------------------------------------------------------------------------------
+    # B. ENFOQUE BASADO EN VEROSIMILITUD: ML usando optim()
+    # ------------------------------------------------------------------------------
+    # Función objetivo ML (Negativo de la Log-Verosimilitud)
+    obj_ML <- function(pars, coords, Y) {
+      sigmasq <- pars[1]; phi <- pars[2]
+      D <- as.matrix(dist(coords))
+      Sigma <- sigmasq * exp(-D / phi)
+      Sigma <- Sigma + diag(1e-6, nrow(Sigma)) # Jitter para estabilidad numérica
+      
+      # Cálculo de la log-verosimilitud multivariada normal
+      term1 <- (n / 2) * log(2 * pi)
+      term2 <- 0.5 * determinant(Sigma, logarithm = TRUE)$modulus
+      term3 <- 0.5 * t(Y) %*% solve(Sigma) %*% Y
+      
+      return(as.numeric(term1 + term2 + term3))
+    }
+    
+    # Optimización ML
+    opt_ML <- optim(par = c(5, 10), fn = obj_ML, coords = coords, Y = Y, 
+                    method = "L-BFGS-B", lower = c(0.01, 0.01))
+    cat("Parámetros ML (optim): sigmasq =", round(opt_ML$par[1], 2), 
+        ", phi =", round(opt_ML$par[2], 2), "\n")
+    
+    # ------------------------------------------------------------------------------
+    # C. COMPARACIÓN CON PAQUETES ESTÁNDAR (geoR y gstat)
+    # ------------------------------------------------------------------------------
+    # Preparar datos para geoR
+    geodata <- as.geodata(coords, data = Y)
+    
+    # Ajuste con geoR (Máxima Verosimilitud)
+    fit_geoR <- likfit(geodata, ini.cov.pars = c(5, 10), cov.model = "exponential", 
+                       lik.method = "ML")
+    cat("Parámetros ML (geoR): sigmasq =", round(fit_geoR$sigmasq, 2), 
+        ", phi =", round(fit_geoR$phi, 2), "\n")
+    
+    # Preparar datos para gstat
+    library(sf)
+    df_sf <- st_as_sf(data.frame(coords, Y), coords = c("X1", "X2"))
+    g_obj <- gstat(formula = Y ~ 1, data = df_sf)
+    v_gstat <- variogram(g_obj)
+    
+    # Ajuste con gstat (Mínimos Cuadrados Ponderados por defecto)
+    fit_gstat <- fit.variogram(v_gstat, vgm(psill = 10, model = "Exp", range = 20, nugget = 0))
+    cat("Parámetros MCP (gstat): sigmasq =", round(fit_gstat$psill[2], 2), 
+        ", phi =", round(fit_gstat$range[2], 2), "\n")
+    ```
+
     
 7. **Determine las dimensiones y la complejidad de cada uno de los métodos. ¿Cuál es la dimensión de las matrices invertidas en cada método? ¿En todos los casos el proceso es iterativo?**
 
@@ -2611,7 +2846,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 
     **R/**
 
-### El levantamiento topográfico para la construcción de los Modelos de Elevación Digital (MED) o mapas de curvas de nivel, se realiza mediante el diseño de trayectorias distanciadas 60m, regularmente distribuidas por toda la zona de interés. Para redes hidrológicas, se eligen trayectorias perpendiculares a la dirección de drenaje. Se requiere llevar a cabo un análisis de anisotropía. Se detectó la existencia de una anisotropía de tipo geométrico cuya dirección principal es $25^\circ$ con un rango máximo de 105m y un rango mínimo de 35m.
+### El levantamiento topográfico para la construcción de los Modelos de Elevación Digital (MED) o mapas de curvas de nivel, se realiza mediante el diseño de trayectorias distanciadas 60m, regularmente distribuidas por toda la zona de interés. Para redes hidrológicas, se eligen trayectorias perpendiculares a la dirección de drenaje. 
+
+Se requiere llevar a cabo un análisis de anisotropía. Se detectó la existencia de una anisotropía de tipo geométrico cuya dirección principal es $25^\circ$ con un rango máximo de 105m y un rango mínimo de 35m.
 
 1. **Escriba la matriz de rotación que usted usaría para incluir la anisotropía en el modelo de semivariograma.**
 
