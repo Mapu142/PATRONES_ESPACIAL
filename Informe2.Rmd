@@ -1267,35 +1267,36 @@ coord <- st_coordinates(datos_modelo)
 
 D <- as.matrix(dist(coord))
 
-z <- datos_modelo$PM10
+z <- datos_modelo$resid_lineal
+z <- z - mean(z)
+nugget_fijo <- modelo_teorico_universal$psill[1]
 
 # Esférico
 gamma_sph <- function(h, nugget, sill, range){
 
-  gamma <- ifelse(
+  ifelse(
     h <= range,
-    nugget + sill * (1.5*(h/range) - 0.5*(h/range)^3),
+    nugget + sill * (1.5 * h / range - 0.5 * (h / range)^3),
     nugget + sill
   )
 
-  gamma
 }
 
 #Exponencial
 gamma_exp <- function(h, nugget, sill, range){
 
-  nugget + sill*(1-exp(-h/range))
+  nugget + sill * (1 - exp(-h / range))
 
 }
 
 #Gaussiano
 gamma_gau <- function(h, nugget, sill, range){
 
-  nugget + sill*(1-exp(-(h/range)^2))
+  nugget + sill * (1 - exp(-(h / range)^2))
 
 }
 
-#Combinación lineal
+#Combinaciones lineales
 gamma_mix <- function(h,
                       nugget,
                       sill,
@@ -1304,47 +1305,52 @@ gamma_mix <- function(h,
                       b,
                       c){
 
-  a*gamma_sph(h,nugget,sill,range)+
-  b*gamma_exp(h,nugget,sill,range)+
-  c*gamma_gau(h,nugget,sill,range)
+  w <- c(a,b,c)
+
+  w <- pmax(w,0)
+
+  w <- w/sum(w)
+
+  w[1]*gamma_sph(h,nugget,sill,range)+
+  w[2]*gamma_exp(h,nugget,sill,range)+
+  w[3]*gamma_gau(h,nugget,sill,range)
 
 }
 
-cov_model <- function(h,
-                      nugget,
-                      sill,
-                      range,
-                      a,
-                      b,
-                      c){
+gamma_model <- function(h,
+                        nugget,
+                        sill,
+                        range,
+                        model){
 
-  (nugget+sill)-
-    gamma_mix(
-      h,
-      nugget,
-      sill,
-      range,
-      a,
-      b,
-      c
-    )
+  switch(
+
+    model,
+
+    "Sph" = gamma_sph(h, nugget, sill, range),
+
+    "Exp" = gamma_exp(h, nugget, sill, range),
+
+    "Gau" = gamma_gau(h, nugget, sill, range),
+
+    "Mix" = gamma_mix(h, nugget, sill, range)
+
+  )
 
 }
 
-#Log veroslimlitud compuesta
-compLik <- function(par,
-                    D,
-                    z){
+# Verosimilitud compuesta
+library(mvtnorm)
 
-  nugget <- par[1]
-  sill <- par[2]
-  range <- par[3]
+compLik <- function(par, D, z, nugget, model){
 
-  a <- par[4]
-  b <- par[5]
-  c <- par[6]
+  sill  <- par[1]
+  range <- par[2]
 
-  ll <- 0
+  if(sill <= 0 || range <= 0)
+    return(1e20)
+
+  CL <- 0
 
   n <- length(z)
 
@@ -1352,73 +1358,124 @@ compLik <- function(par,
 
     for(j in (i+1):n){
 
-      Cij <- cov_model(
-        D[i,j],
-        nugget,
-        sill,
-        range,
-        a,
-        b,
-        c
-      )
+      h <- D[i,j]
 
-      Sigma <- matrix(
+      # Elegir el modelo
+      if(model == "Mix"){
 
-        c(
-          nugget+sill,
-          Cij,
-          Cij,
-          nugget+sill
-        ),
+        a <- par[3]
+        b <- par[4]
+        c <- par[5]
 
-        2,
-        2
-
-      )
-
-      x <- c(z[i],z[j])
-
-      ll <- ll +
-        mvtnorm::dmvnorm(
-          x,
-          sigma=Sigma,
-          log=TRUE
+        gamma <- gamma_mix(
+          h,
+          nugget,
+          sill,
+          range,
+          a,
+          b,
+          c
         )
+
+      } else {
+
+        gamma <- gamma_model(
+          h,
+          nugget,
+          sill,
+          range,
+          model
+        )
+
+      }
+
+      if(gamma <= 0)
+        return(1e20)
+
+      U <- z[i] - z[j]
+
+      CL <- CL +
+        0.5 * log(2 * pi * (2 * gamma)) +
+        U^2 / (4 * gamma)
 
     }
 
   }
 
-  return(-ll)
+  CL
 
 }
 
 #Optimización
 library(mvtnorm)
 
-fit <- optim(
+fit_sph <- optim(
+  par = c(var(z), median(D[D > 0])),
+  fn = compLik,
+  D = D,
+  z = z,
+  nugget = nugget_fijo,
+  model = "Sph",
+  method = "L-BFGS-B",
+  lower = c(0.001, min(D[D > 0])),
+  upper = c(Inf, max(D))
+)
 
-  par=c(
-    nugget=1,
-    sill=20,
-    range=0.1,
-    a=1,
-    b=0,
-    c=0
+fit_exp <- optim(
+  par = c(var(z), median(D[D > 0])),
+  fn = compLik,
+  D = D,
+  z = z,
+  nugget = nugget_fijo,
+  model = "Exp",
+  method = "L-BFGS-B",
+  lower = c(0.001, min(D[D > 0])),
+  upper = c(Inf, max(D))
+)
+
+fit_gau <- optim(
+  par = c(var(z), median(D[D > 0])),
+  fn = compLik,
+  D = D,
+  z = z,
+  nugget = nugget_fijo,
+  model = "Gau",
+  method = "L-BFGS-B",
+  lower = c(0.001, min(D[D > 0])),
+  upper = c(Inf, max(D))
+)
+
+fit_mix <- optim(
+
+  par = c(
+
+    sill = var(z),
+
+    range = median(D[D>0]),
+
+    a = 1,
+
+    b = 1,
+
+    c = 1
+
   ),
 
-  fn=compLik,
+  fn = compLik,
 
-  D=D,
+  D = D,
 
-  z=z,
+  z = z,
 
-  method="L-BFGS-B",
+  nugget = nugget_fijo,
 
-  lower=c(
-    0,
-    0,
-    0.0001,
+  model = "Mix",
+
+  method = "L-BFGS-B",
+
+  lower = c(
+    0.001,
+    min(D[D>0]),
     0,
     0,
     0
@@ -1426,16 +1483,17 @@ fit <- optim(
 
 )
 
-fit$par
+fit_sph$par
+fit_exp$par
+fit_gau$par
+fit_mix$par
+
+
+
 ```
 
-library(sf)
+Se implementó la estimación de los parámetros del semivariograma mediante el método de verosimilitud compuesta utilizando la función *optim()* de R. Se ajustaron modelos esférico, exponencial y gaussiano, además de una combinación lineal de estos con coeficientes positivos estimados mediante optimización. La comparación de los valores de la función objetivo mostró que el modelo gaussiano presentó el mejor ajuste (755.7683). La combinación lineal no mejoró el valor de la función de verosimilitud compuesta y asignó todo el peso al componente gaussiano, indicando que este modelo describe adecuadamente la estructura espacial de los datos.
 
-coord <- st_coordinates(datos_modelo)
-
-D <- as.matrix(dist(coord))
-
-z <- datos_modelo$PM10
 
 
 # Ejercicios {.tabset}
