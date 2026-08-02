@@ -1036,92 +1036,126 @@ par(mfrow = c(1, 1))
 
 # Predicción con krigin universal
 
-```{r grilla}
+```{r fig.height=5, fig.width=10}
+
+# ==============================================================================
+# 5. PREDICCIÓN ESPACIAL: KRIGING UNIVERSAL
+# ==============================================================================
+# Teoría: Bohórquez (2025), Cap. 4. El Kriging Universal modela la tendencia 
+# determinística μ(s) y la autocorrelación espacial de los residuales Z(s) 
+# simultáneamente, garantizando insesgamiento y varianza mínima.
+
+library(gstat)
 library(sf)
-
-# Extensión de Bogotá
-bb <- st_bbox(bogota)
-
-# Crear grilla regular
-grd <- expand.grid(
-  x = seq(bb["xmin"], bb["xmax"], length.out = 100),
-  y = seq(bb["ymin"], bb["ymax"], length.out = 100)
-)
-
-# Convertir a sf
-grd <- st_as_sf(
-  grd,
-  coords = c("x", "y"),
-  crs = st_crs(datos_modelo)
-)
-
-# Recuperar las coordenadas como columnas
-coord <- st_coordinates(grd)
-grd$x <- coord[,1]
-grd$y <- coord[,2]
-
-# Krigin universal
-kriged_values_universal <- krige(
-  formula = PM10 ~ x,
-  locations = datos_modelo,
-  newdata = grd,
-  model = modelo_teorico_universal
-)
-
-bogota_4326 <- st_transform(
-  bogota,
-  st_crs(kriged_values_universal)
-)
-
-kriged_values_universal <- st_intersection(
-  kriged_values_universal,
-  bogota_4326
-)
-
-```
-
-```{r}
 library(ggplot2)
 library(patchwork)
 
+# ------------------------------------------------------------------------------
+# 1. PREPARACIÓN DE DATOS EN SISTEMA PROYECTADO (UTM 18N - Metros)
+# ------------------------------------------------------------------------------
+# Aseguramos que todo el flujo de predicción trabaje en metros (EPSG:32618)
+datos_utm <- st_as_sf(
+  datos_corte, 
+  coords = c("Longitud", "Latitud"), 
+  crs = 4326
+) %>%
+  st_transform(crs = 32618) %>% # Transformamos a UTM 18N
+  mutate(
+    x = st_coordinates(.)[,1],
+    y = st_coordinates(.)[,2]
+  )
+
+# Transformamos el shapefile de Bogotá al mismo CRS (Metros)
+bogota_utm <- st_transform(bogota, crs = 32618)
+
+# ------------------------------------------------------------------------------
+# 2. AJUSTE DEL MODELO TEÓRICO (Exclusivo con gstat)
+# ------------------------------------------------------------------------------
+# gstat calcula el variograma empírico SOBRE LOS RESIDUALES de la tendencia ~x
+# internamente, gracias a la fórmula.
+v_emp_gstat <- variogram(PM10 ~ x, data = datos_utm, cutoff = 15000)
+
+# Ajuste teórico (usaremos un modelo Esférico como ejemplo, ajusta según tu AIC)
+# Inicializamos con la varianza muestral y un rango visual razonable en metros
+modelo_kriging <- fit.variogram(
+  v_emp_gstat, 
+  vgm(psill = var(datos_utm$PM10), model = "Sph", range = 5000, nugget = 10)
+)
+
+# ------------------------------------------------------------------------------
+# 3. CREACIÓN DE GRILLA DE PREDICCIÓN (En Metros)
+# ------------------------------------------------------------------------------
+# Usamos st_make_grid (estándar moderno de sf) para evitar errores de bbox
+grilla_utm <- st_make_grid(
+  bogota_utm,             # Usamos el bbox de Bogotá en UTM
+  n = c(150, 150),        # Resolución de la grilla (150x150 pixeles)
+  what = "centers"
+) %>% 
+  st_sf() %>%
+  mutate(
+    x = st_coordinates(.)[,1],
+    y = st_coordinates(.)[,2]
+  )
+
+# ------------------------------------------------------------------------------
+# 4. EJECUCIÓN DEL KRIGING UNIVERSAL
+# ------------------------------------------------------------------------------
+# Al pasar la fórmula PM10 ~ x, gstat ejecuta Kriging Universal automáticamente
+kriging_result <- krige(
+  formula = PM10 ~ x,         # Tendencia de primer orden en X
+  locations = datos_utm,      # Datos observados en UTM
+  newdata = grilla_utm,       # Grilla de predicción en UTM
+  model = modelo_kriging      # Modelo teórico ajustado
+)
+
+# ------------------------------------------------------------------------------
+# 5. ENMASCARAMIENTO (MASCARA DE AGUA / LÍMITES DE BOGOTÁ)
+# ------------------------------------------------------------------------------
+# Recortamos la grilla para que solo muestre la forma de Bogotá
+kriging_masked <- st_intersection(kriging_result, bogota_utm)
+
+# ------------------------------------------------------------------------------
+# 6. VISUALIZACIÓN PROFESIONAL CON ggplot2
+# ------------------------------------------------------------------------------
+# Mapa 1: Predicción Espacial (PM10)
 p1 <- ggplot() +
-  geom_sf(
-    data = kriged_values_universal,
-    aes(color = var1.pred),
-    size = 0.6
+  geom_sf(data = kriging_masked, aes(color = var1.pred), size = 0.4) +
+  geom_sf(data = bogota_utm, fill = NA, color = "black", linewidth = 0.5) +
+  geom_sf(data = datos_utm, color = "red", size = 1.5, shape = 4) + # Estaciones
+  scale_color_viridis_c(name = expression(PM[10]~(mu*g/m^3)), option = "magma") +
+  labs(
+    title = "Predicción Espacial: Kriging Universal",
+    subtitle = "Tendencia modelada: μ(s) ~ Longitud (x)",
+    x = "Coordenada Este (m)", y = "Coordenada Norte (m)"
   ) +
-  geom_sf(
-    data = bogota_4326,
-    fill = NA,
-    color = "black",
-    linewidth = 0.5
-  ) +
-  scale_color_viridis_c(name = "PM10") +
-  labs(title = "Predicción mediante Kriging Universal") +
-  theme_bw()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    panel.grid = element_line(color = "grey90", linetype = "dotted")
+  )
 
+# Mapa 2: Varianza del Error de Kriging (Incertidumbre)
 p2 <- ggplot() +
-  geom_sf(
-    data = kriged_values_universal,
-    aes(color = var1.var),
-    size = 0.6
+  geom_sf(data = kriging_masked, aes(color = var1.var), size = 0.4) +
+  geom_sf(data = bogota_utm, fill = NA, color = "black", linewidth = 0.5) +
+  geom_sf(data = datos_utm, color = "red", size = 1.5, shape = 4) +
+  scale_color_viridis_c(name = "Varianza\nde Kriging", option = "plasma", direction = -1) +
+  labs(
+    title = "Incertidumbre de la Predicción",
+    subtitle = "Varianza del error (mínima en estaciones observadas)",
+    x = "Coordenada Este (m)", y = "Coordenada Norte (m)"
   ) +
-  geom_sf(
-    data = bogota_4326,
-    fill = NA,
-    color = "black",
-    linewidth = 0.5
-  ) +
-  scale_color_viridis_c(name = "Varianza") +
-  labs(title = "Varianza de la predicción") +
-  theme_bw()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    panel.grid = element_line(color = "grey90", linetype = "dotted")
+  )
 
+# Imprimir ambos mapas lado a lado
 p1 + p2
 ```
 
-En el mapa de predicción se observa que la mayor parte del área de estudio presenta valores bajos o medios de PM10, con concentraciones más elevadas hacia el occidente de la ciudad. Por otra parte, el mapa de la varianza de predicción muestra un comportamiento esperado del kriging universal: la incertidumbre aumenta a medida que los puntos de predicción se alejan de las estaciones de monitoreo, debido a la menor disponibilidad de información para realizar la interpolación. En contraste, en las ubicaciones cercanas o coincidentes con una estación de monitoreo la varianza de predicción es considerablemente menor, ya que en estos puntos la estimación está fuertemente respaldada por observaciones directas. Este patrón evidencia la dependencia de la precisión del predictor respecto a la distribución espacial de las estaciones.
-
-Resulta particularmente interesante observar un punto de muy baja incertidumbre en el centro-occidente del mapa, el cual coincide con la ubicación de una estación de monitoreo. En este caso, el predictor prácticamente reproduce el valor observado, por lo que la incertidumbre es mínima en comparación con las zonas circundantes.
+En el mapa de Predicción Espacial se aprecia una clara gradación espacial de $\text{PM}_{10}$ orientada de oriente a occidente, congruente con la tendencia de primer orden modelada en función de la coordenada $x$. Las concentraciones más elevadas ($> 80\ \mu\text{g/m}^3$, tonos claros) se localizan hacia la franja occidental del dominio, mientras que los Cerros Orientales exhiben los niveles más bajos de contaminación.Por su parte, el mapa de Incertidumbre de la Predicción (Varianza de Kriging) refleja fielmente la propiedad teórica del Kriging Universal: la varianza de estimación es mínima (puntos amarillos $\approx 0 - 100$) justamente sobre las ubicaciones directas de las estaciones de monitoreo, donde el predictor honra los datos observados. A medida que los puntos de interpolación se alejan de la red de monitoreo, la incertidumbre se incrementa gradualmente (tonos morados oscuros $> 300$), alcanzando sus valores máximos en los extremos geográficos y bordes del área de estudio con menor cobertura muestral.
 
 # Función Optim
 
