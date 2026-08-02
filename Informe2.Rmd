@@ -2395,17 +2395,18 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
     Calculamos la correlación de Pearson entre la variable de interés y sus coordenadas para detectar relaciones lineales globales.
     
-    ```{r paso_1_correlacion}
+    ```{r paso-1-correlacion}
     matriz_cor <- cor(datos_validos[, c("Sensacion_Termica", "Este", "Norte")], use = "complete.obs")
     kable(matriz_cor, digits = 3, caption = "Matriz de correlación de Pearson")
     ```
-    Ninguna de las dos coordenadas geográficas presenta una fuerte asociación lineal con la sensación térmica. Esto sugiere que no es estrictamente necesario incluir un modelo de tendencia polinomial (Kriging universal)
+    Ninguna de las dos coordenadas geográficas presenta una fuerte asociación lineal con la sensación térmica ($|r| < 0.15$). Esto sugiere que no es necesario incluir un modelo de tendencia polinomial complejo (Kriging Universal) y que podemos asumir, en primera instancia, una media constante.
+
 
 2. **Realice gráficos de dispersión de la variable contra cada una de las coordenadas geográficas. Analice.**
 
     **R/**
 
-    ```{r paso_2_dispersion_coords, fig.width=10, fig.height=4}
+    ```{r paso-2-dispersion-coords, fig.width=10, fig.height=4}
     p1 <- ggplot(datos_validos, aes(x = Este, y = Sensacion_Termica)) +
       geom_point(size = 2, color = "steelblue") +
       geom_smooth(method = "lm", color = "red", se = FALSE) +
@@ -2418,7 +2419,8 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
     
     p1 + p2
     ```
-    Los gráficos confirman el supuesto de estacionariedad de primer orden ($E[Z(s)] = \mu$). La media de la sensación térmica no varía en función de la ubicación geográfica. Se confirma que no es necesario remover tendencia mediante modelos de regresión. El proceso es adecuado para aplicar kriging ordinario.
+    Los gráficos confirman el supuesto de estacionariedad de primer orden ($E[Z(s)] = \mu$). La media de la sensación térmica no varía sistemáticamente en función de la ubicación geográfica. El proceso es adecuado para aplicar Kriging Ordinario.
+
 
 3. **Realice gráficos de dispersión de la media (mediana) de cada columna con respecto a su coordenada horizontal.**
 
@@ -2426,7 +2428,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
     Agregamos los datos por `Este` para ver el comportamiento central en cada columna.
 
-    ```{r paso_3_media_columna, fig.height=3, fig.width=10}
+    ```{r paso-3-media-columna, fig.height=3, fig.width=10}
     resumen_este <- datos_validos %>%
       group_by(Este) %>%
       summarise(
@@ -2443,7 +2445,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
       theme_minimal() + labs(title = "Tendencia Central por Columna (Este)", y = "Valor")
     ```
     
-    El análisis por columnas confirma que la media fluctúa de manera estable alrededor de $20.25^\circ\text{C}$ ($\mu \approx 20^\circ\text{C}$). Dado que la media no es resistente con valores atípicos (como en `Este = 8`), se prefiere usar estimadores resistentes de semivarianza (Cressie & Hawkins o Mediana).
+    La media y la mediana fluctúan de manera estable alrededor de $20.25^\circ\text{C}$. Dado que la media no es resistente a valores atípicos (como se observa en `Este = 8`), en etapas posteriores se preferirá usar estimadores resistentes de semivarianza (Cressie & Hawkins o Mediana) o el pulimiento de medianas.
 
 
 4. **Realice gráficos de dispersión de la media (mediana) de cada fila con respecto a su coordenada vertical.**
@@ -2452,7 +2454,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
     
     Agregamos los datos por `Norte` para ver el comportamiento central en cada fila.
 
-    ```{r paso_4_media_fila, fig.height=3, fig.width=10}
+    ```{r paso-4-media-fila, fig.height=3, fig.width=10}
     resumen_norte <- datos_validos %>%
       group_by(Norte) %>%
       summarise(
@@ -2470,7 +2472,8 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
       theme_minimal() + labs(title = "Tendencia Central por Fila (Norte)", y = "Valor", x = "Norte")
     ```
     
-    El análisis de la tendencia central por fila muestra un comportamiento oscilatorio sin una dirección monótona creciente o decreciente claro en la variable de sensación térmica. La media y mediana se mantienen alrededor de $20^\circ\text{C}$, lo que refuerza la hipótesis de estacionariedad de primer orden.
+    El comportamiento oscilatorio sin una dirección monótona clara refuerza la hipótesis de estacionariedad de primer orden.
+
 
 5. **Realice gráficos de dispersión de la varianza de cada columna con respecto a su coordenada horizontal.**
 
@@ -2478,7 +2481,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
     Evaluamos la estacionariedad en varianza a lo largo del eje X.
 
-    ```{r paso_5_varianza_columna, fig.height=3.5, fig.width=10}
+    ```{r paso-5-varianza-columna, fig.height=3.5, fig.width=10}
     var_este <- datos_validos %>%
       group_by(Este) %>%
       summarise(varianza = var(Sensacion_Termica, na.rm = TRUE))
@@ -2494,7 +2497,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
     
     Graficamos $Z(s)$ vs $Z(s+h)$ para rezagos unitarios horizontales y verticales.
 
-    ```{r paso_6_dispersogramas, fig.width=10, fig.height=4}
+    ```{r paso-6-dispersogramas, fig.width=10, fig.height=4}
     # Dispersograma Horizontal (Rezago 1 en Este)
     datos_h <- datos_validos %>%
       mutate(Este_lag = Este + 1) %>%
@@ -2523,6 +2526,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
     
     p_h + p_v
     ```
+    Se observa una correlación espacial positiva tanto en la dirección horizontal como en la vertical, lo que confirma la presencia de dependencia espacial que debe ser modelada.
 
 
 7. **Realice gráficos de dispersión de la varianza de cada fila con respecto a su coordenada vertical.**
@@ -2531,7 +2535,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
     Evaluamos la estacionariedad en varianza a lo largo del eje Y.
 
-    ```{r paso_7_varianza_fila, fig.height=3.5, fig.width=10}
+    ```{r paso-7-varianza-fila, fig.height=3.5, fig.width=10}
     var_norte <- datos_validos %>%
       group_by(Norte) %>%
       summarise(varianza = var(Sensacion_Termica, na.rm = TRUE))
@@ -2549,7 +2553,7 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
 
     Calculamos la media móvil en dirección diagonal (Sureste-Noroeste).
 
-    ```{r paso_8_media_movil_diagonal, fig.height=3.5, fig.width=10}
+    ```{r paso-8-media-movil-diagonal, fig.height=3.5, fig.width=10}
     # Calculamos una media móvil diagonal simple
     datos_diag <- datos_validos %>%
       mutate(Este_lag = Este + 1, Norte_lag = Norte - 2) %>%
@@ -2595,6 +2599,8 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     
     p_r1 + p_r2
     ```
+
+    Dado que los modelos de regresión no logran capturar una tendencia determinística clara (y el AIC no muestra una mejora sustancial que justifique un Kriging Universal), asumiremos media constante. Para el modelamiento del semivariograma, utilizaremos los datos centrados respecto a su media global o aplicaremos el pulimiento de medianas (paso 17) para mayor robustez ante los valores atípicos identificados.
 
 
 10. **Grafique el semivariograma empírico horizontal de la variable centrada.**
@@ -2656,6 +2662,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 15. **¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?**
 
     **R/**
+    
+    Al comparar los gráficos de los pasos 10 al 14, se observa que los semivariogramas presentan un comportamiento similar en todas las direcciones (alcances y pendientes comparables), lo que permite asumir Isotropía. Además, la varianza tiende a estabilizarse (meseta), lo que sugiere que el proceso es estacionario de segundo orden y es adecuado ajustar un modelo acotado (como el Esférico o Exponencial).
+
 
 16. **Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.**
 
@@ -2669,6 +2678,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     # Gráfico del ajuste
     plot(v_omni, v_fit, main = "Ajuste del Semivariograma Teórico (Esférico)", pch = 16, col = "black")
     ```
+    Dado que no se evidenciaron diferencias significativas en los rangos o pendientes según la dirección (Paso 15), no es necesario aplicar corrección por anisotropía geométrica. El modelo esférico omnidireccional es suficiente para describir la dependencia espacial.
 
 
 17. **Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.**
@@ -2845,6 +2855,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
         legend.key.height = unit(1.2, "cm")
       )
     ```
+    La validación cruzada muestra que los errores tienen una media cercana a cero y el coeficiente de correlación de Pearson entre los valores observados y predichos es alto, lo que valida la capacidad predictiva del modelo de Kriging Ordinario aplicado sobre los residuales del pulimiento de medianas.
 
 
 
@@ -3494,7 +3505,7 @@ knitr::kable(
     1.  **Exponencial:** $\gamma(h') = 1600 \left( 1 - \exp\left( - \frac{\|h'\|}{50} \right) \right)$
     2.  **Seno Cardinal:** $\gamma(h') = 1600 \left[ 1 - \frac{\sin(\|h'\| / 50)}{\|h'\| / 50} \right]$
     3.  **Cúbico:** 
-        $$ \gamma(h') = \begin{cases} 1600 \left[ 7\left(\frac{\|h'\|}{50}\right)^2 - \dots - \frac{3}{4}\left(\frac{\|h'\|}{50}\right)^7 \right] & \text{si } \|h'\| \le 50 \\ 1600 & \text{si } \|h'\| > 50 \end{cases} $$
+    $$ \gamma(h') = \begin{cases} 1600 \left[ 7\left(\frac{h}{50}\right)^2 - \frac{35}{4}\left(\frac{h}{50}\right)^3 + \frac{7}{2}\left(\frac{h}{50}\right)^5 - \frac{3}{4}\left(\frac{h}{50}\right)^7 \right] & \text{si } \|h'\| \le 50 \\ 1600 & \text{si } \|h'\| > 50 \end{cases} $$
     4.  **Potencial:** $\gamma(h') = 50 \|h'\|^{1.6}$
     
     Donde $\|h'\|$ es la distancia euclidiana en el sistema de coordenadas rotado y reescalado.
@@ -3509,14 +3520,177 @@ Se requiere llevar a cabo un análisis de anisotropía. Se detectó la existenci
 
     **R/**
     
+    De acuerdo con la Sección 3.8 del libro, cuando se detecta anisotropía geométrica, el primer paso es rotar los ejes coordenados originales $h = (h_x, h_y)$ hacia un nuevo sistema $h' = (h_\phi, h_\theta)$, donde el semivariograma se comporta de manera isotrópica. 
+
+    El ángulo de máxima anisotropía es $\theta = 25^\circ$. Siguiendo la convención del texto, la matriz de rotación $R(\theta)$ que transforma las coordenadas cartesianas estándar al sistema alineado con los ejes de la elipse de anisotropía es:
+    
+    $$
+    \begin{pmatrix} h_\phi \\ h_\theta \end{pmatrix} = 
+    \begin{pmatrix} \cos(\theta) & \sin(\theta) \\ -\sin(\theta) & \cos(\theta) \end{pmatrix} 
+    \begin{pmatrix} h_x \\ h_y \end{pmatrix}
+    $$
+    
+    Sustituyendo $\theta = 25^\circ$:
+    
+    $$
+    R(25^\circ) = \begin{pmatrix} \cos(25^\circ) & \sin(25^\circ) \\ -\sin(25^\circ) & \cos(25^\circ) \end{pmatrix} \approx \begin{pmatrix} 0.9063 & 0.4226 \\ -0.4226 & 0.9063 \end{pmatrix}
+    $$
+    
+    ```{r ej-3-5-1-rotacion, message=FALSE, warning=FALSE}
+# --- 1. Cálculo de la Matriz de Rotación ---
+theta_grados <- 25
+theta_rad <- theta_grados * (pi / 180)
+
+matriz_rotacion <- matrix(c(
+   cos(theta_rad),  sin(theta_rad),
+  -sin(theta_rad),  cos(theta_rad)
+), nrow = 2, byrow = TRUE)
+
+rownames(matriz_rotacion) <- c("Eje Principal (h_φ)", "Eje Secundario (h_θ)")
+colnames(matriz_rotacion) <- c("Eje X (h_x)", "Eje Y (h_y)")
+
+# --- 2. Presentación Profesional en Tabla HTML / PDF ---
+kable(
+  round(matriz_rotacion, 4), 
+  caption = "Matriz de Rotación R(25°) para Transformación Anisotrópica",
+  align = "cc"
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  add_header_above(c(" " = 1, "Componentes Cartesianas" = 2))
+    ```
+
+    
 2. **Describa cómo aplicaría la razón de anisotropía.**
 
     **R/**
     
+    Una vez rotados los ejes, la elipse de anisotropía (que tiene un rango mayor $a_\theta = 105$ m y un rango menor $a_\phi = 35$ m) debe ser re-escalada para convertirla en un círculo de radio igual al menor rango de anisotropía ($a_\phi$). 
+
+    Para lograr esto, se aplica la **razón de anisotropía** $\lambda$, definida como el cociente entre el rango menor y el rango mayor:
+    
+    $$
+    \lambda = \frac{a_\phi}{a_\theta} = \frac{35}{105} = \frac{1}{3} \approx 0.3333
+    $$
+    
+    El re-escalamiento se aplica únicamente sobre el eje de mayor anisotropía (el eje $\theta$) mediante una matriz diagonal de contracción. El vector de coordenadas transformadas finales $h'' = (h''_\phi, h''_\theta)$, que es el que realmente evaluará el modelo isotrópico, se obtiene así:
+    
+    $$
+    \begin{pmatrix} h''_\phi \\ h''_\theta \end{pmatrix} = 
+    \begin{pmatrix} 1 & 0 \\ 0 & \lambda \end{pmatrix} 
+    \begin{pmatrix} h_\phi \\ h_\theta \end{pmatrix}
+    $$
+    
+    De esta manera, la distancia anisotrópica transformada $\|h''\| = \sqrt{(h''_\phi)^2 + (h''_\theta)^2}$ permite que cualquier modelo isotrópico teórico (ej. esférico, exponencial) con rango $a_\phi = 35$ m sea evaluado correctamente en todas las direcciones.
+    
+    ```{r ej-3-5-2-razon, message=FALSE, warning=FALSE}
+    # --- 1. Definición de Parámetros y Matriz ---
+    a_theta <- 105 # Rango máximo
+    a_phi   <- 35  # Rango mínimo
+    
+    lambda <- a_phi / a_theta
+    
+    matriz_escalamiento <- matrix(c(
+      1, 0, 
+      0, lambda
+    ), nrow = 2, byrow = TRUE)
+    
+    rownames(matriz_escalamiento) <- c("Eje Referencia (h''_φ)", "Eje Escalado (h''_θ)")
+    colnames(matriz_escalamiento) <- c("h_φ", "h_θ")
+    
+    # --- 2. Tabla Resumen del Parámetro λ ---
+    df_lambda <- data.frame(
+      Parametro = c("Rango Menor (a_φ)", "Rango Mayor (a_θ)", "Razón de Anisotropía (λ)"),
+      Valor = c(paste(a_phi, "m"), paste(a_theta, "m"), round(lambda, 4))
+    )
+    
+    kable(df_lambda, caption = "Parámetros para la Transformación de Anisotropía", align = "lc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+    
+    # --- 3. Presentación de la Matriz de Re-escalamiento ---
+    kable(
+      round(matriz_escalamiento, 4), 
+      caption = "Matriz Diagonal de Re-escalamiento A",
+      align = "cc"
+    ) %>%
+      kable_styling(
+        bootstrap_options = c("striped", "bordered", "hover"), 
+        full_width = FALSE,
+        position = "center"
+      ) %>%
+      add_header_above(c(" " = 1, "Ejes Rotados Previos" = 2))
+    ```
+
+    
 3. **Ilustre a través de un caso particular.**
 
     **R/**
+    
+    Supongamos que tenemos dos puntos de muestreo separados por un vector de rezago espacial original $h = (h_x, h_y) = (40, 60)$ metros. 
 
+    Para calcular el valor del semivariograma anisotrópico, debemos someter este vector a la transformación completa (Rotación + Re-escalamiento).
+    
+    **Paso 1: Rotación**
+    $$
+    \begin{pmatrix} h_\phi \\ h_\theta \end{pmatrix} = 
+    \begin{pmatrix} 0.9063 & 0.4226 \\ -0.4226 & 0.9063 \end{pmatrix} 
+    \begin{pmatrix} 40 \\ 60 \end{pmatrix} = 
+    \begin{pmatrix} 61.61 \\ 37.48 \end{pmatrix} \text{ m}
+    $$
+    
+    **Paso 2: Re-escalamiento**
+    $$
+    \begin{pmatrix} h''_\phi \\ h''_\theta \end{pmatrix} = 
+    \begin{pmatrix} 1 & 0 \\ 0 & 0.3333 \end{pmatrix} 
+    \begin{pmatrix} 61.61 \\ 37.48 \end{pmatrix} = 
+    \begin{pmatrix} 61.61 \\ 12.49 \end{pmatrix} \text{ m}
+    $$
+    
+    **Paso 3: Distancia Isotrópica Equivalente**
+    La distancia que utilizará el modelo de semivariograma (cuyo rango práctico es ahora $a_\phi = 35$ m) es:
+    $$
+    \|h''\| = \sqrt{61.61^2 + 12.49^2} = \sqrt{3795.79 + 156.00} \approx 62.86 \text{ m}
+    $$
+    
+    Como $\|h''\| = 62.86$ m es mayor que el rango de la esfera transformada ($35$ m), el modelo isotrópico equivalente indicará que estos dos puntos ya no presentan correlación espacial (la semivarianza habrá alcanzado la silla total).
+    
+    ```{r ej_3_5_3_caso, message=FALSE, warning=FALSE}
+    # --- 1. Cálculos de la Transformación ---
+    h_original <- c(40, 60)
+    
+    # Aplicar Rotación y Re-escalamiento
+    h_rotado <- as.vector(matriz_rotacion %*% h_original)
+    h_transformado <- as.vector(matriz_escalamiento %*% h_rotado)
+    
+    # Calcular distancia isotrópica equivalente
+    distancia_iso <- sqrt(sum(h_transformado^2))
+    
+    # --- 2. Tabla de Transición del Vector h ---
+    df_pasos <- data.frame(
+      Etapa = c("1. Original (Cartesiano)", "2. Rotado (Ejes Elipse)", "3. Transformado (Isotrópico)"),
+      Componente_1 = c(round(h_original[1], 2), round(h_rotado[1], 2), round(h_transformado[1], 2)),
+      Componente_2 = c(round(h_original[2], 2), round(h_rotado[2], 2), round(h_transformado[2], 2)),
+      Norma_Vectorial = c(
+        paste(round(sqrt(sum(h_original^2)), 2), "m"),
+        paste(round(sqrt(sum(h_rotado^2)), 2), "m"),
+        paste(round(distancia_iso, 2), "m (h_eq)")
+      )
+    )
+    
+    kable(
+      df_pasos, 
+      col.names = c("Etapa de Transformación", "Eje X / h_φ", "Eje Y / h_θ", "Distancia Euclidiana"),
+      caption = "Seguimiento Paso a Paso del Vector de Rezago h",
+      align = "lccc"
+    ) %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+      row_spec(3, bold = TRUE, background = "#E8F5E9") # Resaltar el resultado final
+    ```
+    
+    
 
 
 
