@@ -1181,6 +1181,7 @@ par(mfrow = c(1, 1))
 ### Se ha tomado una muestra de la altura en (cm) alcanzada por los árboles en un cultivo de mango (Ver Tabla 9.1).
 
 
+
 ```{r datos}
 # Definición de coordenadas y matriz de realizaciones Z(s)
 # Las filas representan Y de mayor a menor y las columnas X de menor a mayor
@@ -1211,49 +1212,59 @@ kable(df_tabla, caption = "Diseño espacial de muestreo y resultado de las reali
 
 
 1. **¿Para un $\|h\| = 10$ con $\phi = 0^\circ$, esto es, en dirección horizontal, para $s = (9564, 999800)$; $Z(s) = ?$ y $Z(s + h) = ?$**
-
-    Para la dirección horizontal ($\phi = 0^\circ$) con pasamiento de $\|h\| = 10$:
     
-    * El punto base es $s = (X=9564, Y=999800)$. De la matriz de datos, el valor observado es:
+    **R/**
     
-    $$\mathbf{Z(s) = 390}$$
+    Para la dirección horizontal ($\phi = 0^\circ$) con una magnitud de rezago $\|h\| = 10$, el vector de desplazamiento es $h = (10, 0)$. Esto significa que nos movemos a lo largo del eje X (Este).
     
-    
-    * El punto desplazado es $s + h = (9564 + 10, 999800) = (9574, 999800)$. De la matriz de datos, en esa posición se tiene un dato faltante (`NA`):
-    
-    $$\mathbf{Z(s + h) = \text{NA} \quad (\text{Dato faltante})}$$
-
+    *   **Punto inicial $s$:** Evaluando la Tabla en las coordenadas $s = (9564, 999800)$ es $Z(s) = 390$
+    *   **Punto desplazado $s+h$:** Aplicando el vector de rezago, la ubicación es $s+h = (9564 + 10, 999800 + 0) = (9574, 999800)$. Al inspeccionar la matriz de datos para esta coordenada, observamos que no existe una medición registrada:
+        $$Z(s+h) = \text{NA} \quad (\text{Dato faltante})$$
 
 
 2. **¿Para $\phi = 45^\circ$, es posible encontrar pares de datos? En caso afirmativo, encuentre $\|h\|$ y $n(\|h\|)$.**
-
+    
+    **R/**
+    
     Sí, es posible encontrar pares de datos en la dirección diagonal ascendente ($\phi = 45^\circ$).
     
-    Debido a la geometría del arreglo ($\Delta X = 10$ y $\Delta Y = 10$), la distancia euclidiana entre vecinos diagonales más cercanos es:
+    * **Cálculo de $\|h\|$:** La distancia euclidiana entre estos puntos diagonales adyacentes se calcula mediante el teorema de Pitágoras:
+    $$\|h\| = \sqrt{10^2 + 10^2} = \sqrt{200} = 10\sqrt{2} \approx 14.14$$
+    * **Cálculo de $n(\|h\|)$:** Para determinar el número de pares válidos $n(\|h\|)$, se cuentan todas las combinaciones de puntos $(s_i, s_j)$ en la grilla que estén separados exactamente por el vector $h = (10, 10)$ y que ambos posean datos válidos (no sean `NA`). 
     
     
-    $$\|h\| = \sqrt{10^2 + 10^2} = \sqrt{200} = 10\sqrt{2} \approx 14.1421$$
-    
-    Para esta distancia $\|h\| = 10\sqrt{2}$ a $45^\circ$, los pares válidos (que cuentan con datos observados en ambas posiciones) son:
-    
-    1. De $(9564, 999800) \to (9574, 999810)$: $(390, 460)$
-    2. De $(9564, 999810) \to (9574, 999820)$: $(590, 340)$
-    3. De $(9574, 999810) \to (9584, 999820)$: $(460, 330)$
-    4. De $(9584, 999810) \to (9594, 999820)$: $(560, 270)$
-    5. De $(9564, 999820) \to (9574, 999830)$: $(400, 325)$
-    6. De $(9574, 999820) \to (9584, 999830)$: $(340, 300)$
-    7. De $(9584, 999820) \to (9594, 999830)$: $(330, 320)$
-    8. De $(9564, 999830) \to (9574, 999840)$: $(470, 400)$
-    9. De $(9574, 999830) \to (9584, 999840)$: $(325, 470)$
-    10. De $(9584, 999830) \to (9594, 999840)$: $(300, 270)$
-    11. De $(9584, 999840) \to (9594, 999850)$: $(470, 270)$
-    
-    * **Distancia del paso:** $\mathbf{\|h\| = 10\sqrt{2} \approx 14.14}$
-    * **Número de pares:** $\mathbf{n(\|h\|) = 11}$
+    ```{r ej-1-2, message=FALSE, warning=FALSE}
+# Construcción del data.frame espacial (formato largo)
+grid <- expand.grid(X = coords_x, Y = coords_y)
+grid$Z <- as.vector(t(matriz_alturas)) # t() para respetar el orden de expand.grid
+
+# Filtrado de pares con vector de rezago h = (10, 10)
+pares_45 <- merge(grid, grid, by = NULL, suffixes = c("_i", "_j"))
+pares_45 <- subset(pares_45, (X_j - X_i == 10) & (Y_j - Y_i == 10))
+
+# Exclusión de pares donde al menos uno de los dos puntos sea NA
+pares_validos <- subset(pares_45, !is.na(Z_i) & !is.na(Z_j))
+
+# Resultado
+n_h <- nrow(pares_validos)
+cat("Distancia ||h||:", round(10 * sqrt(2), 4), "\n")
+cat("Numero de pares validos n(||h||):", n_h, "\n\n")
+
+# Desglose de los 12 pares válidos encontrados
+cat("Desglose de los pares (s_i -> s_j):\n")
+for(i in 1:nrow(pares_validos)) {
+  cat(sprintf("(%d, %d) -> (%d, %d)  | Z: %d -> %d\n", 
+              pares_validos$X_i[i], pares_validos$Y_i[i], 
+              pares_validos$X_j[i], pares_validos$Y_j[i], 
+              pares_validos$Z_i[i], pares_validos$Z_j[i]))
+}
+    ```
     
 
 3. **La media es constante e igual a 460. Si la covarianza espacial es un modelo esférico sin pepita y con silla 25000 y rango 15, ¿Cuál es el valor del coeficiente de autocorrelación para $\|h\| = 30$ con $\phi = 90^\circ$?**
   
+    **R/**
+    
     El modelo teórico de covarianza esférica $C(h)$ con silla/varianza $C_0 = 25000$ y rango $a = 15$ está dado por:
     
     $$C(h) = 
@@ -1270,8 +1281,7 @@ kable(df_tabla, caption = "Diseño espacial de muestreo y resultado de las reali
     
     $$\rho(h) = \frac{C(h)}{C(0)} = \frac{0}{25000} = 0$$
     
-    **Respuesta:**
-    Para $\|h\| = 30$ con $\phi = 90^\circ$, la autocorrelación es **$\mathbf{\rho(30) = 0}$** (ya que la distancia excede el rango de dependencia espacial $a = 15$).
+    Para $\|h\| = 30$ con $\phi = 90^\circ$, la autocorrelación es ${\rho(30) = 0}$ (ya que la distancia excede el rango $a = 15$).
 
 
 ---
@@ -1279,49 +1289,56 @@ kable(df_tabla, caption = "Diseño espacial de muestreo y resultado de las reali
 ### Demuestre o refute:
 
 1. **La estacionariedad intrínseca implica la estacionariedad de segundo orden. Ilustre con ejemplos.**
-
-    > **FALSO (SE REFUTA)**
+    
+    **R/**
+    
+    > Falso.
 
     Un proceso estocástico $Z(s)$ es **intrínsecamente estacionario** si cumple:
     
     1. $E[Z(s + h) - Z(s)] = 0$ (o constante $m$).
     2. $Var[Z(s + h) - Z(s)] = 2\gamma(h)$, donde el semivariograma $\gamma(h)$ depende únicamente del vector de separación $h$.
     
-    Por otro lado, la **estacionariedad de segundo orden (o débil)** exige que la varianza marginal $Var[Z(s)] = C(0) < \infty$ y la covarianza $Cov[Z(s), Z(s+h)] = C(h)$ existan y sean finitas para todo $s$.
+    Por otro lado, la estacionariedad de segundo orden (o débil) exige que 
+    
+    1. La varianza marginal $Var[Z(s)] = C(0) < \infty$ 
+    2. La covarianza $Cov[Z(s), Z(s+h)] = C(h)$ existan y sean finitas para todo $s$.
     
     La relación entre ambas viene dada por:
     
     
     $$2\gamma(h) = Var[Z(s+h) - Z(s)] = Var[Z(s+h)] + Var[Z(s)] - 2Cov[Z(s+h), Z(s)]$$
     
-    Si el proceso es de segundo orden, esta ecuación se reduce a $2\gamma(h) = 2[C(0) - C(h)]$. Sin embargo, la implicación inversa **no es cierta**: un proceso puede tener un semivariograma $\gamma(h)$ bien definido y creciente sin límites (haciendo que $C(0) \to \infty$), por lo que **no posee varianza ni función de covarianza finita**.
+    Si el proceso es de segundo orden, esta ecuación se reduce a $2\gamma(h) = 2[C(0) - C(h)]$. Sin embargo, la implicación inversa no es cierta; un proceso puede tener un semivariograma $\gamma(h)$ bien definido y creciente sin límites (haciendo que $C(0) \to \infty$), por lo que no posee varianza ni función de covarianza finita.
     
      **Ejemplo:**
     
-    El **Movimiento Browniano** (o proceso de Wiener) en 1D, o un proceso de superficie con **Modelo Lineal de Variograma** $\gamma(h) = c \cdot \|h\|$:
+    El *Movimiento Browniano* (o proceso de Wiener) en 1D, o un proceso de superficie con **Modelo Lineal de Variograma** $\gamma(h) = c \cdot \|h\|$:
     
     * Su semivariograma existe y depende solo de $h$ (cumple la hipótesis intrínseca).
-    * Sin embargo, la varianza del proceso $Var[Z(s)]$ tiende a infinito a medida que aumenta la escala del dominio. Por ende, **no es de segundo orden**.
+    * Sin embargo, la varianza del proceso $Var[Z(s)]$ tiende a infinito a medida que aumenta la escala del dominio. Por ende, no es de segundo orden.
 
 
 2. **La estacionariedad de segundo orden implica la estacionariedad intrínseca. Ilustre con ejemplos.**
+    
+    **R/**
+    
+    > Verdadero
 
-    > **VERDADERO (SE DEMUESTRA)**
-
-    Supongamos que el proceso $Z(s)$ es **estacionario de segundo orden**. Esto implica que:
+    Suponga que el proceso $Z(s)$ es estacionario de segundo orden. Esto implica que:
     
     1. $E[Z(s)] = \mu$ (media constante para todo $s$).
     2. $Cov[Z(s), Z(s+h)] = C(h)$ (la covarianza depende solo del incremento $h$).
     3. $Var[Z(s)] = C(0) < \infty$.
     
-    Evaluemos las dos condiciones de la **estacionariedad intrínseca** para los incrementos $Z(s+h) - Z(s)$:
+    Con esto las dos condiciones de la estacionariedad intrínseca para los incrementos $Z(s+h) - Z(s)$ se cumplen automáticamente:
     
-    1. **Esperanza del incremento:**
+    1. *Esperanza del incremento:*
     
     $$E[Z(s+h) - Z(s)] = E[Z(s+h)] - E[Z(s)] = \mu - \mu = 0$$
     
     *(Es constante).*
-    2. **Varianza del incremento (Semivariograma):**
+    2. *Varianza del incremento (Semivariograma):*
     
     $$Var[Z(s+h) - Z(s)] = Var[Z(s+h)] + Var[Z(s)] - 2Cov[Z(s+h), Z(s)]$$
     
@@ -1333,11 +1350,9 @@ kable(df_tabla, caption = "Diseño espacial de muestreo y resultado de las reali
     
     $$\gamma(h) = C(0) - C(h)$$
     
-    Puesto que $C(0)$ y $C(h)$ dependen únicamente del vector $h$ y no de la ubicación $s$, el semivariograma $\gamma(h)$ también depende solo de $h$. Por lo tanto, **todo proceso estacionario de segundo orden es intrínsecamente estacionario**.
+    Puesto que $C(0)$ y $C(h)$ dependen únicamente del vector $h$ y no de la ubicación $s$, el semivariograma $\gamma(h)$ también depende solo de $h$. 
     
-    **Ejemplo:**
-    
-    Cualquier proceso espacial modelado con una función de covarianza teórica con meseta (*Sill*), como el **Modelo Esférico**, **Exponencial** o **Gaussiano**.
+    Por lo tanto, todo proceso estacionario de segundo orden es intrínsecamente estacionario.
 
 ---
 
@@ -1396,96 +1411,94 @@ kable(coef_table, align = c("l", "c", "c", "c", "c"), caption = "Resultados de l
 ```
 
 1. **¿Cómo es el comportamiento de la elevación del terreno en cada una de las coordenadas geográficas? ¿Existe tendencia?**
-
-    * **Respuesta:** *(Analizar según la Figura 1.4 de tu documento)*. Si la elevación aumenta o disminuye sistemáticamente a medida que nos desplazamos en la dirección Este (X) o Norte (Y), existe una **tendencia espacial de primer u orden superior**.
     
-    * **En el eje X (Este):** El gráfico de dispersión (panel medio izquierdo) muestra una **tendencia positiva directa y clara**; a medida que la coordenada $X$ aumenta (se desplaza hacia el Este), la elevación del terreno incrementa.
-    * **En el eje Y (Norte):** El gráfico de dispersión (panel superior derecho) evidencia una **tendencia negativa**; a medida que la coordenada $Y$ aumenta (se desplaza hacia el Norte), la elevación del terreno disminuye.
-    * **Conclusión:** **Sí existe una fuerte tendencia espacial de primer y segundo orden**, por lo que la media de la elevación depende de la ubicación geográfica.
+    **R/**
+    
+    * **Respuesta:** *(Analizar según la Figura 1.4 de tu documento)*. Si la elevación aumenta o disminuye sistemáticamente a medida que nos desplazamos en la dirección Este (X) o Norte (Y), existe una **tendencia espacial de primer u orden superior**.
+    Para determinar si existe tendencia, se analizar si la media del proceso $E[Z(s)]$ varía con las coordenadas espaciales.
+    
+    * ***En el eje X (Este):** El gráfico de dispersión muestra una tendencia positiva directa. A medida que la coordenada $X$ aumenta, la elevación del terreno incrementa de manera lineal.
+    * **En el eje Y (Norte):** El gráfico de dispersión evidencia una tendencia negativa; a medida que la coordenada $Y$ aumenta (se desplaza hacia el Norte), la elevación del terreno disminuye.
+
+    Sí existe una tendencia espacial de primer y segundo orden, pues la media de la elevación no es constante, sino que depende de la ubicación, luego se necesita modelar $\mu(s)$ antes de aplicar geoestadística sobre los residuales.
+
+    
+    Sí existe una fuerte tendencia espacial de primer y segundo orden**, por lo que la media de la elevación depende de la ubicación geográfica.
 
 2. **Encuentre la correlación de Pearson entre la elevación y cada una de las coordenadas espaciales. Interprete.**
 
-    ```r
-    # Código R conceptual para calcular la correlación
-    # cor_este  <- cor(datos$elevacion, datos$este, method = "pearson")
-    # cor_norte <- cor(datos$elevacion, datos$norte, method = "pearson")
+    **R/**
     
-    ```
-    
-    * **Interpretación:** Un coeficiente cercano a $+1$ o $-1$ indica una fuerte relación lineal entre la coordenada espacial y la elevación, respaldando la presencia de una tendencia geográfica determinística.
-    
-    Según la tabla de resumen del modelo en la Figura 1.4:
+    La correlación de Pearson ($r$) mide la fuerza de la relación lineal entre dos variables. En el contexto espacial, una correlación alta con las coordenadas confirma la presencia de una tendencia.
 
-    * **Coeficiente de Correlación Global ($R$):** $\mathbf{0.899}$ (cercano a $0.90$).
-    * **Coeficiente de Determinación ($R^2$):** $\mathbf{0.8091}$.
-    
-    **Interpretación:**
-    Existe una **correlación lineal muy alta ($\approx 0.90$)** entre las coordenadas espaciales y la elevación. El **$80.91\%$ de la variabilidad total de la elevación del terreno se explica únicamente por la posición geográfica** ($X$ y $Y$) de las muestras.
+    En el resumen del modelo nos proporciona la correlación múltiple ($R$) y el coeficiente de determinación ($R^2$):
+
+    *   **Coeficiente de Correlación Múltiple ($R$):** $\mathbf{0.899}$
+    *   **Coeficiente de Determinación ($R^2$):** $\mathbf{0.8091}$
+
+    Luego existe una correlación lineal muy alta ($\approx 0.90$) entre el conjunto de coordenadas espaciales y la elevación. El $80.91\%$ de la variabilidad total de la elevación del terreno se explica únicamente por la posición geográfica ($X$, $Y$ y su interacción). Esto justifica estadísticamente el uso de un modelo de regresión espacial para remover la tendencia.
+
+
 
 3. **¿Considera que es necesario incluir el análisis de la interacción entre las coordenadas geográficas este y norte en el modelo de regresión? Justifique.**
 
-    * **Respuesta:** Sí, si la pendiente del cambio de elevación en la dirección Este varía dependiendo de la ubicación en la dirección Norte (superficie alabeada o con curvatura diagonal). La inclusión del término de interacción ($X \cdot Y$) permite capturar tendencias cuadráticas o no alineadas estrictamente con los ejes cardinales.
+    **R/**
+
+    *Sí, es totalmente necesario.* 
+
+    La inclusión del término de interacción ($X \cdot Y$) permite capturar superficies de tendencia que no están estrictamente alineadas con los ejes, es decir, superficies con curvatura diagonal.
     
-    * **Respuesta:** **Sí, es totalmente necesario.**
-    * **Justificación:** En la tabla de la regresión, el término de interacción **`Este*Norte`** tiene un coefiente de $\beta_3 = -0.00015$ con un **valor p de $3.23 \times 10^{-70}$** (prácticamente $0 < 0.05$). Esto demuestra estadísticamente que el efecto de la coordenada $X$ sobre la elevación cambia según la coordenada $Y$, indicando una curvatura/alabeo diagonal en la topografía del terreno.
+    En la tabla de coeficientes, el término de interacción `Este*Norte` presenta un coeficiente de $\beta_3 = -0.00015$ con un **valor p de $3.23 \times 10^{-70}$ (prácticamente $0 < 0.05$). Esto demuestra que el efecto de la coordenada $X$ sobre la elevación cambia dependiendo del valor de la coordenada $Y$. Omitir este término resultaría en un modelo mal especificado (sesgo de variable omitida), lo que contaminaría los residuales y, por ende, la estimación posterior del semivariograma.
+
 
 
 4. **¿Considera usted que el proceso espacial posee media estacionaria? Justifique.**
 
-    * **Respuesta:** **No**, debido a la presencia de la tendencia topográfica descrita por las coordenadas geográficas. Para poder aplicar geoestadística, se debe modelar la media como una función de las coordenadas $E[Z(s)] = \mu(s)$ (Kriging Universal) o remover la tendencia para trabajar sobre los residuales.
+    **R/**
+
+    *No, el proceso NO posee media estacionaria.*
+
+    Un proceso espacial cumple con estacionariedad de la media (o estacionariedad débil) si y solo si $E[Z(s)] = \mu$ (una constante finita para todo $s \in D_s$). 
     
-    * **Respuesta:** **No, el proceso NO posee media estacionaria.**
-    * **Justificación:** Un proceso posee media estacionaria si $E[Z(s)] = \mu$ (constante en todo el dominio). Aquí la elevación varía en función de la localización geográfica ($R^2 = 80.91\%$). La media se debe modelar mediante la superficie de tendencia $E[Z(s)] = \mu(s) = \beta_0 + \beta_1 X + \beta_2 Y + \beta_3 XY$.
+    En este caso, la elevación varía sistemáticamente en función de la ubicación geográfica, como lo demuestra el $R^2 = 80.91\%$ y la significancia de los coeficientes espaciales. Por lo tanto, la media es una función de las coordenadas:
+    $$E[Z(s)] = \mu(s) = \beta_0 + \beta_1 X + \beta_2 Y + \beta_3 XY$$
+    
+    Para poder aplicar herramientas geoestadísticas (como el semivariograma y el kriging), debemos asumir estacionariedad intrínseca o de segundo orden sobre los residuales $Z(s) = Y(s) - \mu(s)$, no sobre la variable original.
+
 
 
 5. **Interprete los colores en el gráfico del panel superior izquierdo. ¿Es posible analizar tendencia en este gráfico?**
 
-    * **Respuesta:** La escala de colores representa la magnitud de la elevación (por ejemplo, colores fríos/oscuros para elevaciones bajas y colores cálidos/claros para elevaciones altas). **Sí es posible analizar tendencia**, observando si existe un gradiente de color continuo y direccional a lo largo del mapa.
+    **R/**
+
+    La escala de colores representa la magnitud de la elevación, dividiendo las muestras en cuartiles. Los colores oscuros/morados corresponden a las elevaciones más bajas, mientras que los colores claros/verdes representan las elevaciones más altas.
     
-    * **Interpretación de colores:** Los puntos representan las estaciones o muestras divididas por **cuartiles de elevación**. Los colores oscuros/morados corresponden a las elevaciones más bajas, mientras que los colores claros/verdes representan las más altas.
-    * **Análisis de tendencia:** **Sí es posible.** Se observa una clara separación espacial de los colores: los puntos morados (baja elevación) se concentran en el sector inferior derecho (mayor $X$, menor $Y$), mientras que los verdes/claros están dispersos al norte/occidente, confirmando visualmente el gradiente topográfico.
+    Sí es posible analizar tendencia visualmente. Se observa una clara separación y gradiente espacial de los colores: los puntos morados (baja elevación) se concentran en el sector inferior derecho (mayor $X$, menor $Y$), mientras que los verdes/claros se dispersan hacia el norte/occidente. Esto confirma lo detectado por el modelo de regresión.
+
 
 
 6. **Escriba formalmente el modelo de regresión estimado. Si el valor de un residual en un lugar $s_0$ es 10, ¿cuál es el valor de la variable de interés en ese lugar?**
+    
+    **R/**
 
      **Modelo Formal:**
-    
-    $$\hat{Z}(s) = \beta_0 + \beta_1 \cdot \text{Este} + \beta_2 \cdot \text{Norte} + \varepsilon(s)$$
+     Basado en la tabla de coeficientes, el modelo de regresión que describe la tendencia es:
+     
+     $$\hat{Z}(s) = \beta_0 + \beta_1 \cdot \text{Este} + \beta_2 \cdot \text{Norte} + \varepsilon(s)$$
+     $$\hat{Z}(s) = 734.7 + 0.25 \cdot \text{Este} - 0.21 \cdot \text{Norte} - 0.00015 \cdot (\text{Este} \cdot \text{Norte})$$
     
      **Cálculo de la variable de interés $Z(s_0)$:**
     
-    La relación entre el valor real $Z(s_0)$, la tendencia predicha $\hat{Z}(s_0)$ y el residual $e(s_0)$ es:
+    Para calcular la variable de interés $Z(s_0)$ se hace uso de la relación entre el valor real $Z(s_0)$, la tendencia predicha $\hat{Z}(s_0)$ y el residual $e(s_0)$
     
     
     $$Z(s_0) = \hat{Z}(s_0) + e(s_0)$$
     
-    Si el residual en $s_0$ es $e(s_0) = 10$:
-    
-    
-    $$Z(s_0) = \hat{Z}(s_0) + 10$$
-    
-    **Respuesta:** El valor real de la elevación en el lugar $s_0$ es igual al **valor predicho por el modelo de regresión ($\hat{Z}(s_0)$) más 10 metros**.
-    
-    
-
-     **Modelo Formal Estimado:**
-    
-    $$\hat{Z}(s) = 734.7 + 0.25 \cdot \text{Este} - 0.21 \cdot \text{Norte} - 0.00015 \cdot (\text{Este} \cdot \text{Norte})$$
-    
-     **Cálculo de la Elevación Real $Z(s_0)$:**
-    
-    La relación fundamental en regresión espacial es:
-    
-    
-    $$\text{Valor Real } Z(s_0) = \text{Tendencia Predicha } \hat{Z}(s_0) + \text{Residual } e(s_0)$$
-    
-    Si en la ubicación $s_0$ el residual es $e(s_0) = 10$:
+    Si en la ubicación $s_0 = (X_0, Y_0)$ el residual es $e(s_0) = 10$:
     
     $$Z(s_0) = \left( 734.7 + 0.25 \cdot X_0 - 0.21 \cdot Y_0 - 0.00015 \cdot X_0 Y_0 \right) + 10$$
-    
-    **Respuesta:** El valor real de la elevación en el lugar $s_0$ es **10 metros superior** a la altura estimada por la superficie de tendencia en ese punto.
 
-
+    El valor de la elevación en el lugar $s_0$ es 10 metros superior a la altura estimada por la superficie de tendencia en ese punto.
 
 
 
@@ -1493,7 +1506,9 @@ kable(coef_table, align = c("l", "c", "c", "c", "c"), caption = "Resultados de l
 
 ### Grafique los modelos de covarianza y semivarianza:
 
-1. Fije la silla y varíe el rango.
+1. **Fije la silla y varíe el rango.**
+
+**R/**
 
 Al fijar la silla ($\sigma^2=10$) y aumentar el rango ($a \in \{ 1, 5, 10, 20, 30 \}$), la curva de semivarianza se "estira" horizontalmente, tardando más en alcanzar la meseta. En la covarianza, esto se refleja en un decaimiento más lento hacia cero. 
 Esto se muestra en los graficos a continuación, utilizando el modelo Exponencial.
@@ -1520,7 +1535,9 @@ ggplot(df1, aes(x = h, y = Valor, color = factor(rango))) +
   theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
 
-2. Fije el rango y varíe la silla.
+2. **Fije el rango y varíe la silla**.
+
+**R/**
 
 Al mantener el rango constante ($a = 10$) y aumentar la silla ($\sigma^2 \in \{1, 5, 10, 15, 20\}$), las curvas experimentan un escalado vertical. La semivarianza alcanza mesetas más altas y la covarianza inicia en un punto de origen ($h=0$) superior, representando una varianza total del proceso mayor.
 
@@ -1549,8 +1566,9 @@ ggplot(df2, aes(x = h, y = Valor, color = factor(silla))) +
 
 ```
 
-3. Fije silla y rango y varíe parámetro de suavidad cuando aplique.
+3. **Fije silla y rango y varíe parámetro de suavidad cuando aplique.**
 
+**R/**
 
  El parámetro de suavidad ($\kappa \in \{0.1, 0.5, 1.5, 2.5, 3\}$) en el modelo Matérn controla el comportamiento de las funciones cerca del origen ($h \to 0$). Para valores bajos (ej. $\kappa = 0.5$, equivalente al exponencial), la semivarianza crece linealmente desde el origen, indicando un proceso espacial menos continuo. A medida que $\kappa$ aumenta, la curva se aplana en el origen (parabólico), lo que se ve reflejado en la covarianza, donde la correlación inicial se mantiene alta antes de decaer. 
 
@@ -1591,7 +1609,10 @@ ggplot(df3, aes(x = h, y = Valor, color = kappa_factor)) +
 
 ```
 
-4. Compare los comportamientos de diferentes modelos de covarianza y semivarianza cuando para todos se usan los mismos parámetros.
+4. **Compare los comportamientos de diferentes modelos de covarianza y semivarianza cuando para todos se usan los mismos parámetros.**
+
+
+**R/**
 
 Al comparar los modelos teóricos utilizando exactamente los mismos parámetros de silla ($\sigma^2=100$) y rango ($a=10$), las diferencias fundamentales radican en la geometría de sus curvas y en su comportamiento en las zonas cerca del origen ($h \to 0$) y en la llegada a la meseta.
 
@@ -1653,7 +1674,7 @@ ggplot(df4, aes(x = h, y = Valor, color = Modelo)) +
 
 la covarianza entre un proceso espacial en la ubicación $s_i$ y el proceso valor promedio del fenómeno sobre el área $B$ es igual al promedio de las covarianzas entre el proceso espacial en la ubicación $s_i$ y los procesos espaciales existentes en todos los puntos dentro de $B$.
 
-**Demostración:**
+**R/**
 
 El valor promedio de un campo aleatorio $Y(s)$ sobre un área continua $B$ se define como:
     $$\bar{Y}_B = \frac{1}{|B|} \int_B Y(s) ds$$
@@ -1681,6 +1702,8 @@ Este es el promedio de las covarianzas entre el punto $s_i$ y todos los puntos $
 ### Compare para varios conjuntos de datos los 3 estimadores empíricos del semivariograma.
 
 ¿Existe alguna relación de orden entre los 3? ¿Existe alguna relación de orden entre 2 de ellos? o, definitivamente, ¿no existe ningún orden entre estos estimadores?
+
+**R/**
 
 En el libro se definen tres estimadores: 
 
@@ -1752,6 +1775,8 @@ Esto se da porque la distribución de los incrementos tiene colas pesadas, el es
 
 ### Deduzca la correlación entre dos estimaciones del semivariograma empírico $\gamma(h_k)$ y $\gamma(h_l)$ para el modelo exponencial.
 Use la información dada en la nota 5.
+
+**R/**
 
 Para deducir esta correlación, haciendo referencia a la **Nota 5**, la cual establece que bajo el supuesto de normalidad bivariada, la correlación de los cuadrados de las variables es igual al cuadrado de su correlación: $\rho^2(X_1, X_2) = \rho(X_1^2, X_2^2)$. 
 
@@ -1844,6 +1869,8 @@ Utilice el Teorema 1 para demostrar que una puede obtenerse a partir de la otra.
 > $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
 > 
 
+**R/**
+
 El Teorema de Bochner establece que la función de covarianza $C(h)$ y la densidad espectral $f(\omega)$ son un par de Transformadas de Fourier.
 
 La relación inversa para hallar $f(\omega)$ a partir de $C(h)$ es:
@@ -1884,6 +1911,8 @@ Finalmente se obtiene la función de densidad:
 > $$C(h) = \int_{\mathbb{R}^2} \exp(i h' \omega) f(\omega) d\omega$$
 > 
 
+**R/**
+
 Seleccionemos el Modelo Exponencial 
 
 $$C(h) = \sigma^2 \exp\left(-\frac{|h|}{\alpha}\right)$$
@@ -1922,6 +1951,7 @@ Sin embargo, el teorema establece que la densidad espectral $f(\omega)$ (la func
 
 ¿Existen expresiones para las 3 funciones en todos los modelos? Si no, ¿en qué casos no existen expresiones para las 3 columnas y por qué?
 
+**R/**
 
 Para que existan las tres funciones, el proceso debe cumplir Estacionariedad de Segundo Orden. Bajo este supuesto, la varianza total es finita y constante ($C(0) = \sigma^2$, *Silla Total*), y las funciones se calculan de la forma:
 
@@ -2036,7 +2066,9 @@ kable(matriz_visual, align = "c", caption = "Tabla 2.3. Datos de sensación tér
 
 A continuación se sugieren los pasos para llevar a cabo un análisis de estacionariedad e isotropía así como de predicción espacial:
 
-1. Encuentre la matriz de correlación de la variable y sus coordenadas geográficas. Analice.
+1. **Encuentre la matriz de correlación de la variable y sus coordenadas geográficas. Analice.**
+
+    **R/**
 
     Calculamos la correlación de Pearson entre la variable de interés y sus coordenadas para detectar relaciones lineales globales.
     
@@ -2046,24 +2078,28 @@ A continuación se sugieren los pasos para llevar a cabo un análisis de estacio
     ```
     Ninguna de las dos coordenadas geográficas presenta una fuerte asociación lineal con la sensación térmica. Esto sugiere que no es estrictamente necesario incluir un modelo de tendencia polinomial (Kriging universal)
 
-2. Realice gráficos de dispersión de la variable contra cada una de las coordenadas geográficas. Analice.
+2. **Realice gráficos de dispersión de la variable contra cada una de las coordenadas geográficas. Analice.**
 
-```{r paso_2_dispersion_coords, fig.width=10, fig.height=4}
-p1 <- ggplot(datos_validos, aes(x = Este, y = Sensacion_Termica)) +
-  geom_point(size = 2, color = "steelblue") +
-  geom_smooth(method = "lm", color = "red", se = FALSE) +
-  theme_minimal() + labs(title = "Sensación Térmica vs. Este")
+    **R/**
 
-p2 <- ggplot(datos_validos, aes(x = Norte, y = Sensacion_Termica)) +
-  geom_point(size = 2, color = "steelblue") +
-  geom_smooth(method = "lm", color = "red", se = FALSE) +
-  theme_minimal() + labs(title = "Sensación Térmica vs. Norte")
-
-p1 + p2
-```
+    ```{r paso_2_dispersion_coords, fig.width=10, fig.height=4}
+    p1 <- ggplot(datos_validos, aes(x = Este, y = Sensacion_Termica)) +
+      geom_point(size = 2, color = "steelblue") +
+      geom_smooth(method = "lm", color = "red", se = FALSE) +
+      theme_minimal() + labs(title = "Sensación Térmica vs. Este")
+    
+    p2 <- ggplot(datos_validos, aes(x = Norte, y = Sensacion_Termica)) +
+      geom_point(size = 2, color = "steelblue") +
+      geom_smooth(method = "lm", color = "red", se = FALSE) +
+      theme_minimal() + labs(title = "Sensación Térmica vs. Norte")
+    
+    p1 + p2
+    ```
     Los gráficos confirman el supuesto de estacionariedad de primer orden ($E[Z(s)] = \mu$). La media de la sensación térmica no varía en función de la ubicación geográfica. Se confirma que no es necesario remover tendencia mediante modelos de regresión. El proceso es adecuado para aplicar kriging ordinario.
 
-3. Realice gráficos de dispersión de la media (mediana) de cada columna con respecto a su coordenada horizontal.
+3. **Realice gráficos de dispersión de la media (mediana) de cada columna con respecto a su coordenada horizontal.**
+
+    **R/**
 
     Agregamos los datos por `Este` para ver el comportamiento central en cada columna.
 
@@ -2083,11 +2119,14 @@ p1 + p2
       scale_color_manual(values = c("Media" = "blue", "Mediana" = "red")) +
       theme_minimal() + labs(title = "Tendencia Central por Columna (Este)", y = "Valor")
     ```
+    
     El análisis por columnas confirma que la media fluctúa de manera estable alrededor de $20.25^\circ\text{C}$ ($\mu \approx 20^\circ\text{C}$). Dado que la media no es resistente con valores atípicos (como en `Este = 8`), se prefiere usar estimadores resistentes de semivarianza (Cressie & Hawkins o Mediana).
 
 
-4. Realice gráficos de dispersión de la media (mediana) de cada fila con respecto a su coordenada vertical.
+4. **Realice gráficos de dispersión de la media (mediana) de cada fila con respecto a su coordenada vertical.**
 
+    **R/**
+    
     Agregamos los datos por `Norte` para ver el comportamiento central en cada fila.
 
     ```{r paso_4_media_fila, fig.height=3, fig.width=10}
@@ -2107,9 +2146,12 @@ p1 + p2
       scale_color_manual(values = c("Media" = "blue", "Mediana" = "red")) +
       theme_minimal() + labs(title = "Tendencia Central por Fila (Norte)", y = "Valor", x = "Norte")
     ```
+    
     El análisis de la tendencia central por fila muestra un comportamiento oscilatorio sin una dirección monótona creciente o decreciente claro en la variable de sensación térmica. La media y mediana se mantienen alrededor de $20^\circ\text{C}$, lo que refuerza la hipótesis de estacionariedad de primer orden.
 
-5. Realice gráficos de dispersión de la varianza de cada columna con respecto a su coordenada horizontal.
+5. **Realice gráficos de dispersión de la varianza de cada columna con respecto a su coordenada horizontal.**
+
+    **R/**
 
     Evaluamos la estacionariedad en varianza a lo largo del eje X.
 
@@ -2123,7 +2165,9 @@ p1 + p2
       theme_minimal() + labs(title = "Varianza por Columna (Este)", y = "Varianza")
     ```
 
-6. Realice gráficos de algunos dispersogramas. Encuentre el coeficiente de autocorrelación para cada caso. Analice.
+6. **Realice gráficos de algunos dispersogramas. Encuentre el coeficiente de autocorrelación para cada caso. Analice.**
+
+    **R/**
     
     Graficamos $Z(s)$ vs $Z(s+h)$ para rezagos unitarios horizontales y verticales.
 
@@ -2158,7 +2202,9 @@ p1 + p2
     ```
 
 
-7. Realice gráficos de dispersión de la varianza de cada fila con respecto a su coordenada vertical.
+7. **Realice gráficos de dispersión de la varianza de cada fila con respecto a su coordenada vertical.**
+
+    **R/**
 
     Evaluamos la estacionariedad en varianza a lo largo del eje Y.
 
@@ -2174,7 +2220,9 @@ p1 + p2
     ```
 
 
-8. Realice al menos un gráfico de medias móviles que no sea ni por fila ni por columna.
+8. **Realice al menos un gráfico de medias móviles que no sea ni por fila ni por columna.**
+
+    **R/**
 
     Calculamos la media móvil en dirección diagonal (Sureste-Noroeste).
 
@@ -2191,7 +2239,9 @@ p1 + p2
       theme_minimal() + labs(title = "Media Móvil Diagonal (Promedio de vecinos diagonales)", y = "Media Diagonal")
     ```
 
-9. ¿Existe tendencia en alguna dirección? En caso afirmativo, explore varios modelos de regresión e intente mejoarla y posteriormente verifique que la tendencia fue eliminada realizando gráficos de dispersión de los residuales del modelo de regresión seleccionado.
+9. **¿Existe tendencia en alguna dirección? En caso afirmativo, explore varios modelos de regresión e intente mejoarla y posteriormente verifique que la tendencia fue eliminada realizando gráficos de dispersión de los residuales del modelo de regresión seleccionado.**
+
+    **R/**
 
     Ajustamos modelos de regresión para eliminar la tendencia y trabajar con un proceso estacionario (media cero).
     
@@ -2224,7 +2274,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-10. Grafique el semivariograma empírico horizontal de la variable centrada.
+10. **Grafique el semivariograma empírico horizontal de la variable centrada.**
+
+    **R/**
 
     Calculamos el semivariograma en la dirección 0° (Este).
     
@@ -2234,7 +2286,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-11. Grafique el semivariograma empírico vertical de la variable centrada.
+11. **Grafique el semivariograma empírico vertical de la variable centrada.**
+
+    **R/**
 
     Calculamos el semivariograma en la dirección 90° (Norte).
     
@@ -2244,7 +2298,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-12. Grafique el semivariograma empírico en dirección 45 grados de la variable centrada.
+12. **Grafique el semivariograma empírico en dirección 45 grados de la variable centrada.**
+
+    **R/**
 
     ```{r paso_12_vario_45, fig.height=3, fig.width=8}
     v_45 <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 45, tol.hor = 22.5)
@@ -2252,7 +2308,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-13. Grafique el semivariograma empírico omnidireccional, esto es, sin tener en cuenta la dirección, sino únicamente la distancia de la variable centrada.
+13. **Grafique el semivariograma empírico omnidireccional, esto es, sin tener en cuenta la dirección, sino únicamente la distancia de la variable centrada.**
+
+    **R/**
 
     Ignoramos la dirección y agrupamos solo por distancia (magnitud del rezago).
     
@@ -2262,7 +2320,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-14. Grafique, si es posible, un variograma con dirección diferente a las anteriores de la variable centrada.
+14. **Grafique, si es posible, un variograma con dirección diferente a las anteriores de la variable centrada.**
+
+    **R/**
 
     ```{r paso_14_vario_135, fig.height=3, fig.width=8}
     v_135 <- variogram(resid_cuad ~ 1, datos_validos_sf, alpha = 135, tol.hor = 22.5)
@@ -2270,11 +2330,13 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-15. ¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?
+15. **¿Tienen un comportamiento similar los semivariogramas en todas las direcciones? ¿En todas las direcciones el semivariograma empírico sugiere ajustar un modelo acotado? Esto es, ¿se observa que existen silla y rango? o por el contrario ¿la varianza no parece estabilizarse?**
 
-16. Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.
+    **R/**
 
+16. **Ajuste un modelo de semivariograma teórico omnidireccional. Según lo encontrado en el análisis a diferentes ángulos, determine si es necesario aplicar corrección por anisotropía.**
 
+    **R/**
     
     ```{r paso_16_ajuste_teoricoblack, fig.height=3, fig.width=8}
     # Ajuste automático inicial (Esférico)
@@ -2286,7 +2348,9 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-17. Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.
+17. **Con los datos originales, aplique dos iteraciones del pulimiento de medianas y obtenga los residuales. Encuentre al menos 10 predicciones utilizando kriging con pulimiento de medianas. Súmele a las predicciones los efectos fila, columna y global para devolver los datos a su escala original.**
+
+    **R/**
 
     Aplicamos el método no paramétrico de Tukey para descomponer la superficie en efecto global, efecto fila, efecto columna y residual.
     
@@ -2383,11 +2447,12 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
 
 
-18. Realice la validación cruzada (al menos para 10 lugares observados) y calcule:
-    a.  Media (mediana) de los errores. Media (mediana) estandarizada.
-    b. Grafique observados Vs. predichos y calcule su coeficiente de correlación lineal de Pearson.
+18. **Realice la validación cruzada (al menos para 10 lugares observados) y calcule:**
+    a.  **Media (mediana) de los errores. Media (mediana) estandarizada.**
+    b. **Grafique observados Vs. predichos y calcule su coeficiente de correlación lineal de Pearson.**
 
-
+    **R/**
+    
     Evaluamos la calidad del modelo kriging sobre los residuales del median polish (o directamente sobre la variable con tendencia, el resultado relativo es similar). Lo haremos sobre el modelo de residuos para ser coherentes con el paso 17.
     
     ```{r paso_18_validacion_cruzada, fig.width=10, fig.height=4}
@@ -2463,61 +2528,102 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 ## Capitulo 3 {.tabset}
 
 
-
 ### Realice una tabla comparativa entre el método de ecuaciones de estimación generalizada y el método de $CL$. Encuentre similitudes y diferencias.
+
+**R/**
+
 
 ### Suponga que se tiene un modelo de covarianza y se requiere elegir entre dos vectores de parámetros, cuál de ellos es más verosímil con base en el vector de observaciones. Bajo el supuesto de normalidad, describa en general el procedimiento e ilustre para al menos un caso particular.
 
+**R/**
+
+
 ### Plantee para cada método y para cada modelo de covarianza o semivarianza la expresión a minimizar:
 
-1. Mínimos cuadrados ordinarios (MCO),
+1. **Mínimos cuadrados ordinarios (MCO),**
 
-2. Mínimos cuadrados ponderados (MCP) considerando ambas ponderaciones:
-    a. La varianza del estimador empírico del semivariograma
-    b. $N(h)$, número de pares de datos para cada rezago espacial considerado $h$
+    **R/**
+    
+    
+2. **Mínimos cuadrados ponderados (MCP) considerando ambas ponderaciones:**
+    a. **La varianza del estimador empírico del semivariograma**
+    b. **$N(h)$, número de pares de datos para cada rezago espacial considerado $h$**
+    
+    **R/**
 
-3. ML, con el supuesto de normalidad multivariada conjunta.
+3. **ML, con el supuesto de normalidad multivariada conjunta.**
 
-4. REML, con el supuesto de normalidad multivariada conjunta.
+    **R/**
+    
+4. **REML, con el supuesto de normalidad multivariada conjunta.**
 
-5. Pseudoverosimilitud ($CL$), con el supuesto de normalidad multivariada marginal.
+    **R/**
+    
+5. **Pseudoverosimilitud ($CL$), con el supuesto de normalidad multivariada marginal.**
 
-6. Diseñe el código para que estos procesos de optimización, funcionen desde la tabla de los datos originales. Puede usar, por ejemplo, la función `optim` de R cran project. Compare los resultados obtenidos con su código con los obtenidos por las funciones de `geoR`, `variofit`, `likfit` o de `gstat`, `fit.variogram`.
+    **R/**
+    
+6. **Diseñe el código para que estos procesos de optimización, funcionen desde la tabla de los datos originales. Puede usar, por ejemplo, la función `optim` de R cran project. Compare los resultados obtenidos con su código con los obtenidos por las funciones de `geoR`, `variofit`, `likfit` o de `gstat`, `fit.variogram`.**
 
-7. Determine las dimensiones y la complejidad de cada uno de los métodos. ¿Cuál es la dimensión de las matrices invertidas en cada método? ¿En todos los casos el proceso es iterativo?
+    **R/**
+    
+7. **Determine las dimensiones y la complejidad de cada uno de los métodos. ¿Cuál es la dimensión de las matrices invertidas en cada método? ¿En todos los casos el proceso es iterativo?**
 
+    **R/**
 
 
 ### Para el problema 4 del capítulo 1, encuentre las matrices de covarianza, correlación y semivarianza, si existen. Si alguna no existe, justifique. Verifique las propiedades de las matrices obtenidas para que garanticen varianzas de predicción positivas.
 
+    
+1. **Si el modelo es un exponencial con rango 50 y silla 1600, sin pepita.**
 
-1. Si el modelo es un exponencial con rango 50 y silla 1600, sin pepita.
+    **R/**
+    
+2. **Si el modelo es un seno cardinal con rango 50 y silla 1600, sin pepita.**
 
-2. Si el modelo es un seno cardinal con rango 50 y silla 1600, sin pepita.
+    **R/**
+    
+3. **Si el modelo es un cúbico con pendiente 50 y potencia 1600, sin pepita.**
 
-3. Si el modelo es un cúbico con pendiente 50 y potencia 1600, sin pepita.
+    **R/**
+    
+4. **Si el modelo es un potencial con pendiente 50 y potencia 1.6, sin pepita.**
 
-4. Si el modelo es un potencial con pendiente 50 y potencia 1.6, sin pepita.
+    **R/**
+    
+5. **Calcule el valor de la función de verosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?**
 
-5. Calcule el valor de la función de verosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?
+    **R/**
+    
+6. **En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de máxima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?**
 
-6. En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de máxima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?
+    **R/**
+    
+7. **En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de mínima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?**
 
-7. En un modelo de semivariograma anisotrópico, ¿cuál es la magnitud del rezago espacial en la dirección de mínima anisotropía? ¿Cómo queda el modelo de semivariograma en este caso?
+    **R/**
+    
+8. **Calcule el valor de la función de pseudoverosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?**
 
-8. Calcule el valor de la función de pseudoverosimilitud según cada modelo y los datos dados. De acuerdo con estos resultados, ¿cuál de estos modelos es más adecuado para los datos?
+    **R/**
+    
+9. **Escriba cada modelo con la corrección necesaria en presencia de anisotropía.**
 
-9. Escriba cada modelo con la corrección necesaria en presencia de anisotropía.
-
+    **R/**
 
 ### El levantamiento topográfico para la construcción de los Modelos de Elevación Digital (MED) o mapas de curvas de nivel, se realiza mediante el diseño de trayectorias distanciadas 60m, regularmente distribuidas por toda la zona de interés. Para redes hidrológicas, se eligen trayectorias perpendiculares a la dirección de drenaje. Se requiere llevar a cabo un análisis de anisotropía. Se detectó la existencia de una anisotropía de tipo geométrico cuya dirección principal es $25^\circ$ con un rango máximo de 105m y un rango mínimo de 35m.
 
-1. Escriba la matriz de rotación que usted usaría para incluir la anisotropía en el modelo de semivariograma.
+1. **Escriba la matriz de rotación que usted usaría para incluir la anisotropía en el modelo de semivariograma.**
 
-2. Describa cómo aplicaría la razón de anisotropía.
+    **R/**
+    
+2. **Describa cómo aplicaría la razón de anisotropía.**
 
-3. Ilustre a través de un caso particular.
+    **R/**
+    
+3. **Ilustre a través de un caso particular.**
 
+    **R/**
 
 
 
@@ -2525,9 +2631,11 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 ## Capitulo 4 {.tabset}
 
 
-### Suponga que $Z(s)$ es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto. Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son $z_1(0, 0) = 15$; $z_2(100, 0) = 16$; $z_3(0, 50) = 16$ y $z_4(70, 50) = 15$. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:
+### Suponga que $Z(s)$ es una función aleatoria estacionaria de segundo orden que representa la precipitación en los cuatro bordes de un trapecio recto.
 
-1. La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.
+Las realizaciones registradas del fenómeno en estas cuatro ubicaciones son $z_1(0, 0) = 15$; $z_2(100, 0) = 16$; $z_3(0, 50) = 16$ y $z_4(70, 50) = 15$. El modelo de autocorrelación del fenómeno es exponencial con silla 4 y rango 100 m. Encuentre:
+
+1. **La predicción con su respectiva varianza de error de predicción, esto es, la varianza del kriging simple para la ubicación $Z(75, 25)$ si la media es conocida e igual a 15,7. Use para sus cálculos la función de covarianza.**
 
     **R/** 
     
@@ -2555,22 +2663,15 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     
     # Matriz de distancias euclidianas
     d <- as.matrix(dist(coords))
-    
     d
-    
     p0 <- c(75, 25)
-    
     d0 <- sqrt((coords$x - p0[1])^2 + (coords$y - p0[2])^2)
-    
     d0
     
     # Matriz de covarianzas
     C <- 4 * exp(-d / 100)
-    
     round(C, 4)
-    
     c0 <- 4*exp(-d0/100)
-    
     round(c0, 4)
     
     lambda <- solve(C)%*%c0
@@ -2608,7 +2709,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     ```
     Por lo tanto la varianza del error es aproximadamente $1.15$
 
-2. Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.
+2. **Si la media es desconocida, pero constante. Use para sus cálculos la función de covarianza.**
 
     **R/**
 
@@ -2661,7 +2762,6 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
       cbind(C, unos),
       cbind(t(unos), 0)
     )
-    
     A
     
     b0 <- c(c0,1)
@@ -2684,7 +2784,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     
     Por lo tanto la varianza del error es aproximadamente $1.14$
 
-3. Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.
+3. **Si la media es desconocida, pero constante. Use para sus cálculos la función de semivarianza.**
 
     **R/**
 
@@ -2720,7 +2820,6 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
       cbind(gammah, unos),
       cbind(t(unos), 0)
     )
-    
     A
     
     b0 <- c(gamma0,1)
@@ -2745,7 +2844,7 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
     Por lo tanto la varianza del error es aproximadamente $1.14$
 
 
-4. Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.
+4. **Suponga que el proceso es normal multivariado. Calcule el intervalo de confianza del 95 % para la predicción encontrada en cada caso.**
 
     **R/**
 
@@ -2785,13 +2884,13 @@ datos_validos_sf <- st_as_sf(datos_validos, coords = c("Este", "Norte"))
 
 
 
-5. Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.
+5. **Interprete y compare tanto los resultados obtenidos como los procedimientos realizados.**
 
     **R/** 
 
     Los tres métodos produjeron la misma estimación para la precipitación en la ubicación (75,25), obteniéndose un valor de 15.398. Esto indica que considerar la media conocida (kriging simple) o desconocida pero constante (kriging ordinario) no modificó la predicción en este caso particular.
 
-### Suponga que
+Suponga que
 
 $$\mathcal{W}(s) = \Psi(Y(s)) \quad s \in D$$
 
@@ -2981,6 +3080,7 @@ C \lambda = c_0,
 $$
 
 donde  
+
 - $C$ es la matriz de covarianzas entre observaciones,  
 - $c_0$ es el vector de covarianzas entre las observaciones y el punto $s_0$.  
 
@@ -3195,10 +3295,9 @@ $$
 
 ### Suponga un campo aleatorio espacial normal multivariado, con observaciones en $n$ ubicaciones y media y covarianza conocidos. 
 
-**R/**
-
 Encuentre la esperanza condicional y la respectiva varianza $Z(s_0)$ dado el vector $(Z(s_1), \dots, Z(s_n))$. Compare con las expresiones de predicción y varianza del error de predicción del kriging simple.
 
+**R/**
 
 Se sabe que el Kriging simple (media del proceso es conocida), el predictor se construye centrando la variable ($Z(s) = Y(s) - \mu(s)$) y buscando una combinación lineal de los datos observados $\mathbf{Z} = (Z(s_1), \dots, Z(s_n))^T$ que sea el Mejor Predictor Lineal Insesgado (BLUE). Sin embargo, si se asume normalidad, ¿el Mejor Predictor Insesgado (sin asumir linealidad) es la Esperanza Condicional? y ¿la varianza del error de predicción del kriging es igual a la varianza condicional?.
 
@@ -3712,6 +3811,7 @@ El análisis demuestra que la asociación lineal entre pares de puntos $Y(s)$ y 
 ```{r fig-panel-2, fig.height=7, fig.width=10, fig.cap="Figura 2. Comparación de la estructura de dependencia entre modelos para a = 30 y h = 20."}
 (m_exp1$plot | m_gau1$plot | m_sph1$plot) / (m_exp2$plot | m_gau2$plot | m_sph2$plot)
 ```
+
 El comportamiento geométrico de las realizaciones refleja claramente el tipo de continuidad espacial que implementa cada modelo cerca del origen. El *modelo Gaussiano* evidencia la mayor suavidad espacial pues en el origen tiene $C'(0)=0$, registrando las mayores correlaciones tanto a escalas cortas ($a=10, h=2; r = 0.965, \rho = 0.961$) como intermedias ($a=30, h=20; r = 0.445, \rho = 0.641$) mediante trayectorias armónicas y muy ordenadas. 
 
 En contraste, el *modelo Exponencial* presenta una caída lineal inicial que genera campos más irregulares ($r = 0.807$ y $r = 0.221$), mientras que el *modelo Esférico* impone un límite de correlación estricto en $h \ge a$, mostrando un decaimiento más acelerado a distancias intermedias ($r = 0.235, \rho = 0.148$) que dispersa rápidamente la nube de puntos.
@@ -3737,11 +3837,13 @@ kable(metricas, col.names = c("Modelo", "Rango (a)", "Rezago (h)", "r (Muestral)
   row_spec(c(1, 3, 5, 7, 9, 11, 13, 15), background = "#E8F4F8")
 ```
 
-### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. ¿Es posible encontrar un predictor insesgado? Demuestre o refute.
+### Se requiere llevar a cabo predicción espacial para un proceso espacial cuya distribución marginal es lognormal con media conocida. 
+
+¿Es posible encontrar un predictor insesgado? Demuestre o refute.
 
 **R/** 
 
-Es posible, pero como **el predictor de kriging aplicado directamente sobre la escala lognormal no es insesgado**, hay que aplicar una corrección por sesgo.
+Es posible, pero como el predictor de kriging aplicado directamente sobre la escala lognormal no es insesgado, hay que aplicar una corrección por sesgo.
 
 
 En ejercicios anteriores se demostró que
