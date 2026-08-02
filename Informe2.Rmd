@@ -2688,41 +2688,44 @@ $$Q_{MCO}(\Theta) = \sum_{k=1}^K \left( \hat{\gamma}(h_k) - \gamma(h_k; \Theta) 
     
     A continuación, se presenta un script que simula datos, define las funciones objetivo para MCO (basado en el variograma empírico) y ML (basado en la matriz de covarianza), y utiliza `optim()` para encontrar $\Theta$. Luego, se comparan los resultados con `gstat` y `geoR`.
 
-    ```{r paso_19_optimizacion_desde_cero, echo=TRUE, message=FALSE, warning=FALSE}
-    # ==============================================================================
-    # OPTIMIZACIÓN GEOESTADÍSTICA DESDE CERO CON optim() vs PAQUETES ESTÁNDAR
-    # ==============================================================================
+    ```{r estimacion-parametros-completa, message=FALSE, warning=FALSE}
     library(gstat)
     library(geoR)
-    library(MASS) # Para mvrnorm
+    library(MASS)
+    library(sp)
     
-    # 1. Simulación de un conjunto de datos espacial (Proceso Exponencial)
-    set.seed(123)
-    n <- 50
+    # ==============================================================================
+    # 1. SIMULACIÓN DE DATOS ESPACIALES
+    # ==============================================================================
+    set.seed(1133)
+    n <- 250
     coords <- cbind(runif(n, 0, 100), runif(n, 0, 100))
-    # Parámetros verdaderos: Silla (sigmasq) = 10, Alcance (phi) = 20
-    vero_pars <- c(sigmasq = 10, phi = 20) 
-    Sigma_verdadero <- vero_pars["sigmasq"] * exp(-as.matrix(dist(coords)) / vero_pars["phi"])
-    Sigma_verdadero <- Sigma_verdadero + diag(0.01, n) # Efecto pepita pequeño para invertibilidad
+    
+    # Parámetros verdaderos: Silla (sigmasq) = 5, Alcance (phi) = 20
+    vero_pars <- c(sigmasq = 5, phi = 20) 
+    D <- as.matrix(dist(coords))
+    Sigma_verdadero <- vero_pars["sigmasq"] * exp(-D / vero_pars["phi"]) + diag(0.01, n)
+    
+    # Realización del proceso centrando en media 0
     Y <- mvrnorm(1, mu = rep(0, n), Sigma = Sigma_verdadero)
     
-    # ------------------------------------------------------------------------------
-    # A. ENFOQUE BASADO EN VARIOGRAMA: MCO usando optim()
-    # ------------------------------------------------------------------------------
-    # Función para calcular el variograma empírico (binning simple)
+    # ==============================================================================
+    # 2. FUNCIONES DE ESTIMACIÓN PERSONALIZADAS CON optim()
+    # ==============================================================================
+    
+    # A. Variograma Empírico Muestral (para MCO y MCP)
     calc_vario_empirico <- function(coords, data, max_dist = 50, bins = 10) {
       d <- as.matrix(dist(coords))
       data_diff <- outer(data, data, "-")^2
       upper_idx <- upper.tri(d)
+      
       d_vec <- d[upper_idx]
       diff_vec <- data_diff[upper_idx]
       
-      # Filtrar por distancia máxima
-      mask <- d_vec <= max_dist
+      mask <- d_vec <= max_dist & d_vec > 0
       d_vec <- d_vec[mask]
       diff_vec <- diff_vec[mask]
       
-      # Agrupar en bins
       breaks <- seq(0, max_dist, length.out = bins + 1)
       h_mids <- (breaks[-1] + breaks[-(bins+1)]) / 2
       gamma_hat <- numeric(bins)
@@ -2733,78 +2736,136 @@ $$Q_{MCO}(\Theta) = \sum_{k=1}^K \left( \hat{\gamma}(h_k) - \gamma(h_k; \Theta) 
         N_h[i] <- sum(idx)
         gamma_hat[i] <- ifelse(N_h[i] > 0, mean(diff_vec[idx]) / 2, NA)
       }
-      return(list(h = h_mids, gamma = gamma_hat, N = N_h))
+      return(data.frame(h = h_mids, gamma = gamma_hat, N = N_h)[!is.na(gamma_hat), ])
     }
     
     v_emp <- calc_vario_empirico(coords, Y)
-    validos <- !is.na(v_emp$gamma)
     
-    # Función objetivo MCO
+    # B. Funciones Objetivo para optim()
+    # 1. MCO (OLS)
     obj_MCO <- function(pars, h, gamma_hat) {
-      sigmasq <- pars[1]; phi <- pars[2]
-      gamma_teo <- sigmasq * (1 - exp(-h / phi))
+      gamma_teo <- pars[1] * (1 - exp(-h / pars[2]))
       sum((gamma_hat - gamma_teo)^2)
     }
     
-    # Optimización MCO
-    opt_MCO <- optim(par = c(5, 10), fn = obj_MCO, h = v_emp$h[validos], 
-                     gamma_hat = v_emp$gamma[validos], method = "L-BFGS-B", 
-                     lower = c(0.01, 0.01))
-    cat("Parámetros MCO (optim): sigmasq =", round(opt_MCO$par[1], 2), 
-        ", phi =", round(opt_MCO$par[2], 2), "\n")
-    
-    # ------------------------------------------------------------------------------
-    # B. ENFOQUE BASADO EN VEROSIMILITUD: ML usando optim()
-    # ------------------------------------------------------------------------------
-    # Función objetivo ML (Negativo de la Log-Verosimilitud)
-    obj_ML <- function(pars, coords, Y) {
-      sigmasq <- pars[1]; phi <- pars[2]
-      D <- as.matrix(dist(coords))
-      Sigma <- sigmasq * exp(-D / phi)
-      Sigma <- Sigma + diag(1e-6, nrow(Sigma)) # Jitter para estabilidad numérica
-      
-      # Cálculo de la log-verosimilitud multivariada normal
-      term1 <- (n / 2) * log(2 * pi)
-      term2 <- 0.5 * determinant(Sigma, logarithm = TRUE)$modulus
-      term3 <- 0.5 * t(Y) %*% solve(Sigma) %*% Y
-      
-      return(as.numeric(term1 + term2 + term3))
+    # 2. MCP Ponderado por N(h)
+    obj_MCP_npairs <- function(pars, h, gamma_hat, N_h) {
+      gamma_teo <- pars[1] * (1 - exp(-h / pars[2]))
+      sum(N_h * (gamma_hat - gamma_teo)^2)
     }
     
-    # Optimización ML
-    opt_ML <- optim(par = c(5, 10), fn = obj_ML, coords = coords, Y = Y, 
-                    method = "L-BFGS-B", lower = c(0.01, 0.01))
-    cat("Parámetros ML (optim): sigmasq =", round(opt_ML$par[1], 2), 
-        ", phi =", round(opt_ML$par[2], 2), "\n")
+    # 3. MCP Ponderado por Varianza (Cressie)
+    obj_MCP_var <- function(pars, h, gamma_hat, N_h) {
+      gamma_teo <- pars[1] * (1 - exp(-h / pars[2]))
+      weights <- N_h / (2 * (gamma_teo^2) + 1e-6)
+      sum(weights * (gamma_hat - gamma_teo)^2)
+    }
     
-    # ------------------------------------------------------------------------------
-    # C. COMPARACIÓN CON PAQUETES ESTÁNDAR (geoR y gstat)
-    # ------------------------------------------------------------------------------
-    # Preparar datos para geoR
-    geodata <- as.geodata(coords, data = Y)
+    # 4. Máxima Verosimilitud (ML)
+    obj_ML <- function(pars, coords, Y) {
+      Sigma <- pars[1] * exp(-D / pars[2]) + diag(1e-5, n)
+      log_det <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
+      quad_form <- as.numeric(t(Y) %*% solve(Sigma, Y))
+      return(0.5 * (n * log(2 * pi) + log_det + quad_form))
+    }
     
-    # Ajuste con geoR (Máxima Verosimilitud)
-    fit_geoR <- likfit(geodata, ini.cov.pars = c(5, 10), cov.model = "exponential", 
-                       lik.method = "ML")
-    cat("Parámetros ML (geoR): sigmasq =", round(fit_geoR$sigmasq, 2), 
-        ", phi =", round(fit_geoR$phi, 2), "\n")
+    # 5. Verosimilitud Restringida (REML)
+    obj_REML <- function(pars, coords, Y) {
+      X <- matrix(1, nrow = n, ncol = 1) # Modelo solo con intercepto
+      Sigma <- pars[1] * exp(-D / pars[2]) + diag(1e-5, n)
+      Sigma_inv <- solve(Sigma)
+      
+      P <- Sigma_inv - Sigma_inv %*% X %*% solve(t(X) %*% Sigma_inv %*% X) %*% t(X) %*% Sigma_inv
+      log_det <- as.numeric(determinant(Sigma, logarithm = TRUE)$modulus)
+      log_det_xt_sx <- as.numeric(determinant(t(X) %*% Sigma_inv %*% X, logarithm = TRUE)$modulus)
+      
+      quad_form <- as.numeric(t(Y) %*% P %*% Y)
+      return(0.5 * (log_det + log_det_xt_sx + quad_form))
+    }
     
-    # Preparar datos para gstat
-    library(sf)
-    df_sf <- st_as_sf(data.frame(coords, Y), coords = c("X1", "X2"))
-    g_obj <- gstat(formula = Y ~ 1, data = df_sf)
-    v_gstat <- variogram(g_obj)
+    # 6. Pseudoverosimilitud (Composite Likelihood)
+    obj_CL <- function(pars, coords, Y) {
+      sigmasq <- pars[1]; phi <- pars[2]
+      upper_idx <- upper.tri(D)
+      h_vec <- D[upper_idx]
+      u_ij <- outer(Y, Y, "-")[upper_idx]
+      
+      gamma_h <- sigmasq * (1 - exp(-h_vec / phi)) + 1e-6
+      nll <- sum(0.5 * log(4 * pi * gamma_h) + (u_ij^2) / (4 * gamma_h))
+      return(nll)
+    }
     
-    # Ajuste con gstat (Mínimos Cuadrados Ponderados por defecto)
-    fit_gstat <- fit.variogram(v_gstat, vgm(psill = 10, model = "Exp", range = 20, nugget = 0))
-    cat("Parámetros MCP (gstat): sigmasq =", round(fit_gstat$psill[2], 2), 
-        ", phi =", round(fit_gstat$range[2], 2), "\n")
+    # ==============================================================================
+    # 3. EJECUCIÓN DE OPTIMIZACIÓN CON optim()
+    # ==============================================================================
+    init_pars <- c(sigmasq = 5, phi = 10)
+    
+    opt_mco  <- optim(init_pars, obj_MCO, h = v_emp$h, gamma_hat = v_emp$gamma, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    opt_mcp1 <- optim(init_pars, obj_MCP_npairs, h = v_emp$h, gamma_hat = v_emp$gamma, N_h = v_emp$N, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    opt_mcp2 <- optim(init_pars, obj_MCP_var, h = v_emp$h, gamma_hat = v_emp$gamma, N_h = v_emp$N, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    opt_ml   <- optim(init_pars, obj_ML, coords = coords, Y = Y, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    opt_reml <- optim(init_pars, obj_REML, coords = coords, Y = Y, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    opt_cl   <- optim(init_pars, obj_CL, coords = coords, Y = Y, method = "L-BFGS-B", lower = c(0.01, 0.01))
+    
+    # ==============================================================================
+    # 4. COMPARACIÓN CON PAQUETES ESTÁNDAR (geoR y gstat)
+    # ==============================================================================
+    
+    # --- geoR ---
+    # Solución al error de as.geodata: pasar una matriz/dataframe unificada
+    datos_geoR <- as.geodata(cbind(coords, Y), coords.col = 1:2, data.col = 3)
+    
+    # 1. Ajuste con geoR
+    fit_geoR_ml   <- likfit(datos_geoR, cov.model = "exponential", ini.cov.pars = c(5, 10), lik.method = "ML", messages = FALSE)
+    fit_geoR_reml <- likfit(datos_geoR, cov.model = "exponential", ini.cov.pars = c(5, 10), lik.method = "REML", messages = FALSE)
+    
+    # 2. Ajuste MCO/MCP con geoR (variofit)
+    fit_geoR_wls  <- variofit(variog(datos_geoR, max.dist = 50, messages = FALSE), cov.model = "exponential", ini.cov.pars = c(5, 10), weights = "cressie", messages = FALSE)
+    
+    # --- gstat ---
+    df_sp <- SpatialPointsDataFrame(coords, data.frame(Y = Y))
+    v_gstat <- variogram(Y ~ 1, df_sp, cutoff = 50)
+    fit_gstat_wls <- fit.variogram(v_gstat, vgm(psill = 5, "Exp", range = 10, nugget = 0), fit.sills = TRUE)
+    
+    # ==============================================================================
+    # 5. TABLA COMPARATIVA DE RESULTADOS
+    # ==============================================================================
+    res_tabla <- data.frame(
+      Método = c("MCO (optim)", "MCP Pairs (optim)", "MCP Varianza (optim)", 
+                 "ML (optim)", "REML (optim)", "Pseudoverosimilitud (optim)",
+                 "ML (geoR)", "REML (geoR)", "MCP Cressie (geoR)", "WLS (gstat)"),
+      `Silla (sigmasq)` = round(c(opt_mco$par[1], opt_mcp1$par[1], opt_mcp2$par[1], 
+                                 opt_ml$par[1], opt_reml$par[1], opt_cl$par[1],
+                                 fit_geoR_ml$cov.pars[1], fit_geoR_reml$cov.pars[1], 
+                                 fit_geoR_wls$cov.pars[1], fit_gstat_wls$psill[2]), 2),
+      `Alcance (phi)` = round(c(opt_mco$par[2], opt_mcp1$par[2], opt_mcp2$par[2], 
+                                opt_ml$par[2], opt_reml$par[2], opt_cl$par[2],
+                                fit_geoR_ml$cov.pars[2], fit_geoR_reml$cov.pars[2], 
+                                fit_geoR_wls$cov.pars[2], fit_gstat_wls$range[2]), 2)
+    )
+    
+    knitr::kable(res_tabla, col.names = c("Método de Estimación", "Silla (σ²)", "Alcance (φ)"),
+                 caption = "Tabla 1. Comparación de parámetros estimados (Verdaderos: σ² = 5, φ = 20)",
+                 align = "lcc") %>%
+      kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
     ```
 
     
 7. **Determine las dimensiones y la complejidad de cada uno de los métodos. ¿Cuál es la dimensión de las matrices invertidas en cada método? ¿En todos los casos el proceso es iterativo?**
 
     **R/**
+    
+    | Método | Matriz Invertida (Dimensión) | Complejidad Computacional | ¿Es Iterativo? | Justificación Teórica (Bohórquez, 2025) |
+    | :--- | :--- | :--- | :--- | :--- |
+    | **MCO** | No requiere inversión matricial directa (usa mínimos cuadrados no lineales). | **Baja** ($O(K \cdot p)$) | **No** (directo) | Al no haber matriz de pesos dependiente de $\Theta$, se resuelve directamente mediante algoritmos de optimización no lineal estándar. |
+    | **MCP (Varianza)** | $K \times K$ (Matriz de pesos $W(\Theta)$) | **Media** ($O(K^3 \cdot \text{iter})$) | **Sí** | La matriz de ponderación $W(\Theta)$ depende de los parámetros $\Theta$. En cada iteración, se actualiza $\Theta$, se recalcula $W$, y se vuelve a minimizar. |
+    | **MCP ($N(h)$)** | $K \times K$ (Matriz de pesos constante) | **Baja/Media** | **No** | Al usar $|N(h_k)|$, la matriz de pesos es constante y conocida *a priori*, eliminando la necesidad de iterar la estructura de pesos. |
+    | **ML** | $n \times n$ (Matriz de covarianza $\Sigma(\Theta)$) | **Muy Alta** ($O(n^3 \cdot \text{iter})$) | **Sí** | Requiere calcular el determinante y la inversa de $\Sigma(\Theta)$ en cada paso de la optimización. Si $n > 10,000$, la memoria y el tiempo colapsan. |
+    | **REML** | $n \times n$ (Matriz $A^\top \Sigma(\Theta) A$) | **Muy Alta** ($O(n^3 \cdot \text{iter})$) | **Sí** | Similar a ML, requiere inversión de matrices de dimensión $n \times n$ en cada iteración, aunque opera sobre el espacio de los incrementos. |
+    | **CL** | $p \times p$ (Matriz Hessiana de Godambe) | **Baja** ($O(p^3 \cdot \text{iter})$) | **Sí** | La función $CL(\Theta)$ es una suma de escalares (log-verosimilitudes marginales). No requiere invertir matrices de $n \times n$. Solo se invierte la matriz de información de $p \times p$ para calcular errores estándar. |
+    
+    Mientras que los métodos basados en el variograma empírico (MCO, MCP) y la Pseudoverosimilitud (CL) operan en dimensiones reducidas ($K \times K$ o $p \times p$), haciéndolos escalables para grandes volúmenes de datos ($n$ grande); los métodos basados en la verosimilitud conjunta (ML, REML) están limitados por la inversión de la matriz de covarianza $n \times n$. Cuando $n$ es masivo, ML y REML se vuelven computacionalmente intratables, justificando el uso de CL o métodos jerárquicos.
+
 
 
 ### Para el problema 4 del capítulo 1, encuentre las matrices de covarianza, correlación y semivarianza, si existen. Si alguna no existe, justifique. Verifique las propiedades de las matrices obtenidas para que garanticen varianzas de predicción positivas.
