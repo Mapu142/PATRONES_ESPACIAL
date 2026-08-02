@@ -1169,8 +1169,273 @@ par(mfrow = c(1, 1))
 ```
 
 
+# Predicción con krigin universal
 
+```{r grilla}
+library(sf)
 
+# Extensión de Bogotá
+bb <- st_bbox(bogota)
+
+# Crear grilla regular
+grd <- expand.grid(
+  x = seq(bb["xmin"], bb["xmax"], length.out = 100),
+  y = seq(bb["ymin"], bb["ymax"], length.out = 100)
+)
+
+# Convertir a sf
+grd <- st_as_sf(
+  grd,
+  coords = c("x", "y"),
+  crs = st_crs(datos_modelo)
+)
+
+# Recuperar las coordenadas como columnas
+coord <- st_coordinates(grd)
+grd$x <- coord[,1]
+grd$y <- coord[,2]
+
+# Krigin universal
+kriged_values_universal <- krige(
+  formula = PM10 ~ x,
+  locations = datos_modelo,
+  newdata = grd,
+  model = modelo_teorico_universal
+)
+
+bogota_4326 <- st_transform(
+  bogota,
+  st_crs(kriged_values_universal)
+)
+
+kriged_values_universal <- st_intersection(
+  kriged_values_universal,
+  bogota_4326
+)
+
+```
+
+```{r}
+library(ggplot2)
+library(patchwork)
+
+p1 <- ggplot() +
+  geom_sf(
+    data = kriged_values_universal,
+    aes(color = var1.pred),
+    size = 0.6
+  ) +
+  geom_sf(
+    data = bogota_4326,
+    fill = NA,
+    color = "black",
+    linewidth = 0.5
+  ) +
+  scale_color_viridis_c(name = "PM10") +
+  labs(title = "Predicción mediante Kriging Universal") +
+  theme_bw()
+
+p2 <- ggplot() +
+  geom_sf(
+    data = kriged_values_universal,
+    aes(color = var1.var),
+    size = 0.6
+  ) +
+  geom_sf(
+    data = bogota_4326,
+    fill = NA,
+    color = "black",
+    linewidth = 0.5
+  ) +
+  scale_color_viridis_c(name = "Varianza") +
+  labs(title = "Varianza de la predicción") +
+  theme_bw()
+
+p1 + p2
+```
+
+En el mapa de predicción se observa que la mayor parte del área de estudio presenta valores bajos o medios de PM10, con concentraciones más elevadas hacia el occidente de la ciudad. Por otra parte, el mapa de la varianza de predicción muestra un comportamiento esperado del kriging universal: la incertidumbre aumenta a medida que los puntos de predicción se alejan de las estaciones de monitoreo, debido a la menor disponibilidad de información para realizar la interpolación. En contraste, en las ubicaciones cercanas o coincidentes con una estación de monitoreo la varianza de predicción es considerablemente menor, ya que en estos puntos la estimación está fuertemente respaldada por observaciones directas. Este patrón evidencia la dependencia de la precisión del predictor respecto a la distribución espacial de las estaciones.
+
+Resulta particularmente interesante observar un punto de muy baja incertidumbre en el centro-occidente del mapa, el cual coincide con la ubicación de una estación de monitoreo. En este caso, el predictor prácticamente reproduce el valor observado, por lo que la incertidumbre es mínima en comparación con las zonas circundantes.
+
+# Función Optim
+
+```{r}
+library(sf)
+
+coord <- st_coordinates(datos_modelo)
+
+D <- as.matrix(dist(coord))
+
+z <- datos_modelo$PM10
+
+# Esférico
+gamma_sph <- function(h, nugget, sill, range){
+
+  gamma <- ifelse(
+    h <= range,
+    nugget + sill * (1.5*(h/range) - 0.5*(h/range)^3),
+    nugget + sill
+  )
+
+  gamma
+}
+
+#Exponencial
+gamma_exp <- function(h, nugget, sill, range){
+
+  nugget + sill*(1-exp(-h/range))
+
+}
+
+#Gaussiano
+gamma_gau <- function(h, nugget, sill, range){
+
+  nugget + sill*(1-exp(-(h/range)^2))
+
+}
+
+#Combinación lineal
+gamma_mix <- function(h,
+                      nugget,
+                      sill,
+                      range,
+                      a,
+                      b,
+                      c){
+
+  a*gamma_sph(h,nugget,sill,range)+
+  b*gamma_exp(h,nugget,sill,range)+
+  c*gamma_gau(h,nugget,sill,range)
+
+}
+
+cov_model <- function(h,
+                      nugget,
+                      sill,
+                      range,
+                      a,
+                      b,
+                      c){
+
+  (nugget+sill)-
+    gamma_mix(
+      h,
+      nugget,
+      sill,
+      range,
+      a,
+      b,
+      c
+    )
+
+}
+
+#Log veroslimlitud compuesta
+compLik <- function(par,
+                    D,
+                    z){
+
+  nugget <- par[1]
+  sill <- par[2]
+  range <- par[3]
+
+  a <- par[4]
+  b <- par[5]
+  c <- par[6]
+
+  ll <- 0
+
+  n <- length(z)
+
+  for(i in 1:(n-1)){
+
+    for(j in (i+1):n){
+
+      Cij <- cov_model(
+        D[i,j],
+        nugget,
+        sill,
+        range,
+        a,
+        b,
+        c
+      )
+
+      Sigma <- matrix(
+
+        c(
+          nugget+sill,
+          Cij,
+          Cij,
+          nugget+sill
+        ),
+
+        2,
+        2
+
+      )
+
+      x <- c(z[i],z[j])
+
+      ll <- ll +
+        mvtnorm::dmvnorm(
+          x,
+          sigma=Sigma,
+          log=TRUE
+        )
+
+    }
+
+  }
+
+  return(-ll)
+
+}
+
+#Optimización
+library(mvtnorm)
+
+fit <- optim(
+
+  par=c(
+    nugget=1,
+    sill=20,
+    range=0.1,
+    a=1,
+    b=0,
+    c=0
+  ),
+
+  fn=compLik,
+
+  D=D,
+
+  z=z,
+
+  method="L-BFGS-B",
+
+  lower=c(
+    0,
+    0,
+    0.0001,
+    0,
+    0,
+    0
+  )
+
+)
+
+fit$par
+```
+
+library(sf)
+
+coord <- st_coordinates(datos_modelo)
+
+D <- as.matrix(dist(coord))
+
+z <- datos_modelo$PM10
 
 
 # Ejercicios {.tabset}
